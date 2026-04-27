@@ -1,0 +1,283 @@
+substitutions:
+  name: ceiling-alarm-1
+  friendly_name: Ceiling Alarm 1
+
+  servo_pin: GPIO25
+  led_pin: GPIO13
+  num_leds: "11"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: featheresp32
+  framework:
+    type: arduino
+
+logger:
+
+api:
+  encryption:
+    key: !secret ceiling-alarm-1-api-key
+
+ota:
+  - platform: esphome
+    password: !secret ceiling-alarm-1-ota-password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  min_auth_mode: WPA2
+  fast_connect: true
+  power_save_mode: none
+  reboot_timeout: 2min
+
+captive_portal:
+
+output:
+  - platform: ledc
+    id: servo_pwm
+    pin: ${servo_pin}
+    frequency: 50 Hz
+
+servo:
+  - id: main_servo
+    output: servo_pwm
+    min_level: 3%
+    idle_level: 7.5%
+    max_level: 12%
+    restore: false
+
+globals:
+  - id: servo_current_degrees
+    type: float
+    restore_value: true
+    initial_value: "90.0"
+
+  - id: servo_start_degrees
+    type: float
+    restore_value: false
+    initial_value: "90.0"
+
+  - id: servo_target_degrees
+    type: float
+    restore_value: false
+    initial_value: "90.0"
+
+  - id: servo_step_number
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+  - id: servo_step_delay_ms
+    type: int
+    restore_value: false
+    initial_value: "40"
+
+number:
+  - platform: template
+    name: "Servo Up Position"
+    id: servo_up_position
+    min_value: 0
+    max_value: 180
+    step: 1
+    initial_value: 180
+    unit_of_measurement: "°"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Servo Down Position"
+    id: servo_down_position
+    min_value: 0
+    max_value: 180
+    step: 1
+    initial_value: 0
+    unit_of_measurement: "°"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Servo Up Speed"
+    id: servo_up_speed
+    min_value: 0.1
+    max_value: 10.0
+    step: 0.1
+    initial_value: 1.0
+    unit_of_measurement: "s"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Servo Down Speed"
+    id: servo_down_speed
+    min_value: 0.1
+    max_value: 10.0
+    step: 0.1
+    initial_value: 1.0
+    unit_of_measurement: "s"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Red"
+    id: led_red
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Green"
+    id: led_green
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Blue"
+    id: led_blue
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED White"
+    id: led_white
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Brightness"
+    id: led_brightness
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 50
+    unit_of_measurement: "%"
+    restore_value: true
+    optimistic: true
+
+script:
+  - id: move_servo_to_degrees
+    mode: restart
+    parameters:
+      target_degrees: float
+      duration_s: float
+    then:
+      - lambda: |-
+          id(servo_start_degrees) = id(servo_current_degrees);
+          id(servo_target_degrees) = target_degrees;
+          id(servo_step_number) = 0;
+
+          const int steps = 50;
+          int delay_ms = (int)((duration_s * 1000.0f) / steps);
+
+          if (delay_ms < 5) {
+            delay_ms = 5;
+          }
+
+          id(servo_step_delay_ms) = delay_ms;
+
+      - repeat:
+          count: 50
+          then:
+            - lambda: |-
+                id(servo_step_number)++;
+
+                const int steps = 50;
+                float progress = (float) id(servo_step_number) / (float) steps;
+
+                float degrees = id(servo_start_degrees) +
+                                ((id(servo_target_degrees) - id(servo_start_degrees)) * progress);
+
+                if (degrees < 0) degrees = 0;
+                if (degrees > 180) degrees = 180;
+
+                float servo_level = (degrees / 90.0f) - 1.0f;
+
+                id(main_servo).write(servo_level);
+
+            - delay: !lambda |-
+                return id(servo_step_delay_ms);
+
+      - lambda: |-
+          id(servo_current_degrees) = id(servo_target_degrees);
+
+          if (id(servo_current_degrees) < 0) id(servo_current_degrees) = 0;
+          if (id(servo_current_degrees) > 180) id(servo_current_degrees) = 180;
+
+          float servo_level = (id(servo_current_degrees) / 90.0f) - 1.0f;
+          id(main_servo).write(servo_level);
+
+button:
+  - platform: template
+    name: "Servo Up"
+    icon: "mdi:arrow-up-bold"
+    on_press:
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_up_position).state;"
+          duration_s: !lambda "return id(servo_up_speed).state;"
+
+  - platform: template
+    name: "Servo Down"
+    icon: "mdi:arrow-down-bold"
+    on_press:
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_down_position).state;"
+          duration_s: !lambda "return id(servo_down_speed).state;"
+
+  - platform: template
+    name: "Servo Centre"
+    icon: "mdi:axis-arrow"
+    on_press:
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: 90
+          duration_s: 0.5
+
+  - platform: template
+    name: "Apply LED Colour"
+    icon: "mdi:palette"
+    on_press:
+      - light.turn_on:
+          id: sk6812_leds
+          red: !lambda "return id(led_red).state / 255.0;"
+          green: !lambda "return id(led_green).state / 255.0;"
+          blue: !lambda "return id(led_blue).state / 255.0;"
+          white: !lambda "return id(led_white).state / 255.0;"
+          brightness: !lambda "return id(led_brightness).state / 100.0;"
+
+  - platform: template
+    name: "LEDs Off"
+    icon: "mdi:lightbulb-off"
+    on_press:
+      - light.turn_off:
+          id: sk6812_leds
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: sk6812_leds
+    name: "SK6812 LEDs"
+    pin: ${led_pin}
+    num_leds: ${num_leds}
+    chipset: SK6812
+    rgb_order: GRB
+    is_rgbw: true
+    default_transition_length: 0.5s
+    restore_mode: RESTORE_DEFAULT_OFF

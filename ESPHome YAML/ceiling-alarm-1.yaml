@@ -99,8 +99,30 @@ number:
     optimistic: true
 
   - platform: template
+    name: "Servo Up Rest Position"
+    id: servo_up_rest_position
+    min_value: 0
+    max_value: 180
+    step: 1
+    initial_value: 150
+    unit_of_measurement: "°"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
     name: "Servo Up Speed"
     id: servo_up_speed
+    min_value: 0.1
+    max_value: 10.0
+    step: 0.1
+    initial_value: 1.0
+    unit_of_measurement: "s"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Servo Up Rest Speed"
+    id: servo_up_rest_speed
     min_value: 0.1
     max_value: 10.0
     step: 0.1
@@ -243,6 +265,15 @@ button:
           duration_s: !lambda "return id(servo_down_speed).state;"
 
   - platform: template
+    name: "Servo Up Rest"
+    icon: "mdi:arrow-up-bold-circle"
+    on_press:
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_up_rest_position).state;"
+          duration_s: !lambda "return id(servo_up_rest_speed).state;"
+
+  - platform: template
     name: "Servo Centre"
     icon: "mdi:axis-arrow"
     on_press:
@@ -250,6 +281,22 @@ button:
           id: move_servo_to_degrees
           target_degrees: 90
           duration_s: 0.5
+
+  - platform: template
+    name: "Cancel Alarm"
+    icon: "mdi:alarm-off"
+    on_press:
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_up_position).state;"
+          duration_s: !lambda "return id(servo_up_speed).state;"
+      - script.wait: move_servo_to_degrees
+      - light.turn_off:
+          id: sk6812_leds
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_up_rest_position).state;"
+          duration_s: !lambda "return id(servo_up_rest_speed).state;"
 
   - platform: template
     name: "Apply LED Colour"

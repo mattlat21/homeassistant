@@ -193,6 +193,117 @@ number:
     restore_value: true
     optimistic: true
 
+  - platform: template
+    name: "LED Spin Colour Count"
+    id: led_spin_colour_count
+    min_value: 1
+    max_value: 3
+    step: 1
+    initial_value: 3
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Speed"
+    id: led_spin_speed
+    min_value: 0.2
+    max_value: 20.0
+    step: 0.1
+    initial_value: 4.0
+    unit_of_measurement: "steps/s"
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 1 Red"
+    id: led_spin_c1_r
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 1 Green"
+    id: led_spin_c1_g
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 1 Blue"
+    id: led_spin_c1_b
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 2 Red"
+    id: led_spin_c2_r
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 2 Green"
+    id: led_spin_c2_g
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 2 Blue"
+    id: led_spin_c2_b
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 3 Red"
+    id: led_spin_c3_r
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 3 Green"
+    id: led_spin_c3_g
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "LED Spin Colour 3 Blue"
+    id: led_spin_c3_b
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    restore_value: true
+    optimistic: true
+
 script:
   - id: move_servo_to_degrees
     mode: restart
@@ -311,6 +422,15 @@ button:
           brightness: !lambda "return id(led_brightness).state / 100.0;"
 
   - platform: template
+    name: "Start LED Spin"
+    icon: "mdi:rotate-right"
+    on_press:
+      - light.turn_on:
+          id: sk6812_leds
+          brightness: !lambda "return id(led_brightness).state / 100.0;"
+          effect: "Spin Up To 3 Colours"
+
+  - platform: template
     name: "LEDs Off"
     icon: "mdi:lightbulb-off"
     on_press:
@@ -328,3 +448,40 @@ light:
     is_rgbw: true
     default_transition_length: 0.5s
     restore_mode: RESTORE_DEFAULT_OFF
+    effects:
+      - addressable_lambda:
+          name: "Spin Up To 3 Colours"
+          update_interval: 25ms
+          lambda: |-
+            static int offset = 0;
+            static uint32_t last_step_ms = 0;
+
+            const float speed_steps_per_s = id(led_spin_speed).state;
+            if (speed_steps_per_s > 0.0f) {
+              const uint32_t step_ms = (uint32_t) (1000.0f / speed_steps_per_s);
+              const uint32_t now = millis();
+              if ((now - last_step_ms) >= step_ms) {
+                offset = (offset + 1) % it.size();
+                last_step_ms = now;
+              }
+            }
+
+            int colour_count = (int) id(led_spin_colour_count).state;
+            if (colour_count < 1) colour_count = 1;
+            if (colour_count > 3) colour_count = 3;
+
+            const uint8_t colours[3][3] = {
+              {(uint8_t) id(led_spin_c1_r).state, (uint8_t) id(led_spin_c1_g).state, (uint8_t) id(led_spin_c1_b).state},
+              {(uint8_t) id(led_spin_c2_r).state, (uint8_t) id(led_spin_c2_g).state, (uint8_t) id(led_spin_c2_b).state},
+              {(uint8_t) id(led_spin_c3_r).state, (uint8_t) id(led_spin_c3_g).state, (uint8_t) id(led_spin_c3_b).state}
+            };
+
+            for (int i = 0; i < it.size(); i++) {
+              const int colour_index = (i + offset) % colour_count;
+              it[i] = Color(
+                colours[colour_index][0],
+                colours[colour_index][1],
+                colours[colour_index][2],
+                0
+              );
+            }

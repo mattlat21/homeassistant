@@ -453,35 +453,76 @@ light:
           name: "Spin Up To 3 Colours"
           update_interval: 25ms
           lambda: |-
-            static int offset = 0;
+            static uint32_t anim_step = 0;
             static uint32_t last_step_ms = 0;
+
+            const int N = it.size();
+            const int half_ring = (N / 2 > 0) ? (N / 2) : 1;
 
             const float speed_steps_per_s = id(led_spin_speed).state;
             if (speed_steps_per_s > 0.0f) {
               const uint32_t step_ms = (uint32_t) (1000.0f / speed_steps_per_s);
               const uint32_t now = millis();
               if ((now - last_step_ms) >= step_ms) {
-                offset = (offset + 1) % it.size();
+                anim_step++;
                 last_step_ms = now;
               }
             }
 
-            int colour_count = (int) id(led_spin_colour_count).state;
-            if (colour_count < 1) colour_count = 1;
-            if (colour_count > 3) colour_count = 3;
+            // Trail brightness one step behind the head (tweak for longer/shorter fade).
+            const float trail_decay = 0.42f;
+            const float bright_scale = id(led_brightness).state / 100.0f;
 
-            const uint8_t colours[3][3] = {
-              {(uint8_t) id(led_spin_c1_r).state, (uint8_t) id(led_spin_c1_g).state, (uint8_t) id(led_spin_c1_b).state},
-              {(uint8_t) id(led_spin_c2_r).state, (uint8_t) id(led_spin_c2_g).state, (uint8_t) id(led_spin_c2_b).state},
-              {(uint8_t) id(led_spin_c3_r).state, (uint8_t) id(led_spin_c3_g).state, (uint8_t) id(led_spin_c3_b).state}
-            };
+            const float r1 = id(led_spin_c1_r).state;
+            const float g1 = id(led_spin_c1_g).state;
+            const float b1 = id(led_spin_c1_b).state;
+            const float r2 = id(led_spin_c2_r).state;
+            const float g2 = id(led_spin_c2_g).state;
+            const float b2 = id(led_spin_c2_b).state;
+            const float r3 = id(led_spin_c3_r).state;
+            const float g3 = id(led_spin_c3_g).state;
+            const float b3 = id(led_spin_c3_b).state;
 
-            for (int i = 0; i < it.size(); i++) {
-              const int colour_index = (i + offset) % colour_count;
-              it[i] = Color(
-                colours[colour_index][0],
-                colours[colour_index][1],
-                colours[colour_index][2],
-                0
-              );
+            const int h1 = (int) (anim_step % (uint32_t) N);
+            const bool head2_on = (int) anim_step >= half_ring;
+            const bool head3_on = (int) anim_step >= (2 * half_ring);
+            const int h2 = head2_on ? (int) (((int) anim_step - half_ring) % N) : 0;
+            const int h3 = head3_on ? (int) (((int) anim_step - 2 * half_ring) % N) : 0;
+
+            for (int i = 0; i < N; i++) {
+              float fr = 0.0f;
+              float fg = 0.0f;
+              float fb = 0.0f;
+
+              int d1 = (h1 - i + N) % N;
+              float k1 = powf(trail_decay, (float) d1);
+              fr += r1 * k1;
+              fg += g1 * k1;
+              fb += b1 * k1;
+
+              if (head2_on) {
+                int d2 = (h2 - i + N) % N;
+                float k2 = powf(trail_decay, (float) d2);
+                fr += r2 * k2;
+                fg += g2 * k2;
+                fb += b2 * k2;
+              }
+
+              if (head3_on) {
+                int d3 = (h3 - i + N) % N;
+                float k3 = powf(trail_decay, (float) d3);
+                fr += r3 * k3;
+                fg += g3 * k3;
+                fb += b3 * k3;
+              }
+
+              fr *= bright_scale;
+              fg *= bright_scale;
+              fb *= bright_scale;
+
+              if (fr > 255.0f) fr = 255.0f;
+              if (fg > 255.0f) fg = 255.0f;
+              if (fb > 255.0f) fb = 255.0f;
+
+              it[i] = Color((uint8_t) fr, (uint8_t) fg, (uint8_t) fb, 0);
             }

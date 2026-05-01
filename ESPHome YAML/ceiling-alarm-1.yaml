@@ -49,6 +49,23 @@ servo:
     max_level: 12%
     restore: false
 
+switch:
+  - platform: template
+    name: "Servo Enable"
+    id: servo_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - output.turn_on: servo_pwm
+      - lambda: |-
+          float d = id(servo_current_degrees);
+          if (d < 0.0f) d = 0.0f;
+          if (d > 180.0f) d = 180.0f;
+          float servo_level = (d / 90.0f) - 1.0f;
+          id(main_servo).write(servo_level);
+    turn_off_action:
+      - output.turn_off: servo_pwm
+
 globals:
   - id: servo_current_degrees
     type: float
@@ -311,6 +328,7 @@ script:
       target_degrees: float
       duration_s: float
     then:
+      - switch.turn_on: servo_enable
       - lambda: |-
           id(servo_start_degrees) = id(servo_current_degrees);
           id(servo_target_degrees) = target_degrees;
@@ -408,6 +426,21 @@ button:
           id: move_servo_to_degrees
           target_degrees: !lambda "return id(servo_up_rest_position).state;"
           duration_s: !lambda "return id(servo_up_rest_speed).state;"
+      - script.wait: move_servo_to_degrees
+      - switch.turn_off: servo_enable
+
+  - platform: template
+    name: "Start Alarm"
+    icon: "mdi:alarm-light"
+    on_press:
+      - light.turn_on:
+          id: sk6812_leds
+          brightness: !lambda "return id(led_brightness).state / 100.0;"
+          effect: "Spin Up To 3 Colours"
+      - script.execute:
+          id: move_servo_to_degrees
+          target_degrees: !lambda "return id(servo_down_position).state;"
+          duration_s: !lambda "return id(servo_down_speed).state;"
 
   - platform: template
     name: "Apply LED Colour"

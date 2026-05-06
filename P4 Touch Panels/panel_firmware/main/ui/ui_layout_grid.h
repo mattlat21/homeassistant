@@ -1,0 +1,45 @@
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+/**
+ * Square N×N layout grid helpers: uniform gap bands (count+1) around N cells of fixed pixel size.
+ * Positions are **content coordinates** inside a parent that uses `lv_obj_set_style_pad_all(parent, gap, ...)`
+ * so (0,0) is the top-left of the first cell.
+ */
+
+/** Default cells per row/column when using a 6×6 launcher-style grid. */
+#define UI_LAYOUT_GRID_N_DEFAULT 6
+
+/** Default cell edge length in pixels (one dimension). */
+#define UI_LAYOUT_GRID_CELL_PX_DEFAULT 100
+
+/** Linear cell index 0 .. grid_n * grid_n - 1, row-major (0 = top-left). */
+typedef uint8_t ui_layout_grid_cell_t;
+
+/**
+ * Gap for one screen dimension: (screen_len - cell_px * cell_count) / (cell_count + 1), clamped ≥ 0.
+ */
+int32_t ui_layout_grid_gap_for_length(int32_t cell_px, int32_t cell_count, int32_t screen_len);
+
+/**
+ * Minimum of horizontal and vertical gaps from @ref ui_layout_grid_gap_for_length (square grid per axis).
+ */
+int32_t ui_layout_grid_gap_for_screen(int32_t cell_hor_px, int32_t cell_ver_px, int32_t cols, int32_t rows,
+                                      int32_t hor_res, int32_t ver_res);
+
+/** Stride from one cell origin to the next: cell_px + gap_px. */
+int32_t ui_layout_grid_stride_px(int32_t cell_px, int32_t gap_px);
+
+/**
+ * Top-left of cell at (row, col) in grid content space; grid is @a grid_n × @a grid_n.
+ */
+bool ui_layout_grid_rc_to_pos(int32_t gap_px, int32_t cell_px, uint8_t grid_n, uint8_t row, uint8_t col,
+                              int32_t *out_x, int32_t *out_y);
+
+/**
+ * Top-left of linear @a cell (row-major) in the same coordinate system as @ref ui_layout_grid_rc_to_pos.
+ */
+bool ui_layout_grid_cell_to_pos(int32_t gap_px, int32_t cell_px, uint8_t grid_n, ui_layout_grid_cell_t cell,
+                                int32_t *out_x, int32_t *out_y);

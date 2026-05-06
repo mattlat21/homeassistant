@@ -1,0 +1,8 @@
+# Two OTA slots (A/B) + otadata for rollback. Each app slot ~2.5 MiB (was factory 0x220000 + headroom).
+# Flash app images here after switching from legacy factory-only layout (full chip erase or esptool erase before first OTA flash recommended).
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     ,        0x6000,
+otadata,  data, ota,     ,        0x2000,
+phy_init, data, phy,     ,        0x1000,
+ota_0,    app,  ota_0,   ,        0x280000,
+ota_1,    app,  ota_1,   ,        0x280000,

@@ -1,0 +1,406 @@
+asyncapi: '2.6.0'
+info:
+  title: screen_test_1 MQTT (ESP32-P4 Ollie Room)
+  version: '1.0.0'
+  description: |
+    Machine-readable MQTT contract for firmware in `main/ha_mqtt.c`.
+    The device is the **application** in this spec: `publish` = device sends to the broker;
+    `subscribe` = device receives from the broker.
+
+    **Node id** `nodeId`: `esp_hmi/device/` plus 12 lowercase hex digits from STA MAC (no separators).
+
+    **Room state (HA → panels):** Shared topic from Kconfig `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC` (default
+    `esp_hmi/data/bedroom3/desired_state`, plain UTF-8). If `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE` is non-empty,
+    that full path is used instead. Retained; QoS 1 subscribe.
+
+    **All panel presses:** Device publishes JSON on `{nodeId}/status/button_press` as `{"button": "…"}` (controls, Study heater button, and room options).
+    If `SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE` is non-empty, room publishes use that topic instead of `status/button_press`.
+
+    **Device parameters (panels → broker):** On each MQTT connect, device publishes retained JSON on `{nodeId}/status/parameters`
+    (QoS 1) with firmware version, node/mac ids, chip info, HA device name from Kconfig, optional `wifi_ssid`,
+    NVS-derived `default_screen`, `idle_timeout_screen`, `idle_timeout_seconds`, etc.
+
+    **Idle timeout (broker → panels):** Device subscribes to `{nodeId}/cmd/set_idle_timeout` (QoS 1) with JSON
+    `{"screen":"<slug>","seconds":<n>}`; `seconds` 0 disables. Persists to NVS and updates the LVGL idle timer.
+
+    **Climate state (HA → panels):** Four shared topics (Kconfig `SCREEN_TEST_MQTT_CLIMATE_*_TOPIC`, defaults under
+    `esp_hmi/data/bedroom3/climate/`): **setpoint** and **current** (°C, plain float text); **heater** (plain bool);
+    **control** = HA `climate` entity state (e.g. `heat`/`off`) or legacy bool scalars. Device subscribes QoS 1; publish
+    **retained** from HA so reconnect restores the UI after all four values have been seen at least once.
+
+    **Study heater state (HA → panels):** Retained scalar bool topic `esp_hmi/data/study/heater_on` mirrors `switch.tasmota_2`
+    so the Study page can render heater on/off after reconnect.
+
+    **Home Assistant:** MQTT discovery uses `value_template` `{{ value_json.button }}` on `status/button_press`. Mirror retained room state with automations (see `README.md`).
+  x-implementation: main/ha_mqtt.c
+  x-kconfig-menu: main/Kconfig.projbuild
+
+defaultContentType: text/plain
+
+servers:
+  broker:
+    url: '{mqttBroker}'
+    protocol: mqtt
+    description: Broker URI from Kconfig `SCREEN_TEST_MQTT_BROKER_URI` (credentials not in this file).
+    variables:
+      mqttBroker:
+        default: 'mqtt://192.168.1.52:1883'
+
+channels:
+  '{nodeId}/status/parameters':
+    description: |
+      Announced JSON document with device/firmware identifiers. Published **once per MQTT connect** after subscriptions.
+      QoS **1**, **retained** so listeners (including HA templates) receive last-known payload after broker restarts.
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id, e.g. esp_hmi/device/aabbccddeeff
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    publish:
+      operationId: publishDeviceParameters
+      summary: Device publishes retained parameters JSON on connect
+      bindings:
+        mqtt:
+          qos: 1
+          retain: true
+      message:
+        name: DeviceParametersJson
+        title: Firmware and device identification
+        contentType: application/json
+        payload:
+          type: object
+          properties:
+            node_id: { type: string }
+            device_id: { type: string }
+            mac: { type: string, description: uppercase colon MAC }
+            mac_hex_lower:
+              type: string
+              description: 12 lowercase hex chars
+            firmware_version: { type: string }
+            project_name: { type: string }
+            compile_time: { type: string }
+            compile_date: { type: string }
+            app_idf_version: { type: string, description: from esp_app_desc embedded at build }
+            esp_idf_version: { type: string, description: esp_get_idf_version() runtime string }
+            chip_target: { type: string }
+            chip_cores: { type: integer }
+            chip_revision: { type: integer }
+            ha_device_name: { type: string }
+            wifi_ssid:
+              type: string
+              nullable: true
+            default_screen:
+              type: string
+              description: NVS default app slug after loading splash
+            idle_timeout_screen:
+              type: string
+              description: NVS idle target slug (used when idle_timeout_seconds non-zero)
+            idle_timeout_seconds:
+              type: number
+              description: Idle period in seconds; 0 means disabled
+
+  '{nodeId}/cmd/set_idle_timeout':
+    description: |
+      Set idle return screen and period; persisted to NVS (`idle_app`, `idle_sec`). JSON UTF-8, QoS 1 subscribe.
+      `seconds` 0 disables the feature; `screen` is still stored. Handled on LVGL thread via async dispatch.
+      Countdown resets on touch/gesture and whenever a registered app screen is loaded (including MQTT navigation).
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    subscribe:
+      operationId: subscribeSetIdleTimeout
+      summary: Broker sets idle timeout target and seconds
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: SetIdleTimeoutJson
+        title: Idle timeout configuration
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - screen
+            - seconds
+          properties:
+            screen:
+              type: string
+              description: Same slug vocabulary as default screen (home, ollie_room, …)
+            seconds:
+              type: number
+              minimum: 0
+              description: Seconds without pointer input or registered screen change; 0 disables
+
+  '{nodeId}/status/button_press':
+    description: |
+      Ollie Room: **all** taps (light, fan, climate, room mode). Each message is JSON **`{"button": "<id>"}`**
+      (space after colon as emitted by firmware). Control ids match the former plain payloads; room uses
+      `Normal`, `Rest Time`, or `Sleep Time`. Controls use QoS 0; room mode uses QoS 1. Not retained.
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id, e.g. esp_hmi/device/aabbccddeeff
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    publish:
+      operationId: publishButtonPressJson
+      summary: Device publishes unified press JSON
+      bindings:
+        mqtt:
+          qos: 0
+          retain: false
+      message:
+        name: ButtonPressJson
+        title: Unified status button_press JSON
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - button
+          properties:
+            button:
+              type: string
+              enum:
+                - light
+                - fan_off
+                - fan_1
+                - fan_2
+                - fan_3
+                - climate_temp_dn
+                - climate_temp_up
+                - climate_mode_off
+                - climate_mode_on
+                - climate_mode_cc
+                - study_heater
+                - Normal
+                - Rest Time
+                - Sleep Time
+
+  esp_hmi/data/study/heater_on:
+    description: |
+      Retained Study heater state mirror from Home Assistant `switch.tasmota_2`. Device **subscribes** QoS 1.
+      Accepted payloads are bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`).
+    subscribe:
+      operationId: subscribeStudyHeaterState
+      summary: Device receives Study heater on/off state
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: StudyHeaterState
+        title: Study heater boolean
+        payload:
+          type: string
+          enum:
+            - "true"
+            - "false"
+            - "on"
+            - "off"
+            - "1"
+            - "0"
+
+  esp_hmi/data/bedroom3/climate/setpoint:
+    description: |
+      Retained setpoint (°C), plain text float. Kconfig `SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC`. Maps from
+      `input_number.desired_temperature_in_ollie_s_bedroom` in HA. Device **subscribes** QoS 1.
+    subscribe:
+      operationId: subscribeOllieClimateSetpoint
+      summary: Device receives climate setpoint
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: OllieClimateSetpoint
+        title: Climate setpoint °C
+        payload:
+          type: string
+          description: e.g. "22.5"
+
+  esp_hmi/data/bedroom3/climate/current:
+    description: |
+      Retained current temperature (°C), plain text float. Kconfig `SCREEN_TEST_MQTT_CLIMATE_CURRENT_TOPIC`.
+      Device **subscribes** QoS 1.
+    subscribe:
+      operationId: subscribeOllieClimateCurrent
+      summary: Device receives current temp
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: OllieClimateCurrent
+        title: Current temp °C
+        payload:
+          type: string
+
+  esp_hmi/data/bedroom3/climate/heater_on:
+    description: |
+      Retained heater on/off (`true`/`false`). Kconfig `SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC`. Plain `true`/`false`, `on`/`off`, etc.
+      Device **subscribes** QoS 1.
+    subscribe:
+      operationId: subscribeOllieClimateHeater
+      summary: Device receives heater state
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: OllieClimateHeater
+        title: Heater boolean
+        payload:
+          type: string
+          enum:
+            - "true"
+            - "false"
+            - "on"
+            - "off"
+
+  esp_hmi/data/bedroom3/climate/control:
+    description: |
+      Retained HVAC / climate-control mode: Home Assistant `climate` entity **state** (e.g. `heat`, `off` from
+      `hvac_modes`). Legacy plain-boolean payloads (`true`/`false`/`on`/`off`/`1`/`0`) still accepted. Kconfig
+      `SCREEN_TEST_MQTT_CLIMATE_CONTROL_TOPIC`. Device **subscribes** QoS 1.
+    subscribe:
+      operationId: subscribeOllieClimateControl
+      summary: Device receives climate HVAC state or legacy bool
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: OllieClimateControl
+        title: Climate HVAC state or legacy bool
+        payload:
+          type: string
+          description: Primary form is HA climate state; legacy bool still accepted.
+          enum:
+            - heat
+            - "off"
+            - "true"
+            - "false"
+            - "on"
+            - "1"
+            - "0"
+
+  esp_hmi/data/bedroom3/desired_state:
+    description: |
+      Current room mode (plain UTF-8). Default path matches `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC`; override replaces it.
+      Device **subscribes** QoS 1. Publish **retained** from HA. Firmware trims ASCII whitespace; unknown values are ignored.
+      Max usable length 47 bytes before NUL (`HA_MQTT_ROOM_OPTION_MAX - 1`).
+    subscribe:
+      operationId: subscribeRoomState
+      summary: Device receives room mode state
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: RoomModeState
+        title: Room mode option string
+        payload:
+          type: string
+          maxLength: 47
+          enum:
+            - Normal
+            - Rest Time
+            - Sleep Time
+
+  homeassistant/device_automation/{nodeId}/ollie_{slug}/config:
+    description: |
+      Home Assistant MQTT discovery for `device_automation` triggers. Device publishes **once per
+      trigger** on MQTT connect. QoS 1, **retained**. `topic` is `{nodeId}/status/button_press`; `payload` matches
+      the rendered `value_template` (`{{ value_json.button }}`).
+    parameters:
+      nodeId:
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+      slug:
+        schema:
+          type: string
+          enum:
+            - light
+            - fan_off
+            - fan_1
+            - fan_2
+            - fan_3
+            - climate_dn
+            - climate_up
+            - climate_m_off
+            - climate_m_on
+            - climate_m_cc
+            - room_normal
+            - room_rest
+            - room_sleep
+    publish:
+      operationId: publishHADiscoveryDeviceAutomation
+      summary: Device publishes retained discovery config
+      bindings:
+        mqtt:
+          qos: 1
+          retain: true
+      message:
+        name: HADiscoveryDeviceAutomation
+        title: Home Assistant MQTT discovery (device_automation)
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - platform
+            - automation_type
+            - type
+            - subtype
+            - topic
+            - payload
+            - value_template
+            - device
+          properties:
+            platform:
+              const: device_automation
+            automation_type:
+              const: trigger
+            type:
+              type: string
+              description: button_short_press (all triggers)
+            subtype:
+              type: string
+              description: button_1..button_10 or room_mode_1..room_mode_3
+            topic:
+              type: string
+              description: Full `{nodeId}/status/button_press` topic string
+            payload:
+              type: string
+              description: Matched value after value_template (same as `button` in device JSON)
+            value_template:
+              type: string
+              description: Jinja — `{{ value_json.button }}`
+            device:
+              type: object
+              required:
+                - identifiers
+                - name
+                - manufacturer
+                - model
+                - connections
+              properties:
+                identifiers:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                name:
+                  type: string
+                  description: From Kconfig `SCREEN_TEST_HA_DEVICE_NAME`
+                manufacturer:
+                  const: Espressif
+                model:
+                  const: ESP32-P4 Touch
+                connections:
+                  type: array
+                  description: '[["mac","AA:BB:CC:DD:EE:FF"]] uppercase hex pairs from firmware'
+                  items:
+                    type: array
+                    minItems: 2
+                    maxItems: 2
+                    items:
+                      type: string

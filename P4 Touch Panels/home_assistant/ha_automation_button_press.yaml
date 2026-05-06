@@ -1,0 +1,158 @@
+alias: ESP HMI MQTT Button Press
+description: ""
+triggers:
+  - trigger: mqtt
+    topic: esp_hmi/device/+/status/button_press
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'light' }}"
+        sequence:
+          - action: remote.send_command
+            target:
+              device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+            data:
+              device: rf_fan
+              command: light_toggle
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'fan_1' }}"
+        sequence:
+          - action: remote.send_command
+            target:
+              device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+            data:
+              device: rf_fan
+              command: fan_low
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'fan_2' }}"
+        sequence:
+          - action: remote.send_command
+            target:
+              device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+            data:
+              device: rf_fan
+              command: fan_medium
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'fan_3' }}"
+        sequence:
+          - action: remote.send_command
+            target:
+              device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+            data:
+              device: rf_fan
+              command: fan_high
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'fan_off' }}"
+        sequence:
+          - action: remote.send_command
+            target:
+              device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+            data:
+              device: rf_fan
+              command: fan_off
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: "{{ climate_target_entity }}"
+            data:
+              temperature: >
+                {{ (state_attr(climate_target_entity, 'temperature') | float(21)
+                - 0.5) | round(1) }}
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: "{{ climate_target_entity }}"
+            data:
+              temperature: >
+                {{ (state_attr(climate_target_entity, 'temperature') | float(21)
+                + 0.5) | round(1) }}
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_mode_off' }}"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ heater_switch_entity }}"
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ climate_target_entity }}"
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_mode_on' }}"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: "{{ heater_switch_entity }}"
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ climate_target_entity }}"
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ climate_target_entity }}"
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.payload_json.button in ['Normal', 'Rest Time', 'Sleep
+              Time'] }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ room_state_select_entity }}"
+            data:
+              option: "{{ trigger.payload_json.button }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'Front Gate Open' }}"
+        sequence:
+          - action: button.press
+            target:
+              entity_id: button.front_gate_controller_open_gate
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'Front Gate Close' }}"
+        sequence:
+          - action: button.press
+            target:
+              entity_id: button.front_gate_controller_close_gate
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'Front Gate Activate' }}"
+        sequence:
+          - action: button.press
+            target:
+              entity_id: button.front_gate_controller_activate_gate
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'study_heater' }}"
+        sequence:
+          - action: switch.toggle
+            target:
+              entity_id: switch.tasmota_2
+variables:
+  climate_target_entity: climate.bedroom_3_heater_bedroom_3_climate_control
+  heater_switch_entity: switch.bedroom_3_heater
+  room_state_select_entity: input_select.ollie_room_desired_state
+mode: parallel

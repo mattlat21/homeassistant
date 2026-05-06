@@ -1,0 +1,42 @@
+# Home Assistant: HMI publishes esp_hmi/device/<mac>/status/parameters on MQTT connect →
+# push panel-specific defaults: esp_hmi/device/<mac>/cmd/set_default_screen (plain slug) and
+# cmd/set_idle_timeout (JSON {"screen":"…","seconds":<n>} — see README).
+#
+# Extend the choose branches when you add more panels; slugs must match app_prefs / firmware.
+
+alias: ESP HMI - Defaults from MAC (parameters heartbeat)
+description: Listens for HMIs to connect and then sends them parameters
+triggers:
+  - trigger: mqtt
+    topic: esp_hmi/device/+/status/parameters
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a9e' }}"
+        sequence:
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a9e/cmd/set_default_screen
+              payload: ollie_room
+              qos: 1
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a9e/cmd/set_idle_timeout
+              payload: '{"screen":"ollie_room","seconds":45}'
+              qos: 1
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a61' }}"
+        sequence:
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a61/cmd/set_default_screen
+              payload: front_gate
+              qos: 1
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a61/cmd/set_idle_timeout
+              payload: '{"screen":"ollie_room","seconds":45}'
+              qos: 1
+mode: queued

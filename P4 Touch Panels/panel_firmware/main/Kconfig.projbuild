@@ -1,0 +1,157 @@
+menu "Screen test 1 UI"
+
+    config SCREEN_TEST_LOADING_MS
+        int "Loading screen duration (ms)"
+        default 3000
+        range 500 60000
+        help
+            Time to show the startup Lottie and "Starting up" before switching to Home.
+
+endmenu
+
+menu "Screen test 1 — Reolink doorbell (Front Gate)"
+
+    config SCREEN_TEST_REOLINK_HOST
+        string "Reolink doorbell IP or hostname (empty = disable preview)"
+        default ""
+        help
+            LAN address of the doorbell, e.g. 192.168.1.50. Enable HTTP/HTTPS in the Reolink app.
+            If empty, the Front Gate screen shows a placeholder with no network fetches.
+
+    config SCREEN_TEST_REOLINK_PORT
+        int "HTTP(S) port"
+        default 80
+        range 1 65535
+
+    config SCREEN_TEST_REOLINK_USE_HTTPS
+        bool "Use HTTPS (skip cert verification for local devices)"
+        default n
+        help
+            Uses https:// on SCREEN_TEST_REOLINK_PORT (often 443). The doorbell must have HTTPS enabled
+            in the Reolink app (network / port settings). Firmware uses CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY
+            (set in sdkconfig.defaults) so self-signed camera certs work; for maximum security use HTTP only.
+
+    config SCREEN_TEST_REOLINK_USER
+        string "Reolink login username"
+        default "admin"
+
+    config SCREEN_TEST_REOLINK_PASSWORD
+        string "Reolink login password"
+        default ""
+
+    config SCREEN_TEST_REOLINK_CHANNEL
+        int "Snap channel index"
+        default 0
+        range 0 7
+
+endmenu
+
+menu "Screen test 1 — Network / Home Assistant"
+
+    config SCREEN_TEST_WIFI_SSID
+        string "WiFi SSID"
+        default "dora_the_internet_explorer"
+        help
+            STA SSID. Leave empty to skip Wi-Fi/MQTT (UI still runs).
+
+    config SCREEN_TEST_WIFI_PASSWORD
+        string "WiFi password"
+        default "defaced123defaced123"
+
+    config SCREEN_TEST_MQTT_BROKER_URI
+        string "MQTT broker URI"
+        default "mqtt://192.168.1.52:1883"
+
+    config SCREEN_TEST_MQTT_USER
+        string "MQTT username"
+        default "mqttdevice"
+
+    config SCREEN_TEST_MQTT_PASSWORD
+        string "MQTT password"
+        default "hhkf76883hdkjnfJfDS"
+
+    config SCREEN_TEST_HA_DEVICE_NAME
+        string "Home Assistant device name (discovery)"
+        default "ESP32-P4 Ollie Room"
+
+    config SCREEN_TEST_MQTT_ROOM_STATE_TOPIC
+        string "Room mode: shared state MQTT topic (plain text; retained)"
+        default "esp_hmi/data/bedroom3/desired_state"
+        help
+            HA → panel: device subscribes here for current room mode (Normal, Rest Time, Sleep Time).
+            Ignored if ROOM_STATE_TOPIC_OVERRIDE is non-empty.
+
+    config SCREEN_TEST_MQTT_ROOM_SET_SUFFIX
+        string "Room mode: legacy set suffix (unused unless full set topic override is set)"
+        default "ollie_room_desired_state/set"
+        help
+            Room taps publish JSON to esp_hmi/device/<MAC>/status/button_press by default. If full set topic override is non-empty,
+            the same JSON is published to that topic instead. This suffix is only used when building the
+            default override-empty set topic path (rarely needed now).
+
+    config SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE
+        string "Room mode: full state topic override (empty = ROOM_STATE_TOPIC)"
+        default ""
+        help
+            If non-empty, subscribe to this exact topic instead of SCREEN_TEST_MQTT_ROOM_STATE_TOPIC.
+
+    config SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE
+        string "Room mode: alternate publish topic for room JSON (empty = esp_hmi/device/<MAC>/status/button_press)"
+        default ""
+        help
+            If non-empty, publish room JSON {"button": "..."} to this topic instead of esp_hmi/device/<mac>/status/button_press.
+
+    config SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC
+        string "Climate: retained setpoint topic (°C, plain float text)"
+        default "esp_hmi/data/bedroom3/climate/setpoint"
+
+    config SCREEN_TEST_MQTT_CLIMATE_CURRENT_TOPIC
+        string "Climate: retained current temp topic (°C, plain float text)"
+        default "esp_hmi/data/bedroom3/climate/current"
+
+    config SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC
+        string "Climate: retained heater on/off topic (plain: true/false, on/off, 1/0)"
+        default "esp_hmi/data/bedroom3/climate/heater_on"
+
+    config SCREEN_TEST_MQTT_CLIMATE_CONTROL_TOPIC
+        string "Climate: retained HVAC/climate-control topic (HA climate state: heat/off; legacy bool ok)"
+        default "esp_hmi/data/bedroom3/climate/control"
+
+    config SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC
+        string "Front Gate: retained gate state topic"
+        default "esp_hmi/data/front_gate/state"
+        help
+            HA -> panel Front Gate status. Expected values include Closed, Partially Open, and open.
+
+endmenu
+
+menu "Screen test 1 — OTA (MQTT / HTTPS)"
+
+    config SCREEN_TEST_OTA_ENABLE
+        bool "Enable MQTT-triggered HTTPS OTA"
+        default y
+        help
+            Subscribes to esp_hmi/device/<MAC>/<suffix> with JSON {"url":"https://...","version":"..."}.
+            Requires two OTA app partitions (see partitions.csv).
+
+    config SCREEN_TEST_OTA_MQTT_CMD_SUFFIX
+        string "OTA command topic suffix (after esp_hmi/device/<MAC>/)"
+        depends on SCREEN_TEST_OTA_ENABLE
+        default "cmd/ota_update"
+        help
+            Full topic is built as: esp_hmi/device/<12hexlowercase>/<SCREEN_TEST_OTA_MQTT_CMD_SUFFIX>
+
+    config SCREEN_TEST_OTA_HTTP_TIMEOUT_MS
+        int "HTTPS OTA download timeout (ms)"
+        depends on SCREEN_TEST_OTA_ENABLE
+        default 120000
+        range 10000 600000
+
+    config SCREEN_TEST_OTA_SKIP_CERT_VERIFY
+        bool "Skip HTTPS server certificate verification (OTA only)"
+        depends on SCREEN_TEST_OTA_ENABLE
+        default n
+        help
+            INSECURE: use only for LAN / self-signed firmware servers. When n, uses esp_crt_bundle_attach for public HTTPS.
+
+endmenu

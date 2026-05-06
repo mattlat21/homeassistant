@@ -22,3 +22,13 @@ venv/
 # Local environment files
 .env
 .env.*
+
+# ESP-IDF (espidf) projects
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.defaults
+sdkconfig.defaults.*
+dependencies.lock
+managed_components/
+.cache/

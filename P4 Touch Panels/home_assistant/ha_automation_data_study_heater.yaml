@@ -1,0 +1,15 @@
+# Home Assistant: study heater switch state -> retained MQTT (HA -> panels).
+# Study screen subscribes to esp_hmi/data/study/heater_on and parses bool-like payloads.
+
+alias: ESP HMI - Data - Study Heater
+description: Mirrors switch.tasmota_2 state to MQTT for the ESP HMI Study screen
+triggers:
+  - trigger: state
+    entity_id: switch.tasmota_2
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/heater_on
+      payload: "{{ states('switch.tasmota_2') }}"
+      retain: true
+mode: single

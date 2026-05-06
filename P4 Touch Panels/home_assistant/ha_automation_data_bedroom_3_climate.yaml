@@ -1,0 +1,41 @@
+# Home Assistant: climate entities → retained MQTT (HA → panels). See README.
+#
+# Single automation (paste into Create automation → YAML, or merge into automations.yaml).
+# Publishes four esp_hmi/data/bedroom3/climate/* topics (shared; any HMI may subscribe).
+#
+# Note: `variables` work in action templates, but state trigger `entity_id` must be literal
+# entity IDs — HA does not template Jinja in trigger entity_id (use repeats below if you
+# change entities often).
+
+alias: "ESP HMI - Data - Bedroom 3 Climate"
+description: ""
+variables:
+  climate_target: climate.bedroom_3_heater_bedroom_3_climate_control
+  heater_switch: switch.bedroom_3_heater
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.bedroom_3_heater_bedroom_3_climate_control
+      - switch.bedroom_3_heater
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/heater_on
+      payload: "{{ 'true' if is_state(heater_switch, 'on') else 'false' }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

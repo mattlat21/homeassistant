@@ -1,0 +1,23 @@
+# Home Assistant: front gate sensor state → retained MQTT (HA → panels).
+# Must match firmware SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC (default esp_hmi/data/front_gate/state).
+#
+# The Front Gate screen subscribes to this topic and maps plain-text payloads to the pill:
+#   open            → green label "Gate Open"
+#   Partially Open  → blue label "Partially Open"
+#   Closed          → yellow label "Closed"
+#
+# Adjust `entity_id` if your sensor id differs from sensor.front_gate_controller_gate_state.
+# Adjust `topic` if you override the Kconfig string.
+
+alias: ESP HMI - Data - Front Gate
+description: Mirrors front gate controller state to MQTT for the ESP HMI Front Gate screen
+triggers:
+  - trigger: state
+    entity_id: sensor.front_gate_controller_gate_state
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/front_gate/state
+      payload: "{{ states('sensor.front_gate_controller_gate_state') }}"
+      retain: true
+mode: single

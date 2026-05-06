@@ -1,0 +1,31 @@
+# Optional: when an HMI publishes esp_hmi/device/<mac>/status/parameters on connect, push idle timeout
+# (screen slug + seconds; seconds 0 disables). Same MAC → slug map idea as ha_automation_hmi_defaults_from_parameters.yaml.
+#
+# Payload is JSON per README: {"screen":"<slug>","seconds":<n>}
+
+alias: ESP HMI - Idle timeout from parameters (optional)
+description: Example — set idle return screen after parameters heartbeat
+triggers:
+  - trigger: mqtt
+    topic: esp_hmi/device/+/status/parameters
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a9e' }}"
+        sequence:
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a9e/cmd/set_idle_timeout
+              payload: '{"screen":"home","seconds":180}'
+              qos: 1
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a61' }}"
+        sequence:
+          - action: mqtt.publish
+            data:
+              topic: esp_hmi/device/30eda0e20a61/cmd/set_idle_timeout
+              payload: '{"screen":"home","seconds":120}'
+              qos: 1
+mode: queued

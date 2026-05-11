@@ -83,6 +83,8 @@ class PanelState:
     parameters: dict[str, Any] = field(default_factory=dict)
     parameters_updated_at: datetime | None = None
     seen_buttons: set[str] = field(default_factory=set)
+    #: Last screen slug sent via `cmd/switch_screen` from HA (panel does not report current UI).
+    last_remote_nav_screen: str | None = None
 
 
 @dataclass

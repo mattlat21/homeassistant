@@ -12,7 +12,7 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 
 - A **device** per panel (identified by MAC)
 - **Sensors** from `status/parameters` (firmware version, SSID, default screen as read-only, chip info, etc.)
-- **Select** entities: **Default screen**, **Idle timeout screen** (writes `cmd/set_default_screen` / combined `cmd/set_idle_timeout` JSON)
+- **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entity: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug)
 - A **Reboot** button entity per panel
 - **Device triggers** for button presses (so automations can be created in the UI)

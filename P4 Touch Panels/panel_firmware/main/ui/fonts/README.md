@@ -22,6 +22,10 @@ Subset (PUA codepoints):
 | radiator-off               | `0xF0AD8` |
 | thermometer                | `0xF050F` |
 | thermometer-low            | `0xF10C3` |
+| teddy-bear                 | `0xF18FB` |
+| gate                       | `0xF0299` |
+| gauge                      | `0xF029A` |
+| desk (Study launcher)      | `0xF1239` |
 
 UTF-8 C macros: `ui_home_assistant_icon_glyphs.h` (supplementary-plane glyphs use 4-byte UTF-8).
 
@@ -30,7 +34,7 @@ Regenerate from this directory:
 ```bash
 npx lv_font_conv@1.5.2 --bpp 4 --size 56 --format lvgl --no-compress --no-prefilter --no-kerning \
   --font source/materialdesignicons-webfont.ttf \
-  -r 0xF0335,0xF0210,0xF081D,0xF1472,0xF1473,0xF1474,0xF0599,0xF0F7A,0xF02E3,0xF0238,0xF0AD8,0xF050F,0xF1722,0xF10C3 \
+  -r 0xF0335,0xF0210,0xF081D,0xF1472,0xF1473,0xF1474,0xF0599,0xF0F7A,0xF02E3,0xF0238,0xF0AD8,0xF050F,0xF1722,0xF10C3,0xF18FB,0xF029A,0xF0299,0xF1239 \
   -o ui_font_home_assistant_icons_56.c
 ```
 

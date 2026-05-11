@@ -12,6 +12,7 @@ typedef enum {
     APP_PIPBOY,
     APP_SETTINGS,
     APP_STUDY,
+    APP_ABOUT,
     APP_COUNT,
 } app_id_t;
 

@@ -8,36 +8,11 @@
 #include "ui/ui_brand_gradient.h"
 #include "ui/components/ui_status_bar.h"
 
-#ifndef FW_VER_MAJOR
-#define FW_VER_MAJOR 0
-#endif
-#ifndef FW_VER_MINOR
-#define FW_VER_MINOR 0
-#endif
-#ifndef FW_VER_PATCH
-#define FW_VER_PATCH 0
-#endif
-
-static lv_obj_t *s_lbl_version;
-static lv_obj_t *s_lbl_mac;
 static lv_obj_t *s_lbl_wifi;
 static lv_obj_t *s_lbl_default;
 
 static void settings_refresh_labels(void)
 {
-    if (s_lbl_version != NULL) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "Firmware: %u.%u.%u", (unsigned)FW_VER_MAJOR, (unsigned)FW_VER_MINOR,
-                 (unsigned)FW_VER_PATCH);
-        lv_label_set_text(s_lbl_version, buf);
-    }
-    if (s_lbl_mac != NULL) {
-        char mac[24];
-        app_prefs_format_sta_mac(mac, sizeof(mac));
-        char line[40];
-        snprintf(line, sizeof(line), "MAC: %s", mac);
-        lv_label_set_text(s_lbl_mac, line);
-    }
     if (s_lbl_wifi != NULL) {
         char ssid[64];
         app_prefs_format_wifi_ssid(ssid, sizeof(ssid));
@@ -86,18 +61,6 @@ lv_obj_t *screen_settings_create(lv_display_t *disp)
     lv_obj_set_style_bg_opa(panel, LV_OPA_80, LV_PART_MAIN);
     lv_obj_set_style_radius(panel, 24, LV_PART_MAIN);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
-
-    s_lbl_version = lv_label_create(panel);
-    lv_obj_set_style_text_font(s_lbl_version, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(s_lbl_version, lv_color_hex(0x1C1C1E), LV_PART_MAIN);
-    lv_label_set_long_mode(s_lbl_version, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_width(s_lbl_version, lv_pct(100));
-
-    s_lbl_mac = lv_label_create(panel);
-    lv_obj_set_style_text_font(s_lbl_mac, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_set_style_text_color(s_lbl_mac, lv_color_hex(0x1C1C1E), LV_PART_MAIN);
-    lv_label_set_long_mode(s_lbl_mac, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_width(s_lbl_mac, lv_pct(100));
 
     s_lbl_wifi = lv_label_create(panel);
     lv_obj_set_style_text_font(s_lbl_wifi, &lv_font_montserrat_24, LV_PART_MAIN);

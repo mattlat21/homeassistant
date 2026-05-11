@@ -145,6 +145,10 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_STUDY;
         return true;
     }
+    if (strcasecmp(slug, "about") == 0) {
+        *out = APP_ABOUT;
+        return true;
+    }
     return false;
 }
 
@@ -185,6 +189,9 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_STUDY:
         slug = "study";
         break;
+    case APP_ABOUT:
+        slug = "about";
+        break;
     default:
         return false;
     }
@@ -209,6 +216,8 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "Settings";
     case APP_STUDY:
         return "Study";
+    case APP_ABOUT:
+        return "About";
     default:
         return "?";
     }

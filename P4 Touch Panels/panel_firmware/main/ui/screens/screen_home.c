@@ -13,7 +13,7 @@ static void launcher_cb(app_id_t app, void *user_ctx)
     nav_go_to(app);
 }
 
-/** Launcher: 3×3 cell grid, five tiles (row-major cells 0–4). */
+/** Launcher: 3×3 cell grid; tiles placed row-major (About and Settings last). */
 #define HOME_GRID_N 3u
 
 lv_obj_t *screen_home_create(lv_display_t *disp)
@@ -46,8 +46,9 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         { UI_HA_ICON_GAUGE, "Dashboard", APP_DASHBOARD, NULL },
         { UI_HA_ICON_GATE, "Front Gate", APP_FRONT_GATE, NULL },
         { UI_HA_ICON_LIGHTBULB, "PipBoy", APP_PIPBOY, NULL },
-        { LV_SYMBOL_SETTINGS, "Settings", APP_SETTINGS, &lv_font_montserrat_48 },
         { UI_HA_ICON_DESK, "Study", APP_STUDY, NULL },
+        { LV_SYMBOL_LIST, "About", APP_ABOUT, &lv_font_montserrat_48 },
+        { LV_SYMBOL_SETTINGS, "Settings", APP_SETTINGS, &lv_font_montserrat_48 },
     };
 
     for (unsigned i = 0; i < (unsigned)(sizeof(tiles) / sizeof(tiles[0])); i++) {

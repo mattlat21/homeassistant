@@ -9,6 +9,7 @@
 #include "ui/screens/screen_front_gate.h"
 #include "ui/screens/screen_pipboy.h"
 #include "ui/screens/screen_settings.h"
+#include "ui/screens/screen_about.h"
 #include "ui/screens/screen_study.h"
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
 #include "ui/screens/screen_ota_progress.h"
@@ -25,6 +26,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_obj_t *scr_front_gate = screen_front_gate_create(disp);
     lv_obj_t *scr_pipboy = screen_pipboy_create(disp);
     lv_obj_t *scr_settings = screen_settings_create(disp);
+    lv_obj_t *scr_about = screen_about_create(disp);
     lv_obj_t *scr_study = screen_study_create(disp);
 
     nav_register_screen(APP_HOME, scr_home);
@@ -34,6 +36,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_register_screen(APP_PIPBOY, scr_pipboy);
     nav_register_screen(APP_SETTINGS, scr_settings);
     nav_register_screen(APP_STUDY, scr_study);
+    nav_register_screen(APP_ABOUT, scr_about);
 
     nav_install_gesture_on_screen(scr_home);
     nav_install_gesture_on_screen(scr_ollie);
@@ -41,6 +44,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_install_gesture_on_screen(scr_front_gate);
     nav_install_gesture_on_screen(scr_pipboy);
     nav_install_gesture_on_screen(scr_settings);
+    nav_install_gesture_on_screen(scr_about);
     nav_install_gesture_on_screen(scr_study);
 
     lv_screen_load(scr_loading);

@@ -1,0 +1,2 @@
+# Local SMB credentials for deploy script (never commit)
+scripts/deploy_esp_hmi_to_ha.env

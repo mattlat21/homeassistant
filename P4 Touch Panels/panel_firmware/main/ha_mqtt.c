@@ -207,6 +207,8 @@ static void build_ids_from_mac(const uint8_t mac[6])
 #endif
 }
 
+static void publish_device_status_parameters(esp_mqtt_client_handle_t client);
+
 static void mqtt_reboot_task(void *arg)
 {
     (void)arg;
@@ -233,8 +235,17 @@ static void mqtt_nav_async_fn(void *user_data)
     } else if (m->op == MQTT_NAV_ASYNC_SWITCH_TEMP) {
         nav_go_to_temporarily(m->app, m->duration_ms);
     } else if (m->op == MQTT_NAV_ASYNC_SET_IDLE_TIMEOUT) {
-        (void)app_prefs_set_idle_timeout(m->app, m->duration_ms);
+        app_id_t prev_app;
+        uint32_t prev_sec;
+        app_prefs_get_idle_timeout(&prev_app, &prev_sec);
+        bool ok = app_prefs_set_idle_timeout(m->app, m->duration_ms);
         ui_idle_timeout_configure(m->app, m->duration_ms);
+        app_id_t new_app;
+        uint32_t new_sec;
+        app_prefs_get_idle_timeout(&new_app, &new_sec);
+        if (ok && (prev_app != new_app || prev_sec != new_sec)) {
+            publish_device_status_parameters(s_client);
+        }
     }
     free(m);
 }
@@ -844,6 +855,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         if ((size_t)ev->topic_len >= HA_MQTT_ROOM_TOPIC_MAX) {
             break;
         }
+
         char tbuf[HA_MQTT_ROOM_TOPIC_MAX];
         memcpy(tbuf, ev->topic, (size_t)ev->topic_len);
         tbuf[ev->topic_len] = '\0';
@@ -1089,10 +1101,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             if (payload[0] == '\0') {
                 break;
             }
-            if (app_prefs_set_default_app_from_slug(payload)) {
-                ESP_LOGI(TAG, "default screen persisted: %s", payload);
-            } else {
+            app_id_t want_id;
+            if (!app_prefs_parse_app_slug(payload, &want_id)) {
                 ESP_LOGW(TAG, "set_default_screen unknown slug: %s", payload);
+                break;
+            }
+            if (app_prefs_get_default_app() == want_id) {
+                break;
+            }
+            if (app_prefs_set_default_app(want_id)) {
+                ESP_LOGI(TAG, "default screen persisted: %s", payload);
+                publish_device_status_parameters(s_client);
             }
             break;
         }

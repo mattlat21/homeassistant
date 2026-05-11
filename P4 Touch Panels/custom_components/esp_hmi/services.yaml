@@ -1,0 +1,90 @@
+switch_screen:
+  name: Switch screen
+  description: Switch the panel to a screen immediately (does not change default screen).
+  fields:
+    mac:
+      name: MAC (hex)
+      description: Panel MAC as 12 lowercase hex digits (e.g. 30eda0e20a9e).
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      description: One of home, ollie_room, dashboard, front_gate, pipboy, settings, study.
+      required: true
+      selector:
+        text: {}
+
+switch_screen_temp:
+  name: Switch screen temporarily
+  description: Switch to a screen for a duration, then restore previous screen.
+  fields:
+    mac:
+      name: MAC (hex)
+      description: Panel MAC as 12 lowercase hex digits.
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+    seconds:
+      name: Seconds
+      description: Duration in seconds.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+
+set_default_screen:
+  name: Set default screen
+  description: Persist the default startup screen on the panel (NVS).
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+
+set_idle_timeout:
+  name: Set idle timeout
+  description: Persist idle return behavior on the panel (NVS). seconds=0 disables idle return.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+    seconds:
+      name: Seconds
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+
+reboot:
+  name: Reboot panel
+  description: Reboot the panel.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+

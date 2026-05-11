@@ -1,11 +1,19 @@
-# Home Assistant: HMI publishes esp_hmi/device/<mac>/status/parameters on MQTT connect →
-# push panel-specific defaults: esp_hmi/device/<mac>/cmd/set_default_screen (plain slug) and
-# cmd/set_idle_timeout (JSON {"screen":"…","seconds":<n>} — see README).
+# Home Assistant: optional idle/default bootstrap when HMIs publish esp_hmi/device/<mac>/status/parameters.
 #
-# Extend the choose branches when you add more panels; slugs must match app_prefs / firmware.
+# WARNING — Default screen vs UI:
+# If you use the esp_hmi integration's **Default screen** select, do NOT auto-publish
+# `cmd/set_default_screen` from this automation. Every `status/parameters` update (including
+# after you pick a new default) retriggers this automation and will **overwrite** your choice
+# with the hardcoded slug below (e.g. `front_gate` for 30eda0e20a61).
+#
+# The blocks under `cmd/set_default_screen` are therefore **commented out** by default.
+# Uncomment only for panels where you want HA to always enforce a fixed default (no UI edits).
+#
+# `cmd/set_idle_timeout` can still fight loops if published on every parameters message — see
+# ha_automation_hmi_idle_from_parameters.yaml comments; gate or disable if needed.
 
 alias: ESP HMI - Defaults from MAC (parameters heartbeat)
-description: Listens for HMIs to connect and then sends them parameters
+description: Optional idle timeout push per MAC; default-screen publish disabled (see file header)
 triggers:
   - trigger: mqtt
     topic: esp_hmi/device/+/status/parameters
@@ -15,11 +23,11 @@ actions:
           - condition: template
             value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a9e' }}"
         sequence:
-          - action: mqtt.publish
-            data:
-              topic: esp_hmi/device/30eda0e20a9e/cmd/set_default_screen
-              payload: ollie_room
-              qos: 1
+          # - action: mqtt.publish
+          #   data:
+          #     topic: esp_hmi/device/30eda0e20a9e/cmd/set_default_screen
+          #     payload: ollie_room
+          #     qos: 1
           - action: mqtt.publish
             data:
               topic: esp_hmi/device/30eda0e20a9e/cmd/set_idle_timeout
@@ -29,11 +37,11 @@ actions:
           - condition: template
             value_template: "{{ trigger.topic.split('/')[2] | lower == '30eda0e20a61' }}"
         sequence:
-          - action: mqtt.publish
-            data:
-              topic: esp_hmi/device/30eda0e20a61/cmd/set_default_screen
-              payload: front_gate
-              qos: 1
+          # - action: mqtt.publish
+          #   data:
+          #     topic: esp_hmi/device/30eda0e20a61/cmd/set_default_screen
+          #     payload: front_gate
+          #     qos: 1
           - action: mqtt.publish
             data:
               topic: esp_hmi/device/30eda0e20a61/cmd/set_idle_timeout

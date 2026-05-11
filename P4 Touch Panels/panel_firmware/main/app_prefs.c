@@ -99,6 +99,9 @@ bool app_prefs_set_default_app(app_id_t id)
     if (!app_id_valid(id)) {
         return false;
     }
+    if ((s_have_cached && id == s_cached_default) || (!s_have_cached && id == APP_HOME)) {
+        return true;
+    }
     esp_err_t err = prefs_write_u8((uint8_t)id);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "set default app failed: %s", esp_err_to_name(err));
@@ -243,6 +246,9 @@ bool app_prefs_set_idle_timeout(app_id_t app, uint32_t sec)
     }
     if (sec > IDLE_TIMEOUT_SEC_MAX) {
         sec = IDLE_TIMEOUT_SEC_MAX;
+    }
+    if (app == s_cached_idle_app && sec == s_cached_idle_sec) {
+        return true;
     }
     nvs_handle_t h;
     esp_err_t err = nvs_open(PREFS_NS, NVS_READWRITE, &h);

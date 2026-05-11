@@ -2,6 +2,11 @@
 # (screen slug + seconds; seconds 0 disables). Same MAC → slug map idea as ha_automation_hmi_defaults_from_parameters.yaml.
 #
 # Payload is JSON per README: {"screen":"<slug>","seconds":<n>}
+#
+# WARNING: Do not mqtt.publish cmd/set_idle_timeout on *every* parameters message unless the payload you send
+# differs from what the panel already reported — otherwise you create a feedback loop (parameters → automation
+# → cmd → parameters → …). Prefer a condition comparing trigger.payload_json to your desired values, or use
+# firmware that skips NVS/republish when unchanged (panel_firmware noop handling).
 
 alias: ESP HMI - Idle timeout from parameters (optional)
 description: Example — set idle return screen after parameters heartbeat

@@ -1,26 +1,6 @@
 #include "ui/components/ui_app_launcher_tile.h"
-#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "esp_timer.h"
-
-// #region agent log
-static void agent_debug_log(const char *run_id, const char *hypothesis_id, const char *location, const char *message,
-                            const char *data_json)
-{
-    FILE *f = fopen("/Users/matt/Documents/Repos/GitHub/projects/ESP32 Screen Testing/screen_test_1/.cursor/debug-60072b.log", "a");
-    if (f == NULL) {
-        return;
-    }
-    int64_t ts = esp_timer_get_time() / 1000;
-    fprintf(f,
-            "{\"sessionId\":\"60072b\",\"runId\":\"%s\",\"hypothesisId\":\"%s\",\"location\":\"%s\",\"message\":\"%s\","
-            "\"data\":%s,\"timestamp\":%" PRId64 "}\n",
-            run_id, hypothesis_id, location, message, data_json, ts);
-    fclose(f);
-}
-// #endregion
 
 typedef struct {
     ui_app_launcher_tile_cb_t cb;
@@ -41,21 +21,6 @@ lv_obj_t *ui_app_launcher_tile_create(lv_obj_t *parent, const char *icon_symbol,
                                       ui_app_launcher_tile_cb_t cb, void *user_ctx,
                                       const lv_font_t *icon_font, int32_t icon_transform_scale)
 {
-    // #region agent log
-    if (caption != NULL && strcmp(caption, "Study") == 0) {
-        char data[256];
-        snprintf(data, sizeof(data),
-                 "{\"caption\":\"Study\",\"app\":%d,\"icon_ptr\":\"%p\",\"font_ptr\":\"%p\",\"icon_b0\":%u,\"icon_b1\":%u,"
-                 "\"icon_b2\":%u,\"icon_b3\":%u,\"scale\":%ld}",
-                 (int)app, (const void *)icon_symbol, (const void *)icon_font,
-                 icon_symbol != NULL ? (unsigned char)icon_symbol[0] : 0u,
-                 icon_symbol != NULL ? (unsigned char)icon_symbol[1] : 0u,
-                 icon_symbol != NULL ? (unsigned char)icon_symbol[2] : 0u,
-                 icon_symbol != NULL ? (unsigned char)icon_symbol[3] : 0u, (long)icon_transform_scale);
-        agent_debug_log("run-initial", "H1", "ui_app_launcher_tile.c:create-entry", "Study tile input", data);
-    }
-    // #endregion
-
     launcher_tile_ud_t *ud = malloc(sizeof(launcher_tile_ud_t));
     if (ud == NULL) {
         return NULL;
@@ -85,19 +50,6 @@ lv_obj_t *ui_app_launcher_tile_create(lv_obj_t *parent, const char *icon_symbol,
     lv_obj_set_style_text_font(icon, icon_font != NULL ? icon_font : &lv_font_montserrat_24, LV_PART_MAIN);
     lv_obj_set_style_text_color(icon, lv_color_hex(0x007AFF), LV_PART_MAIN);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    // #region agent log
-    if (caption != NULL && strcmp(caption, "Study") == 0) {
-        char data[256];
-        const char *resolved_text = lv_label_get_text(icon);
-        snprintf(data, sizeof(data),
-                 "{\"resolved_text\":\"%s\",\"resolved_font_ptr\":\"%p\",\"fallback_used\":%s}",
-                 resolved_text != NULL ? resolved_text : "",
-                 (const void *)(icon_font != NULL ? icon_font : &lv_font_montserrat_24),
-                 icon_font == NULL ? "true" : "false");
-        agent_debug_log("run-initial", "H2", "ui_app_launcher_tile.c:after-label-set",
-                        "Study tile label/font resolved", data);
-    }
-    // #endregion
 
     if (icon_transform_scale > 0 && icon_transform_scale != LV_SCALE_NONE) {
         lv_obj_add_flag(tile, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
@@ -105,14 +57,6 @@ lv_obj_t *ui_app_launcher_tile_create(lv_obj_t *parent, const char *icon_symbol,
         lv_obj_update_layout(tile);
         lv_obj_set_style_transform_pivot_x(icon, lv_obj_get_width(icon) / 2, LV_PART_MAIN);
         lv_obj_set_style_transform_pivot_y(icon, lv_obj_get_height(icon) / 2, LV_PART_MAIN);
-        // #region agent log
-        if (caption != NULL && strcmp(caption, "Study") == 0) {
-            char data[192];
-            snprintf(data, sizeof(data), "{\"w\":%ld,\"h\":%ld}", (long)lv_obj_get_width(icon), (long)lv_obj_get_height(icon));
-            agent_debug_log("run-initial", "H3", "ui_app_launcher_tile.c:after-scale",
-                            "Study icon layout after transform", data);
-        }
-        // #endregion
     }
 
     lv_obj_t *label = lv_label_create(tile);

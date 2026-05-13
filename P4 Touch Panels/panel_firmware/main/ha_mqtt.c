@@ -42,6 +42,10 @@ static char s_node_id[40];
 static char s_button_press_topic[88];
 /** Retained JSON device info: <s_node_id>/status/parameters */
 static char s_status_parameters_topic[88];
+/** Retained slug: <s_node_id>/status/current_screen */
+static char s_status_current_screen_topic[88];
+/** Retained ON/OFF: <s_node_id>/status/mqtt_connected (OFF via broker Last Will) */
+static char s_status_mqtt_connected_topic[88];
 /** JSON device identifier string (same as s_node_id) */
 static char s_device_identifier[40];
 static char s_mac_colon[18];
@@ -167,6 +171,8 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_device_identifier, sizeof(s_device_identifier), "%s", s_node_id);
     snprintf(s_button_press_topic, sizeof(s_button_press_topic), "%s/status/button_press", s_node_id);
     snprintf(s_status_parameters_topic, sizeof(s_status_parameters_topic), "%s/status/parameters", s_node_id);
+    snprintf(s_status_current_screen_topic, sizeof(s_status_current_screen_topic), "%s/status/current_screen", s_node_id);
+    snprintf(s_status_mqtt_connected_topic, sizeof(s_status_mqtt_connected_topic), "%s/status/mqtt_connected", s_node_id);
     snprintf(s_mac_colon, sizeof(s_mac_colon), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3],
              mac[4], mac[5]);
 
@@ -659,6 +665,17 @@ static void try_dispatch_climate_from_cache(void)
     }
 }
 
+static void publish_mqtt_connected_on(esp_mqtt_client_handle_t client)
+{
+    if (client == NULL || s_status_mqtt_connected_topic[0] == '\0') {
+        return;
+    }
+    int msg_id = esp_mqtt_client_publish(client, s_status_mqtt_connected_topic, "ON", 2, 1, 1);
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "publish mqtt_connected ON failed");
+    }
+}
+
 static void publish_discovery_configs(esp_mqtt_client_handle_t client)
 {
     const char *dev_name = CONFIG_SCREEN_TEST_HA_DEVICE_NAME;
@@ -738,6 +755,69 @@ static void publish_discovery_configs(esp_mqtt_client_handle_t client)
         } else {
             ESP_LOGI(TAG, "discovery sent: %s", topic);
         }
+    }
+
+    /* Home Assistant MQTT: current screen + MQTT connectivity */
+    const char *id_tail = strrchr(s_device_identifier, '/');
+    const char *id_suffix = (id_tail != NULL && id_tail[1] != '\0') ? id_tail + 1 : "node";
+
+    char topic_ha[128];
+    char payload_ha[960];
+    int len_ha;
+
+    snprintf(topic_ha, sizeof(topic_ha), "homeassistant/sensor/esp_hmi_%s_current_screen/config", id_suffix);
+    len_ha = snprintf(payload_ha, sizeof(payload_ha),
+                      "{"
+                      "\"name\":\"Current screen\","
+                      "\"unique_id\":\"esp_hmi_%s_current_screen\","
+                      "\"state_topic\":\"%s\","
+                      "\"device\":{"
+                      "\"identifiers\":[\"%s\"],"
+                      "\"name\":\"%s\","
+                      "\"manufacturer\":\"Espressif\","
+                      "\"model\":\"ESP32-P4 Touch\","
+                      "\"connections\":[[\"mac\",\"%s\"]]"
+                      "}"
+                      "}",
+                      id_suffix, s_status_current_screen_topic, s_device_identifier, dev_name, s_mac_colon);
+    if (len_ha > 0 && (size_t)len_ha < sizeof(payload_ha)) {
+        int msg_id = esp_mqtt_client_publish(client, topic_ha, payload_ha, len_ha, 1, 1);
+        if (msg_id < 0) {
+            ESP_LOGE(TAG, "discovery publish failed: current_screen");
+        } else {
+            ESP_LOGI(TAG, "discovery sent: %s", topic_ha);
+        }
+    } else {
+        ESP_LOGE(TAG, "discovery JSON truncated: current_screen");
+    }
+
+    snprintf(topic_ha, sizeof(topic_ha), "homeassistant/binary_sensor/esp_hmi_%s_mqtt_connected/config", id_suffix);
+    len_ha = snprintf(payload_ha, sizeof(payload_ha),
+                        "{"
+                        "\"name\":\"MQTT connected\","
+                        "\"unique_id\":\"esp_hmi_%s_mqtt_connected\","
+                        "\"device_class\":\"connectivity\","
+                        "\"state_topic\":\"%s\","
+                        "\"payload_on\":\"ON\","
+                        "\"payload_off\":\"OFF\","
+                        "\"device\":{"
+                        "\"identifiers\":[\"%s\"],"
+                        "\"name\":\"%s\","
+                        "\"manufacturer\":\"Espressif\","
+                        "\"model\":\"ESP32-P4 Touch\","
+                        "\"connections\":[[\"mac\",\"%s\"]]"
+                        "}"
+                        "}",
+                        id_suffix, s_status_mqtt_connected_topic, s_device_identifier, dev_name, s_mac_colon);
+    if (len_ha > 0 && (size_t)len_ha < sizeof(payload_ha)) {
+        int msg_id = esp_mqtt_client_publish(client, topic_ha, payload_ha, len_ha, 1, 1);
+        if (msg_id < 0) {
+            ESP_LOGE(TAG, "discovery publish failed: mqtt_connected");
+        } else {
+            ESP_LOGI(TAG, "discovery sent: %s", topic_ha);
+        }
+    } else {
+        ESP_LOGE(TAG, "discovery JSON truncated: mqtt_connected");
     }
 }
 
@@ -839,8 +919,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_ota_topic();
 #endif
         publish_device_status_parameters(s_client);
+        publish_mqtt_connected_on(s_client);
+        ha_mqtt_publish_current_screen_state();
         ESP_LOGI(TAG, "status/button_press topic: %s", s_button_press_topic);
         ESP_LOGI(TAG, "status/parameters topic: %s", s_status_parameters_topic);
+        ESP_LOGI(TAG, "status/current_screen topic: %s", s_status_current_screen_topic);
+        ESP_LOGI(TAG, "status/mqtt_connected topic: %s", s_status_mqtt_connected_topic);
         ESP_LOGI(TAG, "cmd/set_idle_timeout topic: %s", s_set_idle_timeout_topic);
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -1161,6 +1245,12 @@ static void start_mqtt_client(void)
         mqtt_cfg.credentials.authentication.password = CONFIG_SCREEN_TEST_MQTT_PASSWORD;
     }
 
+    mqtt_cfg.session.last_will.topic = s_status_mqtt_connected_topic;
+    mqtt_cfg.session.last_will.msg = "OFF";
+    mqtt_cfg.session.last_will.msg_len = 3;
+    mqtt_cfg.session.last_will.qos = 1;
+    mqtt_cfg.session.last_will.retain = 1;
+
     s_client = esp_mqtt_client_init(&mqtt_cfg);
     if (s_client == NULL) {
         ESP_LOGE(TAG, "esp_mqtt_client_init failed");
@@ -1210,6 +1300,26 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 bool ha_mqtt_is_connected(void)
 {
     return s_mqtt_connected;
+}
+
+void ha_mqtt_publish_current_screen_state(void)
+{
+    if (!s_mqtt_connected || s_client == NULL || s_status_current_screen_topic[0] == '\0') {
+        return;
+    }
+    const char *slug = "unknown";
+    char buf[24];
+    if (nav_is_on_registered_screen()) {
+        app_id_t cur = nav_get_current_app();
+        if (app_prefs_slug_for_app(cur, buf, sizeof(buf))) {
+            slug = buf;
+        }
+    }
+    int slen = (int)strlen(slug);
+    int msg_id = esp_mqtt_client_publish(s_client, s_status_current_screen_topic, slug, slen, 1, 1);
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "publish current_screen failed");
+    }
 }
 
 bool ha_mqtt_publish_ollie_button(const char *payload)

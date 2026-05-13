@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "ha_mqtt.h"
+
 static lv_obj_t *s_screens[APP_COUNT];
 
 static lv_timer_t *s_temp_restore_timer;
@@ -26,6 +28,7 @@ static bool nav_try_load_registered(app_id_t id)
     if (d != NULL) {
         lv_display_trigger_activity(d);
     }
+    ha_mqtt_publish_current_screen_state();
     return true;
 }
 

@@ -13,6 +13,12 @@ void ha_mqtt_init(void);
 bool ha_mqtt_is_connected(void);
 
 /**
+ * Publish retained current UI screen slug to `esp_hmi/device/<MAC>/status/current_screen` (QoS 1).
+ * Safe from LVGL thread after navigation; no-op if MQTT disconnected or topic not built yet.
+ */
+void ha_mqtt_publish_current_screen_state(void);
+
+/**
  * Publish a button event on `esp_hmi/device/<MAC>/status/button_press` as JSON `{"button": "<payload>"}` (QoS 0, not retained).
  * @return false if MQTT is not connected or publish failed to enqueue.
  */

@@ -47,6 +47,7 @@ CONFIG_SCHEMA = vol.Schema(
 
 SIGNAL_NEW_DEVICE = f"{DOMAIN}_new_device"
 SIGNAL_PARAMETERS_UPDATE = f"{DOMAIN}_parameters_update"
+SIGNAL_STATUS_UPDATE = f"{DOMAIN}_status_update"
 
 
 def _now_utc() -> datetime:
@@ -83,8 +84,12 @@ class PanelState:
     parameters: dict[str, Any] = field(default_factory=dict)
     parameters_updated_at: datetime | None = None
     seen_buttons: set[str] = field(default_factory=set)
-    #: Last screen slug sent via `cmd/switch_screen` from HA (panel does not report current UI).
+    #: Last screen slug sent via `cmd/switch_screen` from HA (optional UI hint).
     last_remote_nav_screen: str | None = None
+    #: From retained `status/current_screen` (plain slug or `unknown`).
+    current_screen: str | None = None
+    #: From retained `status/mqtt_connected` (`ON` / `OFF`).
+    mqtt_connected: bool | None = None
 
 
 @dataclass
@@ -158,6 +163,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Inform platforms: create entities if needed, then update.
         async_dispatcher_send(hass, SIGNAL_NEW_DEVICE, entry.entry_id, mac)
         async_dispatcher_send(hass, SIGNAL_PARAMETERS_UPDATE, entry.entry_id, mac)
+
+    def _payload_text(msg: mqtt.ReceiveMessage) -> str:
+        raw = msg.payload
+        if isinstance(raw, bytes):
+            return raw.decode("utf-8", errors="replace").strip()
+        return str(raw).strip()
+
+    async def _handle_current_screen(msg: mqtt.ReceiveMessage) -> None:
+        mac = _mac_from_topic(topic_prefix, msg.topic)
+        if not mac:
+            return
+        text = _payload_text(msg)
+        panel = runtime.get_or_create_panel(mac)
+        panel.current_screen = text if text else None
+        async_dispatcher_send(hass, SIGNAL_STATUS_UPDATE, entry.entry_id, mac)
+
+    async def _handle_mqtt_connected(msg: mqtt.ReceiveMessage) -> None:
+        mac = _mac_from_topic(topic_prefix, msg.topic)
+        if not mac:
+            return
+        raw_up = _payload_text(msg).upper()
+        panel = runtime.get_or_create_panel(mac)
+        if raw_up == "ON":
+            panel.mqtt_connected = True
+        elif raw_up == "OFF":
+            panel.mqtt_connected = False
+        else:
+            panel.mqtt_connected = None
+        async_dispatcher_send(hass, SIGNAL_STATUS_UPDATE, entry.entry_id, mac)
 
     async def _handle_button_press(msg: mqtt.ReceiveMessage) -> None:
         mac = _mac_from_topic(topic_prefix, msg.topic)
@@ -254,6 +288,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"{topic_prefix}/device/+/status/button_press",
             _handle_button_press,
             qos=0,
+        )
+    )
+    runtime.unsubscribers.append(
+        await mqtt.async_subscribe(
+            hass,
+            f"{topic_prefix}/device/+/status/current_screen",
+            _handle_current_screen,
+            qos=1,
+        )
+    )
+    runtime.unsubscribers.append(
+        await mqtt.async_subscribe(
+            hass,
+            f"{topic_prefix}/device/+/status/mqtt_connected",
+            _handle_mqtt_connected,
+            qos=1,
         )
     )
 

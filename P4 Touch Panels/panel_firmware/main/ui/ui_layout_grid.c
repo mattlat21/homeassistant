@@ -28,6 +28,47 @@ int32_t ui_layout_grid_stride_px(int32_t cell_px, int32_t gap_px)
     return cell_px + gap_px;
 }
 
+void ui_layout_grid_symmetric_outer_pads(int32_t cell_px, int32_t cell_count, int32_t screen_len,
+                                         int32_t *out_base_gap, int32_t *out_pad_extra_start,
+                                         int32_t *out_pad_extra_end)
+{
+    if (out_base_gap == NULL || out_pad_extra_start == NULL || out_pad_extra_end == NULL) {
+        return;
+    }
+    if (cell_count <= 0) {
+        *out_base_gap = 0;
+        *out_pad_extra_start = 0;
+        *out_pad_extra_end = 0;
+        return;
+    }
+    const int32_t span = cell_px * cell_count;
+    const int32_t bands = cell_count + 1;
+    const int32_t slack = screen_len - span;
+    if (slack <= 0) {
+        *out_base_gap = 0;
+        *out_pad_extra_start = 0;
+        *out_pad_extra_end = 0;
+        return;
+    }
+    *out_base_gap = slack / bands;
+    const int32_t rem = slack % bands;
+    *out_pad_extra_start = rem / 2;
+    *out_pad_extra_end = rem - (rem / 2);
+}
+
+bool ui_layout_grid_rc_to_pos_xy(int32_t gap_x, int32_t gap_y, int32_t cell_px, uint8_t row, uint8_t col,
+                                 int32_t *out_x, int32_t *out_y)
+{
+    if (out_x == NULL || out_y == NULL) {
+        return false;
+    }
+    const int32_t sx = ui_layout_grid_stride_px(cell_px, gap_x);
+    const int32_t sy = ui_layout_grid_stride_px(cell_px, gap_y);
+    *out_x = (int32_t)col * sx;
+    *out_y = (int32_t)row * sy;
+    return true;
+}
+
 bool ui_layout_grid_rc_to_pos(int32_t gap_px, int32_t cell_px, uint8_t grid_n, uint8_t row, uint8_t col,
                                 int32_t *out_x, int32_t *out_y)
 {

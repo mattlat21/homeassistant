@@ -10,7 +10,9 @@ switch_screen:
         text: {}
     screen:
       name: Screen slug
-      description: One of home, ollie_room, dashboard, front_gate, pipboy, settings, study.
+      description: >-
+        One of home, ollie_room, dashboard, front_gate, pipboy, settings, study, about,
+        front_door, kitchen, studio.
       required: true
       selector:
         text: {}

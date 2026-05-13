@@ -6,12 +6,14 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 
 - Panel publishes retained identity/parameters on: `esp_hmi/device/<mac>/status/parameters`
 - Panel publishes button presses on: `esp_hmi/device/<mac>/status/button_press`
+- Panel publishes retained live UI + link state on: `esp_hmi/device/<mac>/status/current_screen`, `.../status/mqtt_connected`
 - Home Assistant can command the panel via `esp_hmi/device/<mac>/cmd/...`
 
 ## What you get (MVP)
 
 - A **device** per panel (identified by MAC)
-- **Sensors** from `status/parameters` (firmware version, SSID, default screen as read-only, chip info, etc.)
+- **Sensors** from `status/parameters` (firmware version, SSID, default screen as read-only, chip info, etc.) plus **Current screen** (from `status/current_screen`)
+- **Binary sensor** **MQTT connected** (from retained `status/mqtt_connected`; matches firmware MQTT discovery / LWT)
 - **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entity: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug)
 - A **Reboot** button entity per panel

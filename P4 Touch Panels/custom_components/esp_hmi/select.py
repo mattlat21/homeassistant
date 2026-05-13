@@ -172,7 +172,10 @@ class EspHmiIdleTimeoutScreenSelect(SelectEntity):
 
 
 class EspHmiGoToScreenSelect(SelectEntity):
-    """Navigate the panel UI now via MQTT `cmd/switch_screen` (does not change NVS default)."""
+    """Navigate the panel UI now via MQTT `cmd/switch_screen` (does not change NVS default).
+
+    For the live UI slug, use the **Current screen** sensor (`status/current_screen`).
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Go to screen"

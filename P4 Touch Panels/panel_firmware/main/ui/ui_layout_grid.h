@@ -33,6 +33,19 @@ int32_t ui_layout_grid_gap_for_screen(int32_t cell_hor_px, int32_t cell_ver_px, 
 int32_t ui_layout_grid_stride_px(int32_t cell_px, int32_t gap_px);
 
 /**
+ * Base band gap plus extra padding on the start and end edges so @a screen_len is fully used.
+ * Place cells with stride (cell_px + base_gap); set parent pad_start = base_gap + pad_extra_start,
+ * pad_end = base_gap + pad_extra_end (same axis).
+ */
+void ui_layout_grid_symmetric_outer_pads(int32_t cell_px, int32_t cell_count, int32_t screen_len,
+                                         int32_t *out_base_gap, int32_t *out_pad_extra_start,
+                                         int32_t *out_pad_extra_end);
+
+/** Top-left of cell (row, col) with independent horizontal and vertical strides. */
+bool ui_layout_grid_rc_to_pos_xy(int32_t gap_x, int32_t gap_y, int32_t cell_px, uint8_t row, uint8_t col,
+                                 int32_t *out_x, int32_t *out_y);
+
+/**
  * Top-left of cell at (row, col) in grid content space; grid is @a grid_n × @a grid_n.
  */
 bool ui_layout_grid_rc_to_pos(int32_t gap_px, int32_t cell_px, uint8_t grid_n, uint8_t row, uint8_t col,

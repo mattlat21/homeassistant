@@ -1,7 +1,7 @@
 {
   "domain": "esp_hmi",
   "name": "ESP HMI Panels",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "documentation": "https://www.home-assistant.io/",
   "dependencies": ["mqtt"],
   "codeowners": [],

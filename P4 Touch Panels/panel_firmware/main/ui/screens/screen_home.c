@@ -13,8 +13,8 @@ static void launcher_cb(app_id_t app, void *user_ctx)
     nav_go_to(app);
 }
 
-/** Launcher: 5×5 cell grid; 10 apps in row-major order (rows 0–1 full, lower rows empty). */
-#define HOME_GRID_N 5u
+/** Launcher: 4×4 cell grid; 10 apps in row-major order (first two rows full, third row two tiles). */
+#define HOME_GRID_N 4u
 #define HOME_MIN_GAP_PX 8
 
 lv_obj_t *screen_home_create(lv_display_t *disp)

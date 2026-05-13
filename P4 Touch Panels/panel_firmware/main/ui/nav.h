@@ -13,6 +13,9 @@ typedef enum {
     APP_SETTINGS,
     APP_STUDY,
     APP_ABOUT,
+    APP_FRONT_DOOR,
+    APP_KITCHEN,
+    APP_STUDIO,
     APP_COUNT,
 } app_id_t;
 

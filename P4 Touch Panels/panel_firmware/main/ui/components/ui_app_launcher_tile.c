@@ -19,7 +19,8 @@ static void tile_clicked(lv_event_t *e)
 lv_obj_t *ui_app_launcher_tile_create(lv_obj_t *parent, const char *icon_symbol,
                                       const char *caption, app_id_t app,
                                       ui_app_launcher_tile_cb_t cb, void *user_ctx,
-                                      const lv_font_t *icon_font, int32_t icon_transform_scale)
+                                      const lv_font_t *icon_font, int32_t icon_transform_scale,
+                                      int32_t tile_edge_px)
 {
     launcher_tile_ud_t *ud = malloc(sizeof(launcher_tile_ud_t));
     if (ud == NULL) {
@@ -29,9 +30,11 @@ lv_obj_t *ui_app_launcher_tile_create(lv_obj_t *parent, const char *icon_symbol,
     ud->user_ctx = user_ctx;
     ud->app = app;
 
+    const int32_t edge = (tile_edge_px > 0) ? tile_edge_px : UI_APP_LAUNCHER_TILE_EDGE_PX;
+
     lv_obj_t *tile = lv_obj_create(parent);
     lv_obj_remove_style_all(tile);
-    lv_obj_set_size(tile, UI_APP_LAUNCHER_TILE_EDGE_PX, UI_APP_LAUNCHER_TILE_EDGE_PX);
+    lv_obj_set_size(tile, edge, edge);
     lv_obj_set_style_bg_color(tile, lv_color_hex(0xF2F2F7), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(tile, 44, LV_PART_MAIN);

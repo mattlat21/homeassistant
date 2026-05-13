@@ -149,6 +149,18 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_ABOUT;
         return true;
     }
+    if (strcasecmp(slug, "front_door") == 0) {
+        *out = APP_FRONT_DOOR;
+        return true;
+    }
+    if (strcasecmp(slug, "kitchen") == 0) {
+        *out = APP_KITCHEN;
+        return true;
+    }
+    if (strcasecmp(slug, "studio") == 0) {
+        *out = APP_STUDIO;
+        return true;
+    }
     return false;
 }
 
@@ -192,6 +204,15 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_ABOUT:
         slug = "about";
         break;
+    case APP_FRONT_DOOR:
+        slug = "front_door";
+        break;
+    case APP_KITCHEN:
+        slug = "kitchen";
+        break;
+    case APP_STUDIO:
+        slug = "studio";
+        break;
     default:
         return false;
     }
@@ -207,7 +228,7 @@ const char *app_prefs_display_name_for_app(app_id_t id)
     case APP_OLLIE_ROOM:
         return "Ollie's Room";
     case APP_DASHBOARD:
-        return "Dashboard";
+        return "Car Sim";
     case APP_FRONT_GATE:
         return "Front Gate";
     case APP_PIPBOY:
@@ -218,6 +239,12 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "Study";
     case APP_ABOUT:
         return "About";
+    case APP_FRONT_DOOR:
+        return "Front Door";
+    case APP_KITCHEN:
+        return "Kitchen";
+    case APP_STUDIO:
+        return "Studio";
     default:
         return "?";
     }

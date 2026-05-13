@@ -1,5 +1,7 @@
 #include "ui/ui_layout_grid.h"
 
+#include <stdint.h>
+
 #include "lvgl.h"
 
 int32_t ui_layout_grid_gap_for_length(int32_t cell_px, int32_t cell_count, int32_t screen_len)
@@ -54,6 +56,49 @@ void ui_layout_grid_symmetric_outer_pads(int32_t cell_px, int32_t cell_count, in
     const int32_t rem = slack % bands;
     *out_pad_extra_start = rem / 2;
     *out_pad_extra_end = rem - (rem / 2);
+}
+
+bool ui_layout_grid_uniform_gap_square(int32_t hor_len, int32_t ver_len, uint32_t grid_n, int32_t min_gap_px,
+                                       int32_t *out_cell_px, int32_t *out_gap, int32_t *out_pad_left,
+                                       int32_t *out_pad_right, int32_t *out_pad_top, int32_t *out_pad_bottom)
+{
+    if (out_cell_px == NULL || out_gap == NULL || out_pad_left == NULL || out_pad_right == NULL ||
+        out_pad_top == NULL || out_pad_bottom == NULL || grid_n == 0 || hor_len <= 0 || ver_len <= 0) {
+        return false;
+    }
+    if (min_gap_px < 0) {
+        min_gap_px = 0;
+    }
+    const uint32_t bands = grid_n + 1;
+    int32_t best_c = 0;
+    int32_t best_g = 0;
+    /* Search largest square tile that fits both axes with a shared gap G = min(Gh,Gv). */
+    for (int32_t c = LV_MIN(hor_len, ver_len) / (int32_t)grid_n; c >= 40; c--) {
+        const int32_t gh = (hor_len - (int32_t)grid_n * c) / (int32_t)bands;
+        const int32_t gv = (ver_len - (int32_t)grid_n * c) / (int32_t)bands;
+        const int32_t g = LV_MIN(gh, gv);
+        if (g < min_gap_px) {
+            continue;
+        }
+        if (c > best_c || (c == best_c && g > best_g)) {
+            best_c = c;
+            best_g = g;
+        }
+    }
+    if (best_c <= 0 || best_g < min_gap_px) {
+        return false;
+    }
+    const int32_t used = (int32_t)bands * best_g + (int32_t)grid_n * best_c;
+    const int32_t sx = hor_len - used;
+    const int32_t sy = ver_len - used;
+
+    *out_cell_px = best_c;
+    *out_gap = best_g;
+    *out_pad_left = best_g + sx / 2;
+    *out_pad_right = best_g + (sx - sx / 2);
+    *out_pad_top = best_g + sy / 2;
+    *out_pad_bottom = best_g + (sy - sy / 2);
+    return true;
 }
 
 bool ui_layout_grid_rc_to_pos_xy(int32_t gap_x, int32_t gap_y, int32_t cell_px, uint8_t row, uint8_t col,

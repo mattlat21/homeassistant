@@ -12,7 +12,7 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 ## What you get (MVP)
 
 - A **device** per panel (identified by MAC)
-- **Sensors** from `status/parameters` (firmware version, SSID, default screen as read-only, chip info, etc.) plus **Current screen** (from `status/current_screen`)
+- **Sensors** from `status/parameters` (firmware version, SSID, **MAC address** `AA:BB:…`, **MAC (hex)** `aabbccddeeff`, default screen as read-only, chip info, etc.) plus **Current screen** (from `status/current_screen`)
 - **Binary sensor** **MQTT connected** (from retained `status/mqtt_connected`; matches firmware MQTT discovery / LWT)
 - **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entity: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug)

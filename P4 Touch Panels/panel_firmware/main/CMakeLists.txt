@@ -6,6 +6,7 @@ idf_component_register(
         "ha_mqtt.c"
         "reolink_preview.c"
         "ui/ui_shell.c"
+        "ui/ui_watchdog.c"
         "ui/ui_layout_grid.c"
         "ui/ui_screen_template.c"
         "ui/ui_brand_gradient.c"

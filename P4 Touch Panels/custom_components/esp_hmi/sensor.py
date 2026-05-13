@@ -28,6 +28,16 @@ class EspHmiSensorDescription(SensorEntityDescription):
 
 SENSOR_DESCRIPTIONS: tuple[EspHmiSensorDescription, ...] = (
     EspHmiSensorDescription(
+        key="mac_address",
+        name="MAC address",
+        value_key="mac",
+    ),
+    EspHmiSensorDescription(
+        key="mac_hex",
+        name="MAC (hex)",
+        value_key="mac_hex_lower",
+    ),
+    EspHmiSensorDescription(
         key="firmware_version",
         name="Firmware version",
         value_key="firmware_version",

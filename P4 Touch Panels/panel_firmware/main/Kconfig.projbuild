@@ -9,6 +9,23 @@ menu "Screen test 1 UI"
 
 endmenu
 
+menu "Screen test 1 — UI watchdog"
+
+    config SCREEN_TEST_UI_WATCHDOG_ENABLE
+        bool "Enable UI freeze watchdog (auto reboot)"
+        default y
+        help
+            When enabled, an LVGL periodic timer updates a heartbeat on the UI task; a monitor task on core 0
+            reboots if the heartbeat stops advancing for longer than TIMEOUT (dead LVGL loop).
+
+    config SCREEN_TEST_UI_WATCHDOG_TIMEOUT_S
+        int "UI freeze timeout before reboot (seconds)"
+        depends on SCREEN_TEST_UI_WATCHDOG_ENABLE
+        default 45
+        range 15 300
+
+endmenu
+
 menu "Screen test 1 — Reolink doorbell (Front Gate)"
 
     config SCREEN_TEST_REOLINK_HOST

@@ -1,6 +1,7 @@
 #include "ui/ui_shell.h"
 #include "sdkconfig.h"
 #include "ui/nav.h"
+#include "ui/ui_watchdog.h"
 #include "ui/ui_idle_timeout.h"
 #include "ui/screens/screen_loading.h"
 #include "ui/screens/screen_home.h"
@@ -19,6 +20,7 @@
 void ui_shell_init(lv_display_t *disp)
 {
     nav_init(disp);
+    ui_watchdog_init();
 
     lv_obj_t *scr_loading = screen_loading_create(disp);
     lv_obj_t *scr_home = screen_home_create(disp);

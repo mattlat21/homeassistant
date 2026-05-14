@@ -25,10 +25,7 @@ venv/
 
 # ESP-IDF (espidf) projects
 build/
-sdkconfig
 sdkconfig.old
-sdkconfig.defaults
-sdkconfig.defaults.*
 dependencies.lock
 managed_components/
 .cache/

@@ -1,11 +1,22 @@
 # screen_test_1
 
-ESP-IDF + LVGL multi-screen demo for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (720×720 circular display via BSP + `esp_lvgl_port`).
+ESP-IDF + LVGL multi-screen demo for Waveshare **ESP32-P4** round touch boards: **ESP32-P4-WIFI6-Touch-LCD-3.4C** and **ESP32-P4-WIFI6-Touch-LCD-4B** (720×720 circular display via the same [Waveshare BSP](https://components.espressif.com/components/waveshare/esp32_p4_wifi6_touch_lcd_4b) + `esp_lvgl_port`).
+
+## Waveshare round boards (3.4C and 4B)
+
+Both boards use the managed component **`waveshare/esp32_p4_wifi6_touch_lcd_4b`** (Waveshare’s registry entry also documents the 3.4 / 4 inch round line). After `idf.py build`, it appears under `panel_firmware/managed_components/`.
+
+**Panel type (menuconfig):** **Board Support Package (ESP32-P4) → Display → Select LCD type**
+
+- **Waveshare board with 720×720 4-inch Display** — use for **720×720** round panels (typical **4B** and **3.4C** SKUs shipped as 720×720). This repo’s [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) enables this option by default.
+- **Waveshare board with 800×800 3.4-inch Display** — only if your unit has the **800×800** panel. The current BSP’s `display.h` still exposes **720×720** macros in many revisions; verify on real hardware before relying on the 800×800 Kconfig path alone.
+
+**Wi‑Fi (ESP-Hosted / C6 SDIO):** The default [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) uses **`CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD`**. If Wi‑Fi fails on a **3.4C** or **4B** layout whose SDIO pins differ from that preset, change **Component config → ESP-Hosted** to match the [3.4C wiki](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-3.4C) or [4B wiki](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B) schematic.
 
 ## Behavior
 
 1. **Boot**: A **loading** screen shows an embedded **Lottie** animation (ThorVG) and a short label. After a configurable delay it switches to the **default startup screen** stored in NVS (see [Default startup screen](#default-startup-screen-nvs--mqtt); falls back to **Home** if unset/invalid) and does not return to loading until the next reset.
-2. **Home**: iOS-style **launcher** on a **3×3** cell grid with **six** tiles (Ollie’s Room, Dashboard, Front Gate, PipBoy, **Settings**, **Study**). Unused grid cells are background only. Tap a tile to open that app.
+2. **Home**: **Launcher** grid of app tiles (see [`screen_home.c`](panel_firmware/main/ui/screens/screen_home.c)); tap a tile to open that app.
 3. **Settings**: Read-only summary of **firmware version** (from build-time `FW_VER_*` ints), **Wi-Fi SSID** when associated, and the **default startup screen** (friendly name + slug).
 4. **Ollie’s Room**: Grid with a **room-mode** selector (**Normal**, **Rest Time**, **Sleep Time**) synced to Home Assistant via MQTT (see below), **`ui_climate_control_1`** synced via **four shared retained MQTT topics** under `esp_hmi/data/bedroom3/climate/` (setpoint, current, heater, control) plus climate button payloads (see [Ollie climate](#home-assistant-ollie-climate--mqtt)), a **light** button, and a **fan** button that opens a modal to choose **Fan off / Low / Medium / High** (JSON `button` values `fan_off`, `fan_1` … `fan_3`). **All** panel outputs (buttons + room) publish on **`esp_hmi/device/<MAC>/status/button_press`** as **`{"button": "…"}`** (e.g. `light`, `Normal`, `climate_temp_dn`). Use MQTT discovery and the automations in [Ollie MQTT button_press](#home-assistant-ollie-mqtt-button_press) below.
 5. **Gestures** (on app screens, not on loading): **swipe left/right** cycles apps in order Home → Ollie’s Room → Dashboard → Front Gate → PipBoy → Settings → Study → Home. **Swipe up** returns to **Home**.
@@ -188,7 +199,7 @@ Replace [`panel_firmware/main/assets/lottie_startup.json`](panel_firmware/main/a
 
 ## Prerequisites
 
-- [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) **v5.3.1 or newer** (see [Waveshare wiki](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B))
+- [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) **v5.3.1 or newer** (see Waveshare wiki for [**ESP32-P4-WIFI6-Touch-LCD-3.4C**](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-3.4C) or [**ESP32-P4-WIFI6-Touch-LCD-4B**](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B))
 - USB on **USB TO UART**
 - **PSRAM** — MIPI-DPI frame buffers use `MALLOC_CAP_SPIRAM`. This project sets hex PSRAM at 200 MHz in [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults).
 
@@ -202,7 +213,7 @@ idf.py build
 idf.py -p PORT flash monitor
 ```
 
-On first build, ESP-IDF resolves the [Waveshare BSP](https://components.espressif.com/components/waveshare/esp32_p4_wifi6_touch_lcd_4b) into `panel_firmware/managed_components/`.
+On first build, ESP-IDF resolves the [Waveshare BSP **`waveshare/esp32_p4_wifi6_touch_lcd_4b`**](https://components.espressif.com/components/waveshare/esp32_p4_wifi6_touch_lcd_4b) into `panel_firmware/managed_components/` (same package for **3.4C** and **4B** 720×720 round boards; see [Waveshare round boards](#waveshare-round-boards-34c-and-4b) above).
 
 ### Flash fails: `Serial data stream stopped` during “Uploading stub”
 
@@ -228,7 +239,7 @@ The C6 is **not** flashed with this project’s `screen_test_1.bin`. It must run
 
 If Wi‑Fi never associates after the host changes (no `got IP`, transport errors in the log):
 
-1. Confirm the **host** `sdkconfig` matches your board wiring; the default in [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) is `CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD` (Espressif Function EV + C6 SDIO). If Waveshare’s routing differs, adjust **Component config → ESP-Hosted** SDIO GPIOs to match the schematic.
+1. Confirm the **host** `sdkconfig` matches your board wiring; the default in [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) is `CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD` (Espressif Function EV + C6 SDIO). **3.4C** and **4B** schematics may differ—if Wi‑Fi or transport fails, adjust **Component config → ESP-Hosted** SDIO GPIOs per the [3.4C wiki](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-3.4C) or [4B wiki](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B).
 2. Build or download the **C6 slave** from the [esp_hosted](https://github.com/espressif/esp-hosted) repo for target **esp32c6** and the same release as the host component, then flash the C6 via the board’s **UART** pads (see Waveshare wiki / schematic for `C6` download wiring).
 
 ## UI layout (source tree)

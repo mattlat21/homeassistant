@@ -1,0 +1,71 @@
+CONFIG_IDF_TARGET_ESP32P4=y
+
+# `lv_lottie_set_src_data()` renders the first frame on the *caller* thread; `app_main` holds the display
+# lock while `ui_shell_init()` builds the loading screen, so ThorVG runs on the main task (~4 KiB default → stack fault).
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=32768
+
+# Match typical Waveshare module flash (default IDF profile is often 2 MB, too small for this partition table).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# ThorVG + Lottie need more than the default 1 MiB factory (see partitions.csv).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# OTA rollback: confirm app with esp_ota_mark_app_valid_cancel_rollback() after successful boot (see ota_update.c).
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# MQTT-triggered HTTPS OTA (topic suffix defaults in Kconfig `SCREEN_TEST_OTA_MQTT_CMD_SUFFIX`).
+CONFIG_SCREEN_TEST_OTA_ENABLE=y
+
+# 720×720 round panel: Waveshare ESP32-P4-WIFI6-Touch-LCD-3.4C or ESP32-P4-WIFI6-Touch-LCD-4B (BSP menu: 720×720 4-inch).
+# BSP default Kconfig is often 800×800 3.4"; override here for 720×720 SKUs.
+CONFIG_BSP_LCD_TYPE_720_720_4_INCH=y
+
+# RGB565 → obvious banding on full-screen gradients; RGB888 + LV_COLOR_DEPTH_24 smooths blends (~1.5× framebuffer).
+CONFIG_BSP_LCD_COLOR_FORMAT_RGB888=y
+CONFIG_LV_COLOR_DEPTH_24=y
+
+# In-package HEX PSRAM (required): MIPI-DPI frame buffers are allocated with
+# MALLOC_CAP_SPIRAM — see esp_lcd_new_panel_dpi() in esp-idf. Without SPIRAM
+# init, a 720x720 panel fails with "no memory for frame buffer".
+# 20 MHz PSRAM is too slow for 720x720 MIPI-DPI scanout; driver reports underrun.
+# ESP32-P4 Kconfig only offers 20M or 200M (200M needs experimental features).
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+
+# LVGL Lottie (ThorVG + vector graphics)
+CONFIG_LV_USE_VECTOR_GRAPHIC=y
+CONFIG_LV_USE_THORVG=y
+CONFIG_LV_USE_THORVG_INTERNAL=y
+CONFIG_LV_USE_LOTTIE=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_22=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_32=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
+
+# Swipe navigation (LV_EVENT_GESTURE / lv_indev_get_gesture_dir)
+CONFIG_LV_USE_FLOAT=y
+CONFIG_LV_USE_GESTURE_RECOGNITION=y
+
+# Diagonal / linear screen backgrounds (LV_GRAD_DIR_LINEAR + lv_grad_linear_init)
+CONFIG_LV_USE_DRAW_SW_COMPLEX_GRADIENTS=y
+
+# taskLVGL pinned to CPU1 in main.c (heavy ThorVG). Disable TWDT idle watch on CPU1 only; CPU0 stays protected.
+# CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1 is not set
+
+# ESP32-P4 has no native Wi‑Fi; onboard ESP32-C6 is used via esp_hosted (SDIO) + esp_wifi_remote.
+# CONFIG_ESP_HOST_WIFI_ENABLED is mutually exclusive with CONFIG_ESP_WIFI_REMOTE_ENABLED — disable host Wi‑Fi blobs.
+# CONFIG_ESP_HOST_WIFI_ENABLED is not set
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
+
+# Reolink doorbell HTTPS on LAN is usually self-signed; esp_http_client had no CA/bundle, so mbedTLS
+# refused to init TLS ("No server verification option set"). SKIP_SERVER_CERT_VERIFY requires ESP_TLS_INSECURE.
+# Security: weaker for any HTTPS/TLS from this firmware; prefer plain HTTP to the camera when possible.
+CONFIG_ESP_TLS_INSECURE=y
+CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y

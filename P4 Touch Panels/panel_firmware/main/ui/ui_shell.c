@@ -12,6 +12,8 @@
 #include "ui/screens/screen_settings.h"
 #include "ui/screens/screen_about.h"
 #include "ui/screens/screen_study.h"
+#include "ui/screens/screen_front_door.h"
+#include "ui/components/ui_gate_action.h"
 #include "ui/screens/screen_placeholder.h"
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
 #include "ui/screens/screen_ota_progress.h"
@@ -21,6 +23,7 @@ void ui_shell_init(lv_display_t *disp)
 {
     nav_init(disp);
     ui_watchdog_init();
+    ui_gate_action_init();
 
     lv_obj_t *scr_loading = screen_loading_create(disp);
     lv_obj_t *scr_home = screen_home_create(disp);
@@ -31,7 +34,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_obj_t *scr_settings = screen_settings_create(disp);
     lv_obj_t *scr_about = screen_about_create(disp);
     lv_obj_t *scr_study = screen_study_create(disp);
-    lv_obj_t *scr_front_door = screen_placeholder_create(disp, "Front Door", true);
+    lv_obj_t *scr_front_door = screen_front_door_create(disp);
     lv_obj_t *scr_kitchen = screen_placeholder_create(disp, "Kitchen", true);
     lv_obj_t *scr_studio = screen_placeholder_create(disp, "Studio", true);
 

@@ -1,20 +1,41 @@
 #include "ui/screens/screen_study.h"
 
 #include "ha_mqtt.h"
+#include "ui/components/ui_box_1.h"
 #include "ui/components/ui_button_1.h"
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
+#include "ui/ui_brand_gradient.h"
 #include "ui/ui_screen_template.h"
+#include "ui/ui_visual_tokens.h"
 
 static lv_obj_t *s_btn_heater;
 
+static void study_heater_set_label_colors(lv_color_t color)
+{
+    if (s_btn_heater == NULL) {
+        return;
+    }
+    const uint32_t n = lv_obj_get_child_cnt(s_btn_heater);
+    for (uint32_t i = 0; i < n; i++) {
+        lv_obj_set_style_text_color(lv_obj_get_child(s_btn_heater, i), color, LV_PART_MAIN);
+    }
+}
+
+/** Idle: same semi-transparent white tile as Ollie light/fan. Active: selected-segment look (brighter white + yellow). */
 static void study_apply_heater_state(bool on)
 {
     if (s_btn_heater == NULL) {
         return;
     }
-    lv_obj_set_style_bg_color(s_btn_heater, on ? lv_color_hex(0xE53935) : lv_color_hex(0x2A2A2A), LV_PART_MAIN);
-    lv_obj_set_style_border_width(s_btn_heater, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(s_btn_heater, on ? lv_color_hex(0xFF8A80) : lv_color_hex(0x555555), LV_PART_MAIN);
+    if (on) {
+        lv_obj_set_style_bg_color(s_btn_heater, UI_BOX_1_BG_COLOR, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(s_btn_heater, (lv_opa_t)(255 * 70 / 100), LV_PART_MAIN);
+        study_heater_set_label_colors(UI_SINGLE_SELECTOR_TEXT_COLOR_SELECTED);
+    } else {
+        ui_box_1_style_apply(s_btn_heater);
+        study_heater_set_label_colors(UI_SINGLE_SELECTOR_TEXT_COLOR_IDLE);
+    }
+    lv_obj_set_style_border_width(s_btn_heater, 0, LV_PART_MAIN);
 }
 
 static void study_heater_state_cb(bool heater_on, void *user_data)
@@ -36,8 +57,6 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
     params.status_bar = false;
     params.grid_cols = 3;
     params.grid_rows = 3;
-    params.bg_color = lv_color_black();
-    params.bg_opa = LV_OPA_COVER;
     params.pad_top = 24;
     params.pad_right = 24;
     params.pad_bottom = 24;
@@ -49,6 +68,8 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
     if (!ui_screen_template_create(disp, &params, &layout)) {
         return NULL;
     }
+
+    ui_brand_gradient_apply(layout.screen);
 
     lv_color_t fg = lv_color_white();
     const lv_color_t *fg_p = &fg;

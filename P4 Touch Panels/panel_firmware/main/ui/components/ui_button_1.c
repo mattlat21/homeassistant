@@ -98,15 +98,21 @@ lv_obj_t *ui_button_1_create(lv_obj_t *parent, uint8_t row, uint8_t col, uint8_t
     lv_obj_set_style_pad_all(btn, 8, LV_PART_MAIN);
 
     lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     if (has_icon && has_name) {
-        lv_obj_set_style_pad_column(btn, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_row(btn, 6, LV_PART_MAIN);
+    } else {
+        lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
     }
+    lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     if (has_icon && has_name) {
         add_centered_label(btn, icon_utf8, &ui_font_home_assistant_icons_56, icol);
-        add_centered_label(btn, name, &lv_font_montserrat_16, tcol);
+        lv_obj_t *name_lab = lv_label_create(btn);
+        lv_label_set_text(name_lab, name);
+        lv_obj_set_style_text_font(name_lab, &lv_font_montserrat_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(name_lab, tcol, LV_PART_MAIN);
+        lv_obj_set_style_text_align(name_lab, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     } else if (has_icon) {
         lv_obj_t *icon_lab = lv_label_create(btn);
         lv_label_set_text(icon_lab, icon_utf8);

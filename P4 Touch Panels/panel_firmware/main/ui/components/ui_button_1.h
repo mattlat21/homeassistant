@@ -8,7 +8,7 @@ typedef void (*ui_button_1_cb_t)(void *user_data);
 
 /**
  * Rounded semi-transparent button on a grid. Optional icon (ollie icon font) and/or name (Montserrat).
- * If both are set, icon and text are shown in a row; if only one, it is centered.
+ * If both are set, icon is above text (column); if only one, it is centered.
  * @param icon_color If non-NULL, used for the icon label; otherwise UI_BOX_1_LABEL_COLOR.
  * @param text_color If non-NULL, used for the name label; otherwise UI_BOX_1_LABEL_COLOR.
  */

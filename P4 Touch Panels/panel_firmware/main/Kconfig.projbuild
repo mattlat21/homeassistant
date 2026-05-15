@@ -9,6 +9,30 @@ menu "Screen test 1 UI"
 
 endmenu
 
+menu "Screen test 1 — LCD debug"
+
+    config SCREEN_TEST_LCD_DSI_PATTERN_BOOT_MS
+        int "Boot: DSI hardware color-bar pattern (ms, 0=off)"
+        default 0
+        range 0 3000
+        help
+            If greater than zero, after DISPON the firmware shows the MIPI DSI controller
+            color-bar test pattern for this many milliseconds, then returns to normal video.
+            Color bars visible means the DSI/TCON path is working; persistent black with bars
+            suggests panel power or a fault after the DSI PHY.
+
+    config SCREEN_TEST_LCD_SOLID_RED_BOOT_MS
+        int "Boot: solid red via framebuffer + draw_bitmap (ms, 0=off)"
+        default 0
+        range 0 5000
+        help
+            If greater than zero, fills the first DSI framebuffer with RGB red, flushes cache,
+            calls esp_lcd_panel_draw_bitmap for the full panel, then waits this many ms.
+            If both this and DSI pattern are non-zero, solid-red runs (pattern is skipped).
+            Visible red confirms bridge/DMA from PSRAM; still black suggests wrong LCD timing/type or hardware.
+
+endmenu
+
 menu "Screen test 1 — UI watchdog"
 
     config SCREEN_TEST_UI_WATCHDOG_ENABLE

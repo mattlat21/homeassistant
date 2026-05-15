@@ -1,6 +1,6 @@
-# Waveshare ESP32-P4-WIFI6-Touch-LCD-4B (720x720 4" round) + onboard ESP32-C6 Wi-Fi.
-# BSP: https://components.espressif.com/components/waveshare/esp32_p4_wifi6_touch_lcd_4b
-# Wiki: https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B
+# Waveshare round P4 boards using component waveshare/esp32_p4_wifi6_touch_lcd_4b (4B / 3.4C / 4C family).
+# Pick LCD type below to match the physical panel: 800×800 3.4" vs 720×720 4" (Waveshare labels the latter "4C" on the 3.4C product page).
+# Wiki: https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4B · https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-3.4C
 #
 # Wi-Fi is on the C6 via esp_hosted (SDIO) + esp_wifi_remote — do not enable native P4 host Wi-Fi.
 
@@ -60,7 +60,11 @@ CONFIG_ESP_WIFI_REMOTE_ENABLED=y
 CONFIG_ESP_WIFI_REMOTE_LIBRARY_HOSTED=y
 
 # --- BSP: 720x720 4" (not 800x800 3.4") ---
-CONFIG_BSP_LCD_DPI_BUFFER_NUMS=1
+# Two DPI framebuffers + avoid-tear + full refresh: LVGL renders into panel VRAM (esp_lvgl_port); partial+single-FB can stay black on P4 DSI.
+CONFIG_BSP_LCD_DPI_BUFFER_NUMS=2
+CONFIG_BSP_DISPLAY_LVGL_AVOID_TEAR=y
+CONFIG_BSP_DISPLAY_LVGL_FULL_REFRESH=y
+# CONFIG_BSP_DISPLAY_LVGL_DIRECT_MODE is not set
 CONFIG_BSP_LCD_COLOR_FORMAT_RGB888=y
 CONFIG_BSP_LCD_TYPE_720_720_4_INCH=y
 
@@ -88,3 +92,7 @@ CONFIG_LV_USE_GESTURE_RECOGNITION=y
 CONFIG_LV_FONT_MONTSERRAT_24=y
 
 CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# LCD debug: set both to 0 for normal boot after display works.
+CONFIG_SCREEN_TEST_LCD_DSI_PATTERN_BOOT_MS=0
+CONFIG_SCREEN_TEST_LCD_SOLID_RED_BOOT_MS=0

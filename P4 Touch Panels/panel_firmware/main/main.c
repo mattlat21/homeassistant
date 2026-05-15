@@ -1,5 +1,6 @@
 #include "esp_log.h"
 #include "lvgl.h"
+#include <stdio.h>
 #include "bsp/esp32_p4_wifi6_touch_lcd_4b.h"
 #include "app_prefs.h"
 #include "ha_mqtt.h"
@@ -43,19 +44,16 @@ void app_main(void)
     app_prefs_init();
     ota_update_init();
 
-    esp_err_t err = bsp_display_brightness_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "brightness init failed: %s", esp_err_to_name(err));
-        return;
-    }
-
+    /* Backlight: do not call bsp_display_brightness_init() here — BSP does it inside
+     * bsp_display_new_with_handles(). Extra inits reserve GPIO 26 twice and LEDC warns
+     * ("GPIO 26 is not usable"); PWM/backlight can stay off → black screen. */
     lv_display_t *disp = bsp_display_start_for_lottie();
     if (disp == NULL) {
         ESP_LOGE(TAG, "bsp_display_start_with_config failed");
         return;
     }
 
-    err = bsp_display_brightness_set(100);
+    esp_err_t err = bsp_display_brightness_set(100);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "brightness set failed: %s", esp_err_to_name(err));
         return;

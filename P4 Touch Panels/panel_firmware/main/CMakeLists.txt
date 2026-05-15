@@ -55,6 +55,7 @@ idf_component_register(
         esp_partition
         espressif__esp_new_jpeg
         esp_timer
+        esp_driver_ledc
 )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE

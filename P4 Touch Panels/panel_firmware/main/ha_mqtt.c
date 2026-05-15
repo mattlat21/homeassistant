@@ -1236,6 +1236,8 @@ static void start_mqtt_client(void)
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_SCREEN_TEST_MQTT_BROKER_URI,
+        /* Default 6 KiB is tight when discovery + TLS + long topic paths run in mqtt_task (stack canary fault). */
+        .task.stack_size = 12288,
     };
 
     if (CONFIG_SCREEN_TEST_MQTT_USER[0] != '\0') {

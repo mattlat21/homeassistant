@@ -214,9 +214,10 @@ static lv_obj_t *make_metric_col(lv_obj_t *parent, const char *title, bool title
     return col;
 }
 
-lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, float current_temp_c, float setpoint_c,
-                                  bool heater_on, bool climate_control_on, ui_heater_card_1_cb_t cb, void *user_data,
-                                  lv_coord_t min_height_px, lv_coord_t circle_margin_px, lv_coord_t button_gap_px)
+lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char *room_name, float current_temp_c,
+                                  float setpoint_c, bool heater_on, bool climate_control_on, ui_heater_card_1_cb_t cb,
+                                  void *user_data, lv_coord_t min_height_px, lv_coord_t circle_margin_px,
+                                  lv_coord_t button_gap_px)
 {
     if (parent == NULL || width <= 0) {
         return NULL;
@@ -281,18 +282,39 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, float curr
     lv_obj_set_style_text_color(m->lbl_icon, HEATER_CARD_ACCENT, LV_PART_MAIN);
     lv_obj_center(m->lbl_icon);
 
-    lv_obj_t *center = lv_obj_create(card);
-    lv_obj_remove_style_all(center);
-    lv_obj_set_width(center, 0);
-    lv_obj_set_height(center, LV_SIZE_CONTENT);
-    lv_obj_set_flex_grow(center, 1);
-    lv_obj_clear_flag(center, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_layout(center, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(center, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(center, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(center, 8, LV_PART_MAIN);
+    lv_obj_t *content_col = lv_obj_create(card);
+    lv_obj_remove_style_all(content_col);
+    lv_obj_set_width(content_col, 0);
+    lv_obj_set_height(content_col, LV_PCT(100));
+    lv_obj_set_flex_grow(content_col, 1);
+    lv_obj_clear_flag(content_col, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(content_col, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(content_col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(content_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_top(content_col, edge_margin, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(content_col, 8, LV_PART_MAIN);
 
-    lv_obj_t *identity_text = lv_obj_create(center);
+    if (room_name != NULL && room_name[0] != '\0') {
+        lv_obj_t *lbl_room = lv_label_create(content_col);
+        lv_label_set_text(lbl_room, room_name);
+        lv_obj_set_style_text_font(lbl_room, &lv_font_montserrat_20, LV_PART_MAIN);
+        lv_obj_set_style_text_color(lbl_room, HEATER_CARD_TEXT, LV_PART_MAIN);
+        lv_obj_set_width(lbl_room, LV_PCT(100));
+        lv_label_set_long_mode(lbl_room, LV_LABEL_LONG_DOT);
+    }
+
+    lv_obj_t *body = lv_obj_create(content_col);
+    lv_obj_remove_style_all(body);
+    lv_obj_set_width(body, LV_PCT(100));
+    lv_obj_set_height(body, 0);
+    lv_obj_set_flex_grow(body, 1);
+    lv_obj_clear_flag(body, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(body, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(body, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(body, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(body, 8, LV_PART_MAIN);
+
+    lv_obj_t *identity_text = lv_obj_create(body);
     lv_obj_remove_style_all(identity_text);
     lv_obj_set_width(identity_text, LV_SIZE_CONTENT);
     lv_obj_set_height(identity_text, LV_SIZE_CONTENT);
@@ -329,10 +351,10 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, float curr
     lv_obj_set_style_text_font(m->lbl_status, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(m->lbl_status, HEATER_CARD_ACCENT, LV_PART_MAIN);
 
-    (void)make_vdivider(center, 64);
-    (void)make_metric_col(center, "CURRENT", false, &m->lbl_current);
-    (void)make_vdivider(center, 64);
-    (void)make_metric_col(center, "DESIRED", true, &m->lbl_setpoint);
+    (void)make_vdivider(body, 64);
+    (void)make_metric_col(body, "CURRENT", false, &m->lbl_current);
+    (void)make_vdivider(body, 64);
+    (void)make_metric_col(body, "DESIRED", true, &m->lbl_setpoint);
 
     (void)make_step_btn(card, btn_sz, LV_SYMBOL_MINUS, false, m, on_minus, edge_margin, edge_margin, 0, button_gap_px);
     (void)make_step_btn(card, btn_sz, LV_SYMBOL_PLUS, true, m, on_plus, edge_margin, edge_margin, 0, edge_margin);

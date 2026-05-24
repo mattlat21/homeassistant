@@ -68,7 +68,7 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
         (lv_coord_t)((BSP_LCD_V_RES - ((HVAC_HEATER_CARD_COUNT - 1) * HVAC_CARD_GAP_PX)) / HVAC_HEATER_CARD_COUNT);
 
     for (unsigned i = 0; i < HVAC_HEATER_CARD_COUNT; i++) {
-        s_heater_cards[i] = ui_heater_card_1_create(scr, BSP_LCD_H_RES, 21.0f, 22.0f, false, false,
+        s_heater_cards[i] = ui_heater_card_1_create(scr, BSP_LCD_H_RES, "Ollie's Room", 21.0f, 22.0f, false, false,
                                                     hvac_heater_on_ui_event, NULL, card_h, HVAC_CIRCLE_MARGIN_PX,
                                                     HVAC_BUTTON_GAP_PX);
         if (s_heater_cards[i] != NULL) {

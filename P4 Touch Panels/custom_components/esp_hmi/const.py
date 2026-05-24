@@ -41,6 +41,7 @@ SERVICE_SWITCH_SCREEN_TEMP = "switch_screen_temp"
 SERVICE_SET_DEFAULT_SCREEN = "set_default_screen"
 SERVICE_SET_IDLE_TIMEOUT = "set_idle_timeout"
 SERVICE_SET_DISPLAY_POWER = "set_display_power"
+SERVICE_WAKE_DISPLAY = "wake_display"
 SERVICE_REBOOT = "reboot"
 
 # Internal event name used by device_trigger.py

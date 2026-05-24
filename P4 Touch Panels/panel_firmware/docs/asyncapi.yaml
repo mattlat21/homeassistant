@@ -28,6 +28,9 @@ info:
     containing optional `normal_brightness`, `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`
     (partial update OK). Persists to NVS and updates the LVGL display power timer (Normal → Dim → Off from inactivity).
 
+    **Wake display (broker → panels):** Device subscribes to `{nodeId}/cmd/wake_display` (QoS 1). Any payload resets
+    LVGL inactivity and restores normal brightness without changing NVS.
+
     **Climate state (HA → panels):** Four shared topics (Kconfig `SCREEN_TEST_MQTT_CLIMATE_*_TOPIC`, defaults under
     `esp_hmi/data/bedroom3/climate/`): **setpoint** and **current** (°C, plain float text); **heater** (plain bool);
     **control** = HA `climate` entity state (e.g. `heat`/`off`) or legacy bool scalars. Device subscribes QoS 1; publish
@@ -166,6 +169,29 @@ channels:
               type: number
               minimum: 0
               description: Inactivity seconds before backlight off; 0 disables
+
+  '{nodeId}/cmd/wake_display':
+    description: |
+      Wake the display: reset LVGL inactivity timers (dim/off and idle navigation countdown) and restore normal
+      brightness immediately. Does not change NVS. QoS 1 subscribe; any payload accepted. Handled on LVGL thread.
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    subscribe:
+      operationId: subscribeWakeDisplay
+      summary: Broker wakes display to normal brightness
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: WakeDisplayCommand
+        title: Wake display command
+        contentType: text/plain
+        payload:
+          type: string
 
   '{nodeId}/cmd/set_idle_timeout':
     description: |

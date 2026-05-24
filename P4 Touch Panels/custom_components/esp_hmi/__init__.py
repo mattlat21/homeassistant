@@ -29,6 +29,7 @@ from .const import (
     SERVICE_SET_DEFAULT_SCREEN,
     SERVICE_SET_DISPLAY_POWER,
     SERVICE_SET_IDLE_TIMEOUT,
+    SERVICE_WAKE_DISPLAY,
     SERVICE_SWITCH_SCREEN,
     SERVICE_SWITCH_SCREEN_TEMP,
 )
@@ -283,6 +284,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             qos=1,
         )
 
+    async def _svc_wake_display(call: ServiceCall) -> None:
+        mac = str(call.data["mac"]).lower()
+        await _publish_cmd(mac, "cmd/wake_display", "1", qos=1)
+
     async def _svc_reboot(call: ServiceCall) -> None:
         mac = str(call.data["mac"]).lower()
         await _publish_cmd(mac, "cmd/reboot", "1", qos=1)
@@ -293,6 +298,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_SET_DEFAULT_SCREEN, _svc_set_default_screen)
     hass.services.async_register(DOMAIN, SERVICE_SET_IDLE_TIMEOUT, _svc_set_idle_timeout)
     hass.services.async_register(DOMAIN, SERVICE_SET_DISPLAY_POWER, _svc_set_display_power)
+    hass.services.async_register(DOMAIN, SERVICE_WAKE_DISPLAY, _svc_wake_display)
     hass.services.async_register(DOMAIN, SERVICE_REBOOT, _svc_reboot)
 
     # Subscribe to the two main firmware topics (see README.md).

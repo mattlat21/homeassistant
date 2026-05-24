@@ -16,7 +16,7 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 - **Binary sensor** **MQTT connected** (from retained `status/mqtt_connected`; matches firmware MQTT discovery / LWT)
 - **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entities: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug); **Normal brightness**, **Dim brightness**, **Dim timeout seconds**, **Screen off timeout seconds** (partial JSON to `cmd/set_display_power`)
-- A **Reboot** button entity per panel
+- **Button** entities: **Full brightness** (wake display — restores normal brightness and resets inactivity timers), **Reboot**
 - **Device triggers** for button presses (so automations can be created in the UI)
 - **Services** for the supported command topics:
   - `esp_hmi.switch_screen`
@@ -24,6 +24,7 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
   - `esp_hmi.set_default_screen`
   - `esp_hmi.set_idle_timeout`
   - `esp_hmi.set_display_power`
+  - `esp_hmi.wake_display`
   - `esp_hmi.reboot`
 
 ## Install

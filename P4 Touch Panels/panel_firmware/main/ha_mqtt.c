@@ -60,6 +60,8 @@ static char s_switch_screen_temp_topic[88];
 static char s_set_idle_timeout_topic[88];
 /** JSON display power fields (partial update OK). */
 static char s_set_display_power_topic[88];
+/** Any payload wakes display (normal brightness + reset inactivity timers). */
+static char s_wake_display_topic[88];
 /** Any payload triggers delayed reboot after a short FreeRTOS deferral. */
 static char s_reboot_cmd_topic[72];
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
@@ -222,6 +224,7 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_switch_screen_temp_topic, sizeof(s_switch_screen_temp_topic), "%s/cmd/switch_screen_temp", s_node_id);
     snprintf(s_set_idle_timeout_topic, sizeof(s_set_idle_timeout_topic), "%s/cmd/set_idle_timeout", s_node_id);
     snprintf(s_set_display_power_topic, sizeof(s_set_display_power_topic), "%s/cmd/set_display_power", s_node_id);
+    snprintf(s_wake_display_topic, sizeof(s_wake_display_topic), "%s/cmd/wake_display", s_node_id);
     snprintf(s_reboot_cmd_topic, sizeof(s_reboot_cmd_topic), "%s/cmd/reboot", s_node_id);
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
     snprintf(s_ota_topic, sizeof(s_ota_topic), "%s/%s", s_node_id, CONFIG_SCREEN_TEST_OTA_MQTT_CMD_SUFFIX);
@@ -312,6 +315,20 @@ static bool schedule_display_power_async(const display_power_async_msg_t *payloa
     *m = *payload;
     if (lv_async_call(display_power_async_fn, m) != LV_RESULT_OK) {
         free(m);
+        return false;
+    }
+    return true;
+}
+
+static void display_wake_async_fn(void *user_data)
+{
+    (void)user_data;
+    ui_display_power_wake();
+}
+
+static bool schedule_display_wake_async(void)
+{
+    if (lv_async_call(display_wake_async_fn, NULL) != LV_RESULT_OK) {
         return false;
     }
     return true;
@@ -649,6 +666,7 @@ static void subscribe_remote_screen_topics(void)
         { s_switch_screen_temp_topic, "switch_screen_temp" },
         { s_set_idle_timeout_topic, "set_idle_timeout" },
         { s_set_display_power_topic, "set_display_power" },
+        { s_wake_display_topic, "wake_display" },
         { s_reboot_cmd_topic, "reboot" },
     };
     for (size_t i = 0; i < sizeof(subs) / sizeof(subs[0]); i++) {
@@ -1082,6 +1100,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "status/mqtt_connected topic: %s", s_status_mqtt_connected_topic);
         ESP_LOGI(TAG, "cmd/set_idle_timeout topic: %s", s_set_idle_timeout_topic);
         ESP_LOGI(TAG, "cmd/set_display_power topic: %s", s_set_display_power_topic);
+        ESP_LOGI(TAG, "cmd/wake_display topic: %s", s_wake_display_topic);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "MQTT disconnected");
@@ -1293,6 +1312,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 ESP_LOGI(TAG, "switch_screen_temp -> %s for %" PRIu32 " ms", slug_dbg, (uint32_t)duration_ms);
             } else {
                 ESP_LOGW(TAG, "switch_screen_temp lv_async_call failed");
+            }
+            break;
+        }
+        if (strcmp(tbuf, s_wake_display_topic) == 0) {
+            if (schedule_display_wake_async()) {
+                ESP_LOGI(TAG, "wake_display command scheduled");
+            } else {
+                ESP_LOGW(TAG, "wake_display lv_async_call failed");
             }
             break;
         }

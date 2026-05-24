@@ -81,6 +81,15 @@ void ui_display_power_configure(uint8_t normal_pct, uint8_t dim_pct, uint32_t di
     refresh_hardware_brightness();
 }
 
+void ui_display_power_wake(void)
+{
+    if (s_disp != NULL) {
+        lv_display_trigger_activity(s_disp);
+    }
+    s_state = DISP_PWR_NORMAL;
+    refresh_hardware_brightness();
+}
+
 void ui_display_power_init(lv_display_t *disp)
 {
     s_disp = disp;

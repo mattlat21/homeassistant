@@ -53,6 +53,9 @@ typedef void (*ha_mqtt_ollie_climate_apply_cb_t)(float setpoint_c, float current
 /** Register handler for merged climate state from MQTT (safe to call before MQTT connects). */
 void ha_mqtt_set_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
 
+/** Add another climate state listener (e.g. HVAC screen); does not remove existing listeners. */
+void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
+
 /**
  * Called on the LVGL thread with a null-terminated Front Gate state string from MQTT
  * (e.g. Closed, Partially Open, open).

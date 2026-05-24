@@ -104,8 +104,13 @@ static bool s_climate_last_control;
 static bool s_climate_have_last_applied;
 /** True while an lv_async climate apply is queued; further dispatches coalesce (read cache when callback runs). */
 static bool s_climate_async_pending;
-static ha_mqtt_ollie_climate_apply_cb_t s_climate_apply_cb;
-static void *s_climate_apply_cb_ud;
+#define HA_MQTT_CLIMATE_LISTENER_MAX 4
+typedef struct {
+    ha_mqtt_ollie_climate_apply_cb_t cb;
+    void *user_data;
+} climate_listener_t;
+static climate_listener_t s_climate_listeners[HA_MQTT_CLIMATE_LISTENER_MAX];
+static size_t s_climate_listener_count;
 static ha_mqtt_front_gate_state_cb_t s_front_gate_state_cb;
 static void *s_front_gate_state_cb_ud;
 static ha_mqtt_study_heater_state_cb_t s_study_heater_state_cb;
@@ -796,12 +801,29 @@ static bool parse_climate_control_scalar(char *payload, bool *out)
     return false;
 }
 
+static void climate_dispatch_listeners(float sp, float cur, bool heat, bool cc)
+{
+    for (size_t i = 0; i < s_climate_listener_count; i++) {
+        if (s_climate_listeners[i].cb != NULL) {
+            s_climate_listeners[i].cb(sp, cur, heat, cc, s_climate_listeners[i].user_data);
+        }
+    }
+}
+
+static void climate_try_dispatch_to_listener(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data)
+{
+    if (cb == NULL || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
+        return;
+    }
+    cb(s_climate_cache_sp, s_climate_cache_cur, s_climate_cache_heat, s_climate_cache_control, user_data);
+}
+
 static void climate_state_async_fn(void *user_data)
 {
     (void)user_data;
     s_climate_async_pending = false;
 
-    if (s_climate_apply_cb == NULL || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
+    if (s_climate_listener_count == 0 || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
         return;
     }
 
@@ -816,7 +838,7 @@ static void climate_state_async_fn(void *user_data)
     bool heat = s_climate_cache_heat;
     bool cc = s_climate_cache_control;
 
-    s_climate_apply_cb(sp, cur, heat, cc, s_climate_apply_cb_ud);
+    climate_dispatch_listeners(sp, cur, heat, cc);
 
     s_climate_last_sp = sp;
     s_climate_last_cur = cur;
@@ -863,7 +885,7 @@ static void house_battery_soc_async_fn(void *user_data)
 
 static void try_dispatch_climate_from_cache(void)
 {
-    if (s_climate_apply_cb == NULL || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
+    if (s_climate_listener_count == 0 || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
         return;
     }
     if (s_climate_have_last_applied && s_climate_last_sp == s_climate_cache_sp && s_climate_last_cur == s_climate_cache_cur &&
@@ -1633,8 +1655,30 @@ void ha_mqtt_set_ollie_room_state_callback(ha_mqtt_room_state_cb_t cb, void *use
 
 void ha_mqtt_set_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data)
 {
-    s_climate_apply_cb = cb;
-    s_climate_apply_cb_ud = user_data;
+    s_climate_listener_count = 0;
+    ha_mqtt_add_ollie_climate_state_callback(cb, user_data);
+}
+
+void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data)
+{
+    if (cb == NULL) {
+        return;
+    }
+    for (size_t i = 0; i < s_climate_listener_count; i++) {
+        if (s_climate_listeners[i].cb == cb) {
+            s_climate_listeners[i].user_data = user_data;
+            climate_try_dispatch_to_listener(cb, user_data);
+            return;
+        }
+    }
+    if (s_climate_listener_count >= HA_MQTT_CLIMATE_LISTENER_MAX) {
+        ESP_LOGW(TAG, "climate listener table full");
+        return;
+    }
+    s_climate_listeners[s_climate_listener_count].cb = cb;
+    s_climate_listeners[s_climate_listener_count].user_data = user_data;
+    s_climate_listener_count++;
+    climate_try_dispatch_to_listener(cb, user_data);
 }
 
 void ha_mqtt_set_front_gate_state_callback(ha_mqtt_front_gate_state_cb_t cb, void *user_data)

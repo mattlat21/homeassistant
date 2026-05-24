@@ -38,6 +38,7 @@ idf_component_register(
         "ui/fonts/ui_font_home_assistant_icons_56.c"
         "ui/components/ui_status_bar.c"
         "ui/components/ui_gauge_1.c"
+        "ui/components/ui_heater_card_1.c"
     INCLUDE_DIRS
         "."
     EMBED_FILES

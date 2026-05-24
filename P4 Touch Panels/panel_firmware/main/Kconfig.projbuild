@@ -169,6 +169,12 @@ menu "Screen test 1 — Network / Home Assistant"
         help
             HA -> panel Front Gate status. Expected values include Closed, Partially Open, and open.
 
+    config SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC
+        string "House Battery: retained SOC topic (0–100, plain float text)"
+        default "esp_hmi/data/house_battery/soc_percent"
+        help
+            HA -> panel House Battery screen. Mirrors sensor.sigen_inverter_battery_state_of_charge (0–100 %).
+
 endmenu
 
 menu "Screen test 1 — OTA (MQTT / HTTPS)"

@@ -1,0 +1,15 @@
+# Home Assistant: Sigenergy battery SOC -> retained MQTT (HA -> panels).
+# House Battery screen subscribes to esp_hmi/data/house_battery/soc_percent (0–100, plain float).
+
+alias: ESP HMI - Data - House Battery SOC
+description: Mirrors sensor.sigen_inverter_battery_state_of_charge to MQTT for the House Battery screen
+triggers:
+  - trigger: state
+    entity_id: sensor.sigen_inverter_battery_state_of_charge
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/house_battery/soc_percent
+      payload: "{{ states('sensor.sigen_inverter_battery_state_of_charge') }}"
+      retain: true
+mode: single

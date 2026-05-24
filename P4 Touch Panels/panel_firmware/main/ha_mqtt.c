@@ -90,6 +90,7 @@ static char s_climate_topic_heater[HA_MQTT_CLIMATE_TOPIC_MAX];
 static char s_climate_topic_control[HA_MQTT_CLIMATE_TOPIC_MAX];
 static char s_front_gate_state_topic[HA_MQTT_CLIMATE_TOPIC_MAX];
 static char s_study_heater_state_topic[HA_MQTT_CLIMATE_TOPIC_MAX];
+static char s_house_battery_soc_topic[HA_MQTT_CLIMATE_TOPIC_MAX];
 static float s_climate_cache_sp;
 static float s_climate_cache_cur;
 static bool s_climate_cache_heat;
@@ -109,6 +110,8 @@ static ha_mqtt_front_gate_state_cb_t s_front_gate_state_cb;
 static void *s_front_gate_state_cb_ud;
 static ha_mqtt_study_heater_state_cb_t s_study_heater_state_cb;
 static void *s_study_heater_state_cb_ud;
+static ha_mqtt_house_battery_soc_cb_t s_house_battery_soc_cb;
+static void *s_house_battery_soc_cb_ud;
 
 #define CLIMATE_SEEN_SP (1u << 0)
 #define CLIMATE_SEEN_CUR (1u << 1)
@@ -127,6 +130,10 @@ typedef struct {
 typedef struct {
     bool heater_on;
 } study_heater_state_async_msg_t;
+
+typedef struct {
+    float soc_percent;
+} house_battery_soc_async_msg_t;
 
 typedef enum {
     MQTT_NAV_ASYNC_SWITCH = 1,
@@ -220,6 +227,9 @@ static void build_ids_from_mac(const uint8_t mac[6])
     strncpy(s_front_gate_state_topic, CONFIG_SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC, sizeof(s_front_gate_state_topic) - 1);
     s_front_gate_state_topic[sizeof(s_front_gate_state_topic) - 1] = '\0';
     snprintf(s_study_heater_state_topic, sizeof(s_study_heater_state_topic), "esp_hmi/data/study/heater_on");
+    strncpy(s_house_battery_soc_topic, CONFIG_SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC,
+            sizeof(s_house_battery_soc_topic) - 1);
+    s_house_battery_soc_topic[sizeof(s_house_battery_soc_topic) - 1] = '\0';
 
     snprintf(s_set_default_screen_topic, sizeof(s_set_default_screen_topic), "%s/cmd/set_default_screen", s_node_id);
     snprintf(s_switch_screen_topic, sizeof(s_switch_screen_topic), "%s/cmd/switch_screen", s_node_id);
@@ -658,6 +668,19 @@ static void subscribe_study_heater_state_topic(void)
     }
 }
 
+static void subscribe_house_battery_soc_topic(void)
+{
+    if (s_client == NULL || s_house_battery_soc_topic[0] == '\0') {
+        return;
+    }
+    int mid = esp_mqtt_client_subscribe(s_client, s_house_battery_soc_topic, 1);
+    if (mid < 0) {
+        ESP_LOGE(TAG, "subscribe house battery SOC failed: %s", s_house_battery_soc_topic);
+    } else {
+        ESP_LOGI(TAG, "subscribed house battery SOC: %s", s_house_battery_soc_topic);
+    }
+}
+
 static void subscribe_set_default_screen_topic(void)
 {
     if (s_client == NULL || s_set_default_screen_topic[0] == '\0') {
@@ -822,6 +845,18 @@ static void study_heater_state_async_fn(void *user_data)
     }
     if (s_study_heater_state_cb != NULL) {
         s_study_heater_state_cb(m->heater_on, s_study_heater_state_cb_ud);
+    }
+    lv_free(m);
+}
+
+static void house_battery_soc_async_fn(void *user_data)
+{
+    house_battery_soc_async_msg_t *m = (house_battery_soc_async_msg_t *)user_data;
+    if (m == NULL) {
+        return;
+    }
+    if (s_house_battery_soc_cb != NULL) {
+        s_house_battery_soc_cb(m->soc_percent, s_house_battery_soc_cb_ud);
     }
     lv_free(m);
 }
@@ -1106,6 +1141,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_climate_state_topics();
         subscribe_front_gate_state_topic();
         subscribe_study_heater_state_topic();
+        subscribe_house_battery_soc_topic();
         subscribe_set_default_screen_topic();
         subscribe_remote_screen_topics();
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
@@ -1285,6 +1321,32 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             if (lv_async_call(study_heater_state_async_fn, msg) != LV_RESULT_OK) {
                 lv_free(msg);
                 ESP_LOGW(TAG, "lv_async_call(study_heater_state) failed");
+            }
+            break;
+        }
+        if (strcmp(tbuf, s_house_battery_soc_topic) == 0) {
+            if (ev->data_len <= 0 || ev->data_len >= HA_MQTT_SCALAR_PAYLOAD_MAX) {
+                ESP_LOGW(TAG, "house battery SOC payload bad len (%d)", ev->data_len);
+                break;
+            }
+            char payload[HA_MQTT_SCALAR_PAYLOAD_MAX];
+            memcpy(payload, ev->data, (size_t)ev->data_len);
+            payload[ev->data_len] = '\0';
+            float v = 0.0f;
+            if (!parse_float_scalar(payload, &v)) {
+                ESP_LOGW(TAG, "house battery SOC parse failed");
+                break;
+            }
+            house_battery_soc_async_msg_t *msg =
+                (house_battery_soc_async_msg_t *)lv_malloc(sizeof(house_battery_soc_async_msg_t));
+            if (msg == NULL) {
+                ESP_LOGE(TAG, "house battery SOC async alloc failed");
+                break;
+            }
+            msg->soc_percent = v;
+            if (lv_async_call(house_battery_soc_async_fn, msg) != LV_RESULT_OK) {
+                lv_free(msg);
+                ESP_LOGW(TAG, "lv_async_call(house_battery_soc) failed");
             }
             break;
         }
@@ -1585,6 +1647,12 @@ void ha_mqtt_set_study_heater_state_callback(ha_mqtt_study_heater_state_cb_t cb,
 {
     s_study_heater_state_cb = cb;
     s_study_heater_state_cb_ud = user_data;
+}
+
+void ha_mqtt_set_house_battery_soc_callback(ha_mqtt_house_battery_soc_cb_t cb, void *user_data)
+{
+    s_house_battery_soc_cb = cb;
+    s_house_battery_soc_cb_ud = user_data;
 }
 
 bool ha_mqtt_publish_ollie_room_option(const char *option)

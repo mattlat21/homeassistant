@@ -229,6 +229,10 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_HVAC;
         return true;
     }
+    if (strcasecmp(slug, "house_battery") == 0) {
+        *out = APP_HOUSE_BATTERY;
+        return true;
+    }
     return false;
 }
 
@@ -284,6 +288,9 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_HVAC:
         slug = "hvac";
         break;
+    case APP_HOUSE_BATTERY:
+        slug = "house_battery";
+        break;
     default:
         return false;
     }
@@ -318,6 +325,8 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "Studio";
     case APP_HVAC:
         return "HVAC";
+    case APP_HOUSE_BATTERY:
+        return "House Battery";
     default:
         return "?";
     }

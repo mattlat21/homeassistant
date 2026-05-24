@@ -67,3 +67,9 @@ typedef void (*ha_mqtt_study_heater_state_cb_t)(bool heater_on, void *user_data)
 
 /** Register handler for Study heater retained state topic (safe to call before MQTT connects). */
 void ha_mqtt_set_study_heater_state_callback(ha_mqtt_study_heater_state_cb_t cb, void *user_data);
+
+/** Called on the LVGL thread with battery state of charge 0–100 (percent). */
+typedef void (*ha_mqtt_house_battery_soc_cb_t)(float soc_percent, void *user_data);
+
+/** Register handler for House Battery SOC topic (safe to call before MQTT connects). */
+void ha_mqtt_set_house_battery_soc_callback(ha_mqtt_house_battery_soc_cb_t cb, void *user_data);

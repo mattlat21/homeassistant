@@ -58,6 +58,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         { LV_SYMBOL_IMAGE, "Kitchen", APP_KITCHEN, &lv_font_montserrat_48 },
         { LV_SYMBOL_AUDIO, "Studio", APP_STUDIO, &lv_font_montserrat_48 },
         { UI_HA_ICON_THERMOMETER, "HVAC", APP_HVAC, NULL },
+        { LV_SYMBOL_BATTERY_FULL, "House Battery", APP_HOUSE_BATTERY, &lv_font_montserrat_48 },
         { UI_HA_ICON_LIGHTBULB, "PipBoy", APP_PIPBOY, NULL },
         { UI_HA_ICON_GAUGE, "Car Sim", APP_DASHBOARD, NULL },
         { LV_SYMBOL_LIST, "About", APP_ABOUT, &lv_font_montserrat_48 },

@@ -83,6 +83,8 @@ Climate **+/−** in [`home_assistant/ha_automation_button_press.yaml`](home_ass
 
 Study heater state for the Study page is mirrored from Home Assistant over retained MQTT topic **`esp_hmi/data/study/heater_on`** using [`home_assistant/ha_automation_data_study_heater.yaml`](home_assistant/ha_automation_data_study_heater.yaml). Payload is `switch.tasmota_2` state (`on`/`off`), and firmware accepts bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`).
 
+House Battery SOC for the House Battery screen is mirrored over retained MQTT topic **`esp_hmi/data/house_battery/soc_percent`** using [`home_assistant_automations/ha_automation_data_house_battery_soc.yaml`](home_assistant_automations/ha_automation_data_house_battery_soc.yaml). Payload is plain float **0–100** from **`sensor.sigen_inverter_battery_state_of_charge`**.
+
 ## Firmware version
 
 The three-part version is the source of truth in the firmware root [`panel_firmware/CMakeLists.txt`](panel_firmware/CMakeLists.txt): **`FW_VER_MAJOR`**, **`FW_VER_MINOR`**, **`FW_VER_PATCH`** (integers). They are passed into the `main` component as compile definitions; the UI formats them (e.g. `1.0.0`). **`PROJECT_VER`** is derived from the same triple for `esp_app_desc` / OTA alignment. Bump those three variables when you release.
@@ -99,7 +101,7 @@ On MQTT connect the device **subscribes** (QoS **1**) to:
 
 where `<aabbccddeeff>` is the station MAC as **12 lowercase hex digits** (same token as in `esp_hmi/device/<mac>/status/button_press`). Payload is **plain text**, trimmed of whitespace, one of:
 
-`home` · `ollie_room` · `dashboard` · `front_gate` · `pipboy` · `settings` · `study` · `about` · `front_door` · `kitchen` · `studio` · `hvac`
+`home` · `ollie_room` · `dashboard` · `front_gate` · `pipboy` · `settings` · `study` · `about` · `front_door` · `kitchen` · `studio` · `hvac` · `house_battery`
 
 Publishing a **retained** message is supported so panels pick up the default after reconnect.
 

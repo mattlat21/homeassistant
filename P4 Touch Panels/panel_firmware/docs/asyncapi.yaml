@@ -40,6 +40,9 @@ info:
     **Study heater state (HA → panels):** Retained scalar bool topic `esp_hmi/data/study/heater_on` mirrors `switch.tasmota_2`
     so the Study page can render heater on/off after reconnect.
 
+    **House Battery SOC (HA → panels):** Retained plain float 0–100 on `esp_hmi/data/house_battery/soc_percent` mirrors
+    `sensor.sigen_inverter_battery_state_of_charge` for the House Battery gauge.
+
     **Home Assistant:** MQTT discovery uses `value_template` `{{ value_json.button }}` on `status/button_press`. Mirror retained room state with automations (see `README.md`).
   x-implementation: main/ha_mqtt.c
   x-kconfig-menu: main/Kconfig.projbuild
@@ -307,6 +310,24 @@ channels:
             - "off"
             - "1"
             - "0"
+
+  esp_hmi/data/house_battery/soc_percent:
+    description: |
+      Retained battery state of charge (0–100 %), plain text float. Kconfig `SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC`.
+      Mirrors `sensor.sigen_inverter_battery_state_of_charge` in Home Assistant. Device **subscribes** QoS 1.
+    subscribe:
+      operationId: subscribeHouseBatterySoc
+      summary: Device receives house battery SOC percent
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: HouseBatterySocPercent
+        title: Battery SOC 0–100
+        payload:
+          type: number
+          minimum: 0
+          maximum: 100
 
   esp_hmi/data/bedroom3/climate/setpoint:
     description: |

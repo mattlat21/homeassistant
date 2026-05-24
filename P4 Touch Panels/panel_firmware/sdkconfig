@@ -745,6 +745,7 @@ CONFIG_SCREEN_TEST_MQTT_CLIMATE_CURRENT_TOPIC="esp_hmi/data/bedroom3/climate/cur
 CONFIG_SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC="esp_hmi/data/bedroom3/climate/heater_on"
 CONFIG_SCREEN_TEST_MQTT_CLIMATE_CONTROL_TOPIC="esp_hmi/data/bedroom3/climate/control"
 CONFIG_SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC="esp_hmi/data/front_gate/state"
+CONFIG_SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC="esp_hmi/data/house_battery/soc_percent"
 # end of Screen test 1 — Network / Home Assistant
 
 #

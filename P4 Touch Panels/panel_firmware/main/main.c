@@ -55,7 +55,9 @@ void app_main(void)
         return;
     }
 
-    err = bsp_display_brightness_set(100);
+    uint8_t boot_brightness = CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS;
+    app_prefs_get_display_power(&boot_brightness, NULL, NULL, NULL);
+    err = bsp_display_brightness_set(boot_brightness);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "brightness set failed: %s", esp_err_to_name(err));
         return;

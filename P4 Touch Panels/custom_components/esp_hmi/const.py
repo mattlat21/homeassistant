@@ -12,6 +12,13 @@ PLATFORMS = ["sensor", "button", "select", "number", "binary_sensor"]
 # Max seconds for the idle-timeout number entity (firmware may clamp higher on device).
 IDLE_TIMEOUT_SECONDS_MAX = 31_536_000  # 365 days
 
+# Max seconds for display dim/off timeout number entities (matches firmware clamp).
+DISPLAY_TIMEOUT_SECONDS_MAX = 86_400
+
+# Display brightness range (percent).
+DISPLAY_BRIGHTNESS_MIN = 0
+DISPLAY_BRIGHTNESS_MAX = 100
+
 # Panel screen slugs (must match firmware app_prefs slug list)
 SCREEN_OPTIONS: tuple[str, ...] = (
     "home",
@@ -33,6 +40,7 @@ SERVICE_SWITCH_SCREEN = "switch_screen"
 SERVICE_SWITCH_SCREEN_TEMP = "switch_screen_temp"
 SERVICE_SET_DEFAULT_SCREEN = "set_default_screen"
 SERVICE_SET_IDLE_TIMEOUT = "set_idle_timeout"
+SERVICE_SET_DISPLAY_POWER = "set_display_power"
 SERVICE_REBOOT = "reboot"
 
 # Internal event name used by device_trigger.py

@@ -18,10 +18,15 @@ info:
 
     **Device parameters (panels → broker):** On each MQTT connect, device publishes retained JSON on `{nodeId}/status/parameters`
     (QoS 1) with firmware version, node/mac ids, chip info, HA device name from Kconfig, optional `wifi_ssid`,
-    NVS-derived `default_screen`, `idle_timeout_screen`, `idle_timeout_seconds`, etc.
+    NVS-derived `default_screen`, `idle_timeout_screen`, `idle_timeout_seconds`, `normal_brightness`,
+    `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`, etc.
 
     **Idle timeout (broker → panels):** Device subscribes to `{nodeId}/cmd/set_idle_timeout` (QoS 1) with JSON
     `{"screen":"<slug>","seconds":<n>}`; `seconds` 0 disables. Persists to NVS and updates the LVGL idle timer.
+
+    **Display power (broker → panels):** Device subscribes to `{nodeId}/cmd/set_display_power` (QoS 1) with JSON
+    containing optional `normal_brightness`, `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`
+    (partial update OK). Persists to NVS and updates the LVGL display power timer (Normal → Dim → Off from inactivity).
 
     **Climate state (HA → panels):** Four shared topics (Kconfig `SCREEN_TEST_MQTT_CLIMATE_*_TOPIC`, defaults under
     `esp_hmi/data/bedroom3/climate/`): **setpoint** and **current** (°C, plain float text); **heater** (plain bool);
@@ -99,6 +104,68 @@ channels:
             idle_timeout_seconds:
               type: number
               description: Idle period in seconds; 0 means disabled
+            normal_brightness:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Backlight percent when active
+            dim_brightness:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Backlight percent after dim timeout
+            dim_timeout_seconds:
+              type: number
+              minimum: 0
+              description: Inactivity seconds before dim; 0 disables
+            screen_off_timeout_seconds:
+              type: number
+              minimum: 0
+              description: Inactivity seconds before backlight off; 0 disables
+
+  '{nodeId}/cmd/set_display_power':
+    description: |
+      Set display brightness and inactivity timeouts; persisted to NVS. JSON UTF-8, QoS 1 subscribe.
+      All fields optional (partial update merges with current NVS). Handled on LVGL thread via async dispatch.
+      Timeouts measured from last LVGL activity (touch, gesture, programmatic nav). `0` disables a stage.
+      When both dim and off timeouts are non-zero, off timeout is clamped to be >= dim timeout.
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    subscribe:
+      operationId: subscribeSetDisplayPower
+      summary: Broker sets display power configuration
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: SetDisplayPowerJson
+        title: Display power configuration
+        contentType: application/json
+        payload:
+          type: object
+          properties:
+            normal_brightness:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Backlight percent when active
+            dim_brightness:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Backlight percent after dim timeout
+            dim_timeout_seconds:
+              type: number
+              minimum: 0
+              description: Inactivity seconds before dim; 0 disables
+            screen_off_timeout_seconds:
+              type: number
+              minimum: 0
+              description: Inactivity seconds before backlight off; 0 disables
 
   '{nodeId}/cmd/set_idle_timeout':
     description: |

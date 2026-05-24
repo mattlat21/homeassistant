@@ -707,6 +707,15 @@ CONFIG_SCREEN_TEST_UI_WATCHDOG_TIMEOUT_S=45
 # end of Screen test 1 — UI watchdog
 
 #
+# Screen test 1 — Display power (dim / off)
+#
+CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS=100
+CONFIG_SCREEN_TEST_DISPLAY_DIM_BRIGHTNESS=15
+CONFIG_SCREEN_TEST_DISPLAY_DIM_TIMEOUT_S=60
+CONFIG_SCREEN_TEST_DISPLAY_OFF_TIMEOUT_S=300
+# end of Screen test 1 — Display power (dim / off)
+
+#
 # Screen test 1 — Reolink doorbell (Front Gate)
 #
 CONFIG_SCREEN_TEST_REOLINK_HOST="192.168.1.198"

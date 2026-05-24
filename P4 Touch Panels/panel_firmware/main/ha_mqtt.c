@@ -29,6 +29,7 @@
 #include "ota_update.h"
 #include "ui/nav.h"
 #include "ui/ui_idle_timeout.h"
+#include "ui/ui_display_power.h"
 
 static const char *TAG = "ha_mqtt";
 
@@ -57,6 +58,8 @@ static char s_switch_screen_topic[72];
 static char s_switch_screen_temp_topic[88];
 /** JSON `{"screen":"<slug>","seconds":<n>}` — `seconds` 0 disables idle return. */
 static char s_set_idle_timeout_topic[88];
+/** JSON display power fields (partial update OK). */
+static char s_set_display_power_topic[88];
 /** Any payload triggers delayed reboot after a short FreeRTOS deferral. */
 static char s_reboot_cmd_topic[72];
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
@@ -136,6 +139,17 @@ typedef struct {
     uint32_t duration_ms;
 } mqtt_nav_async_msg_t;
 
+typedef struct {
+    uint8_t normal_pct;
+    uint8_t dim_pct;
+    uint32_t dim_sec;
+    uint32_t off_sec;
+    bool have_normal;
+    bool have_dim;
+    bool have_dim_sec;
+    bool have_off_sec;
+} display_power_async_msg_t;
+
 static const struct {
     const char *slug;
     const char *subtype;
@@ -207,6 +221,7 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_switch_screen_topic, sizeof(s_switch_screen_topic), "%s/cmd/switch_screen", s_node_id);
     snprintf(s_switch_screen_temp_topic, sizeof(s_switch_screen_temp_topic), "%s/cmd/switch_screen_temp", s_node_id);
     snprintf(s_set_idle_timeout_topic, sizeof(s_set_idle_timeout_topic), "%s/cmd/set_idle_timeout", s_node_id);
+    snprintf(s_set_display_power_topic, sizeof(s_set_display_power_topic), "%s/cmd/set_display_power", s_node_id);
     snprintf(s_reboot_cmd_topic, sizeof(s_reboot_cmd_topic), "%s/cmd/reboot", s_node_id);
 #if CONFIG_SCREEN_TEST_OTA_ENABLE
     snprintf(s_ota_topic, sizeof(s_ota_topic), "%s/%s", s_node_id, CONFIG_SCREEN_TEST_OTA_MQTT_CMD_SUFFIX);
@@ -254,6 +269,52 @@ static void mqtt_nav_async_fn(void *user_data)
         }
     }
     free(m);
+}
+
+static void display_power_async_fn(void *user_data)
+{
+    display_power_async_msg_t *m = (display_power_async_msg_t *)user_data;
+    if (m == NULL) {
+        return;
+    }
+    uint8_t normal_pct;
+    uint8_t dim_pct;
+    uint32_t dim_sec;
+    uint32_t off_sec;
+    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec);
+    if (m->have_normal) {
+        normal_pct = m->normal_pct;
+    }
+    if (m->have_dim) {
+        dim_pct = m->dim_pct;
+    }
+    if (m->have_dim_sec) {
+        dim_sec = m->dim_sec;
+    }
+    if (m->have_off_sec) {
+        off_sec = m->off_sec;
+    }
+    bool ok = app_prefs_set_display_power(normal_pct, dim_pct, dim_sec, off_sec);
+    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec);
+    ui_display_power_configure(normal_pct, dim_pct, dim_sec, off_sec);
+    if (ok) {
+        publish_device_status_parameters(s_client);
+    }
+    free(m);
+}
+
+static bool schedule_display_power_async(const display_power_async_msg_t *payload)
+{
+    display_power_async_msg_t *m = (display_power_async_msg_t *)calloc(1, sizeof(display_power_async_msg_t));
+    if (m == NULL) {
+        return false;
+    }
+    *m = *payload;
+    if (lv_async_call(display_power_async_fn, m) != LV_RESULT_OK) {
+        free(m);
+        return false;
+    }
+    return true;
 }
 
 static bool schedule_mqtt_nav_async(const mqtt_nav_async_msg_t *payload)
@@ -377,6 +438,89 @@ static bool parse_set_idle_timeout_json(const char *json, app_id_t *out_app, uin
     *out_app = id;
     *out_sec = (uint32_t)(v + 0.5);
     return true;
+}
+
+static bool parse_u8_field(const cJSON *j, uint8_t *out)
+{
+    if (!cJSON_IsNumber(j)) {
+        return false;
+    }
+    double v = cJSON_GetNumberValue(j);
+    if (!isfinite(v) || v < 0.0) {
+        return false;
+    }
+    if (v > 100.0) {
+        v = 100.0;
+    }
+    *out = (uint8_t)(v + 0.5);
+    return true;
+}
+
+static bool parse_u32_timeout_field(const cJSON *j, uint32_t *out)
+{
+    if (!cJSON_IsNumber(j)) {
+        return false;
+    }
+    double v = cJSON_GetNumberValue(j);
+    if (!isfinite(v) || v < 0.0) {
+        return false;
+    }
+    if (v > (double)UINT32_MAX) {
+        v = (double)UINT32_MAX;
+    }
+    *out = (uint32_t)(v + 0.5);
+    return true;
+}
+
+/** Partial JSON update; at least one recognized field required. */
+static bool parse_set_display_power_json(const char *json, display_power_async_msg_t *out)
+{
+    if (json == NULL || out == NULL) {
+        return false;
+    }
+    cJSON *root = cJSON_Parse(json);
+    if (root == NULL) {
+        return false;
+    }
+    bool any = false;
+    const cJSON *j_norm = cJSON_GetObjectItemCaseSensitive(root, "normal_brightness");
+    if (j_norm != NULL) {
+        if (!parse_u8_field(j_norm, &out->normal_pct)) {
+            cJSON_Delete(root);
+            return false;
+        }
+        out->have_normal = true;
+        any = true;
+    }
+    const cJSON *j_dim = cJSON_GetObjectItemCaseSensitive(root, "dim_brightness");
+    if (j_dim != NULL) {
+        if (!parse_u8_field(j_dim, &out->dim_pct)) {
+            cJSON_Delete(root);
+            return false;
+        }
+        out->have_dim = true;
+        any = true;
+    }
+    const cJSON *j_dim_sec = cJSON_GetObjectItemCaseSensitive(root, "dim_timeout_seconds");
+    if (j_dim_sec != NULL) {
+        if (!parse_u32_timeout_field(j_dim_sec, &out->dim_sec)) {
+            cJSON_Delete(root);
+            return false;
+        }
+        out->have_dim_sec = true;
+        any = true;
+    }
+    const cJSON *j_off_sec = cJSON_GetObjectItemCaseSensitive(root, "screen_off_timeout_seconds");
+    if (j_off_sec != NULL) {
+        if (!parse_u32_timeout_field(j_off_sec, &out->off_sec)) {
+            cJSON_Delete(root);
+            return false;
+        }
+        out->have_off_sec = true;
+        any = true;
+    }
+    cJSON_Delete(root);
+    return any;
 }
 
 static void trim_payload_edges(char *s)
@@ -504,6 +648,7 @@ static void subscribe_remote_screen_topics(void)
         { s_switch_screen_topic, "switch_screen" },
         { s_switch_screen_temp_topic, "switch_screen_temp" },
         { s_set_idle_timeout_topic, "set_idle_timeout" },
+        { s_set_display_power_topic, "set_display_power" },
         { s_reboot_cmd_topic, "reboot" },
     };
     for (size_t i = 0; i < sizeof(subs) / sizeof(subs[0]); i++) {
@@ -882,6 +1027,16 @@ static void publish_device_status_parameters(esp_mqtt_client_handle_t client)
     }
     (void)cJSON_AddNumberToObject(j, "idle_timeout_seconds", (double)idle_sec_u32);
 
+    uint8_t disp_norm = 0;
+    uint8_t disp_dim = 0;
+    uint32_t disp_dim_sec = 0;
+    uint32_t disp_off_sec = 0;
+    app_prefs_get_display_power(&disp_norm, &disp_dim, &disp_dim_sec, &disp_off_sec);
+    (void)cJSON_AddNumberToObject(j, "normal_brightness", (double)disp_norm);
+    (void)cJSON_AddNumberToObject(j, "dim_brightness", (double)disp_dim);
+    (void)cJSON_AddNumberToObject(j, "dim_timeout_seconds", (double)disp_dim_sec);
+    (void)cJSON_AddNumberToObject(j, "screen_off_timeout_seconds", (double)disp_off_sec);
+
     char *printed = cJSON_PrintUnformatted(j);
     cJSON_Delete(j);
     if (printed == NULL) {
@@ -926,6 +1081,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "status/current_screen topic: %s", s_status_current_screen_topic);
         ESP_LOGI(TAG, "status/mqtt_connected topic: %s", s_status_mqtt_connected_topic);
         ESP_LOGI(TAG, "cmd/set_idle_timeout topic: %s", s_set_idle_timeout_topic);
+        ESP_LOGI(TAG, "cmd/set_display_power topic: %s", s_set_display_power_topic);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "MQTT disconnected");
@@ -1170,6 +1326,26 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 ESP_LOGI(TAG, "set_idle_timeout -> screen=%s seconds=%" PRIu32, slug_dbg, sec);
             } else {
                 ESP_LOGW(TAG, "set_idle_timeout lv_async_call failed");
+            }
+            break;
+        }
+        if (strcmp(tbuf, s_set_display_power_topic) == 0) {
+            if (ev->data_len <= 0 || ev->data_len >= HA_MQTT_NAV_TEMP_JSON_MAX) {
+                ESP_LOGW(TAG, "set_display_power payload bad len (%d)", ev->data_len);
+                break;
+            }
+            char jsonbuf[HA_MQTT_NAV_TEMP_JSON_MAX];
+            memcpy(jsonbuf, ev->data, (size_t)ev->data_len);
+            jsonbuf[ev->data_len] = '\0';
+            display_power_async_msg_t req = { 0 };
+            if (!parse_set_display_power_json(jsonbuf, &req)) {
+                ESP_LOGW(TAG, "set_display_power invalid JSON or no recognized fields");
+                break;
+            }
+            if (schedule_display_power_async(&req)) {
+                ESP_LOGI(TAG, "set_display_power scheduled");
+            } else {
+                ESP_LOGW(TAG, "set_display_power lv_async_call failed");
             }
             break;
         }

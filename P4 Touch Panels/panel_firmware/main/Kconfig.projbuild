@@ -26,6 +26,30 @@ menu "Screen test 1 — UI watchdog"
 
 endmenu
 
+menu "Screen test 1 — Display power (dim / off)"
+
+    config SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS
+        int "Normal brightness (percent)"
+        default 100
+        range 0 100
+
+    config SCREEN_TEST_DISPLAY_DIM_BRIGHTNESS
+        int "Dim brightness (percent)"
+        default 15
+        range 0 100
+
+    config SCREEN_TEST_DISPLAY_DIM_TIMEOUT_S
+        int "Dim timeout (seconds, 0 = disabled)"
+        default 60
+        range 0 86400
+
+    config SCREEN_TEST_DISPLAY_OFF_TIMEOUT_S
+        int "Screen off timeout (seconds, 0 = disabled)"
+        default 300
+        range 0 86400
+
+endmenu
+
 menu "Screen test 1 — Reolink doorbell (Front Gate)"
 
     config SCREEN_TEST_REOLINK_HOST

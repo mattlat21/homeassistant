@@ -3,6 +3,7 @@
 #include "ui/nav.h"
 #include "ui/ui_watchdog.h"
 #include "ui/ui_idle_timeout.h"
+#include "ui/ui_display_power.h"
 #include "ui/screens/screen_loading.h"
 #include "ui/screens/screen_home.h"
 #include "ui/screens/screen_ollie.h"
@@ -74,4 +75,5 @@ void ui_shell_init(lv_display_t *disp)
 #endif
 
     ui_idle_timeout_init(disp);
+    ui_display_power_init(disp);
 }

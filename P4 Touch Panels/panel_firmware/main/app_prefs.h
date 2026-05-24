@@ -38,3 +38,9 @@ void app_prefs_get_idle_timeout(app_id_t *out_app, uint32_t *out_sec);
 
 /** Persist idle navigation; `sec == 0` disables (still stores `app` for later re-enable). */
 bool app_prefs_set_idle_timeout(app_id_t app, uint32_t sec);
+
+/** Display power: normal/dim brightness (0–100) and inactivity timeouts in seconds (0 = disabled). */
+void app_prefs_get_display_power(uint8_t *normal_pct, uint8_t *dim_pct, uint32_t *dim_sec, uint32_t *off_sec);
+
+/** Persist display power settings; clamps values and enforces off_sec >= dim_sec when both non-zero. */
+bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t dim_sec, uint32_t off_sec);

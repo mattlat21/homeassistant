@@ -13,6 +13,7 @@ idf_component_register(
         "ui/ui_dashboard_gradient.c"
         "ui/nav.c"
         "ui/ui_idle_timeout.c"
+        "ui/ui_display_power.c"
         "ui/screens/screen_loading.c"
         "ui/screens/screen_home.c"
         "ui/screens/screen_ollie.c"

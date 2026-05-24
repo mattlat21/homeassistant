@@ -80,6 +80,54 @@ set_idle_timeout:
           max: 86400
           mode: box
 
+set_display_power:
+  name: Set display power
+  description: >-
+    Persist display brightness and inactivity timeouts on the panel (NVS).
+    Provide one or more fields; omitted fields are unchanged on the device.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    normal_brightness:
+      name: Normal brightness
+      description: Backlight percent when active (0–100).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    dim_brightness:
+      name: Dim brightness
+      description: Backlight percent after dim timeout (0–100).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    dim_timeout_seconds:
+      name: Dim timeout seconds
+      description: Seconds of inactivity before dim (0 = disabled).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+    screen_off_timeout_seconds:
+      name: Screen off timeout seconds
+      description: Seconds of inactivity before backlight off (0 = disabled).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+
 reboot:
   name: Reboot panel
   description: Reboot the panel.

@@ -27,6 +27,7 @@ from .const import (
     PLATFORMS,
     SERVICE_REBOOT,
     SERVICE_SET_DEFAULT_SCREEN,
+    SERVICE_SET_DISPLAY_POWER,
     SERVICE_SET_IDLE_TIMEOUT,
     SERVICE_SWITCH_SCREEN,
     SERVICE_SWITCH_SCREEN_TEMP,
@@ -262,6 +263,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             qos=1,
         )
 
+    async def _svc_set_display_power(call: ServiceCall) -> None:
+        mac = str(call.data["mac"]).lower()
+        payload: dict[str, int] = {}
+        if "normal_brightness" in call.data:
+            payload["normal_brightness"] = int(call.data["normal_brightness"])
+        if "dim_brightness" in call.data:
+            payload["dim_brightness"] = int(call.data["dim_brightness"])
+        if "dim_timeout_seconds" in call.data:
+            payload["dim_timeout_seconds"] = int(call.data["dim_timeout_seconds"])
+        if "screen_off_timeout_seconds" in call.data:
+            payload["screen_off_timeout_seconds"] = int(call.data["screen_off_timeout_seconds"])
+        if not payload:
+            return
+        await _publish_cmd(
+            mac,
+            "cmd/set_display_power",
+            json.dumps(payload),
+            qos=1,
+        )
+
     async def _svc_reboot(call: ServiceCall) -> None:
         mac = str(call.data["mac"]).lower()
         await _publish_cmd(mac, "cmd/reboot", "1", qos=1)
@@ -271,6 +292,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_SWITCH_SCREEN_TEMP, _svc_switch_screen_temp)
     hass.services.async_register(DOMAIN, SERVICE_SET_DEFAULT_SCREEN, _svc_set_default_screen)
     hass.services.async_register(DOMAIN, SERVICE_SET_IDLE_TIMEOUT, _svc_set_idle_timeout)
+    hass.services.async_register(DOMAIN, SERVICE_SET_DISPLAY_POWER, _svc_set_display_power)
     hass.services.async_register(DOMAIN, SERVICE_REBOOT, _svc_reboot)
 
     # Subscribe to the two main firmware topics (see README.md).

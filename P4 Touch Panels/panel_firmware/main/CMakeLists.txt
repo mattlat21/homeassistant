@@ -24,6 +24,7 @@ idf_component_register(
         "ui/screens/screen_settings.c"
         "ui/screens/screen_about.c"
         "ui/screens/screen_study.c"
+        "ui/screens/screen_hvac.c"
         "ui/screens/screen_ota_progress.c"
         "ui/components/ui_app_launcher_tile.c"
         "ui/components/ui_grid_icon_button.c"

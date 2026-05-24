@@ -27,7 +27,7 @@ static lv_display_t *bsp_display_start_for_lottie(void)
 #else
             .buff_dma = true,
 #endif
-            .buff_spiram = false,
+            .buff_spiram = true,
             .sw_rotate = true,
         },
     };

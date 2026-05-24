@@ -99,7 +99,7 @@ On MQTT connect the device **subscribes** (QoS **1**) to:
 
 where `<aabbccddeeff>` is the station MAC as **12 lowercase hex digits** (same token as in `esp_hmi/device/<mac>/status/button_press`). Payload is **plain text**, trimmed of whitespace, one of:
 
-`home` · `ollie_room` · `dashboard` · `front_gate` · `pipboy` · `settings` · `study`
+`home` · `ollie_room` · `dashboard` · `front_gate` · `pipboy` · `settings` · `study` · `about` · `front_door` · `kitchen` · `studio` · `hvac`
 
 Publishing a **retained** message is supported so panels pick up the default after reconnect.
 

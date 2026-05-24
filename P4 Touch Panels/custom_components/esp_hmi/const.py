@@ -25,6 +25,7 @@ SCREEN_OPTIONS: tuple[str, ...] = (
     "front_door",
     "kitchen",
     "studio",
+    "hvac",
 )
 
 # Service names

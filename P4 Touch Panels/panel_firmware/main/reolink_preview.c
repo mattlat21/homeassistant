@@ -25,7 +25,7 @@
 
 static const char *TAG = "reolink_preview";
 
-#define JPEG_BODY_MAX (512 * 1024)
+#define JPEG_BODY_MAX (256 * 1024)
 #define FAST_POLL_US (1000000ULL)
 #define SLOW_POLL_US (300000000ULL)
 

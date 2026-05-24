@@ -1,10 +1,12 @@
 #include "ui/screens/screen_front_gate.h"
 
 #include "reolink_preview.h"
+#include "sdkconfig.h"
 #include "ui/components/ui_gate_action.h"
 #include "ui/ui_brand_gradient.h"
 #include "bsp/display.h"
 #include "esp_heap_caps.h"
+#include "esp_log.h"
 #include "lvgl.h"
 #include <string.h>
 
@@ -45,14 +47,20 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
     lv_obj_set_style_radius(box, 40, LV_PART_MAIN);
     lv_obj_set_style_pad_all(box, 0, LV_PART_MAIN);
 
+    lv_obj_t *canvas = NULL;
+    const bool reolink_enabled =
+#ifdef CONFIG_SCREEN_TEST_REOLINK_HOST
+        CONFIG_SCREEN_TEST_REOLINK_HOST[0] != '\0';
+#else
+        false;
+#endif
+    if (reolink_enabled) {
     const size_t buf_sz = (size_t)REOLINK_PREVIEW_W * REOLINK_PREVIEW_H * 3;
     uint8_t *canvas_buf =
         (uint8_t *)heap_caps_malloc(buf_sz, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (canvas_buf == NULL) {
         canvas_buf = (uint8_t *)heap_caps_malloc(buf_sz, MALLOC_CAP_8BIT);
     }
-
-    lv_obj_t *canvas = NULL;
     if (canvas_buf != NULL) {
         canvas = lv_canvas_create(box);
         memset(canvas_buf, 0x55, buf_sz);
@@ -63,6 +71,13 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
         lv_label_set_text(lbl, "No RAM for preview");
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, LV_PART_MAIN);
         lv_obj_center(lbl);
+        ESP_LOGW("screen_front_gate", "canvas buffer alloc failed");
+    }
+    } else {
+        lv_obj_t *preview_lbl = lv_label_create(box);
+        lv_label_set_text(preview_lbl, "Camera preview disabled");
+        lv_obj_set_style_text_font(preview_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+        lv_obj_center(preview_lbl);
     }
 
     s_gate_state_pill = lv_obj_create(box);

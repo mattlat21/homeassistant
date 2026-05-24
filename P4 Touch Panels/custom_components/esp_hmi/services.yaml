@@ -127,6 +127,15 @@ set_display_power:
           min: 0
           max: 86400
           mode: box
+    brightness_fade_seconds:
+      name: Brightness fade seconds
+      description: Seconds to fade between brightness levels (0 = instant).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 60
+          mode: box
 
 wake_display:
   name: Wake display

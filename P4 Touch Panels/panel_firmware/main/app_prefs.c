@@ -22,9 +22,11 @@ static const char *TAG = "app_prefs";
 #define PREFS_KEY_DISP_DIM "disp_dim_pct"
 #define PREFS_KEY_DISP_DIM_SEC "disp_dim_sec"
 #define PREFS_KEY_DISP_OFF_SEC "disp_off_sec"
+#define PREFS_KEY_DISP_FADE_SEC "disp_fade_sec"
 
 #define IDLE_TIMEOUT_SEC_MAX (86400u * 365u * 10u)
 #define DISPLAY_TIMEOUT_SEC_MAX (86400u)
+#define DISPLAY_FADE_SEC_MAX (60u)
 
 static bool s_inited;
 static app_id_t s_cached_default = APP_HOME;
@@ -35,6 +37,7 @@ static uint8_t s_cached_disp_norm_pct = CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHT
 static uint8_t s_cached_disp_dim_pct = CONFIG_SCREEN_TEST_DISPLAY_DIM_BRIGHTNESS;
 static uint32_t s_cached_disp_dim_sec = CONFIG_SCREEN_TEST_DISPLAY_DIM_TIMEOUT_S;
 static uint32_t s_cached_disp_off_sec = CONFIG_SCREEN_TEST_DISPLAY_OFF_TIMEOUT_S;
+static uint32_t s_cached_disp_fade_sec = CONFIG_SCREEN_TEST_DISPLAY_FADE_S;
 
 static uint8_t clamp_brightness_pct(uint8_t pct)
 {
@@ -44,6 +47,11 @@ static uint8_t clamp_brightness_pct(uint8_t pct)
 static uint32_t clamp_display_timeout_sec(uint32_t sec)
 {
     return sec > DISPLAY_TIMEOUT_SEC_MAX ? DISPLAY_TIMEOUT_SEC_MAX : sec;
+}
+
+static uint32_t clamp_display_fade_sec(uint32_t sec)
+{
+    return sec > DISPLAY_FADE_SEC_MAX ? DISPLAY_FADE_SEC_MAX : sec;
 }
 
 static void normalize_display_timeouts(uint32_t *dim_sec, uint32_t *off_sec)
@@ -119,6 +127,10 @@ void app_prefs_init(void)
     err = nvs_get_u32(h, PREFS_KEY_DISP_OFF_SEC, &off_sec);
     s_cached_disp_off_sec = clamp_display_timeout_sec(off_sec);
     normalize_display_timeouts(&s_cached_disp_dim_sec, &s_cached_disp_off_sec);
+
+    uint32_t fade_sec = CONFIG_SCREEN_TEST_DISPLAY_FADE_S;
+    err = nvs_get_u32(h, PREFS_KEY_DISP_FADE_SEC, &fade_sec);
+    s_cached_disp_fade_sec = clamp_display_fade_sec(fade_sec);
 
     nvs_close(h);
 }
@@ -370,7 +382,8 @@ bool app_prefs_set_idle_timeout(app_id_t app, uint32_t sec)
     return true;
 }
 
-void app_prefs_get_display_power(uint8_t *normal_pct, uint8_t *dim_pct, uint32_t *dim_sec, uint32_t *off_sec)
+void app_prefs_get_display_power(uint8_t *normal_pct, uint8_t *dim_pct, uint32_t *dim_sec, uint32_t *off_sec,
+                                 uint32_t *fade_sec)
 {
     if (normal_pct != NULL) {
         *normal_pct = s_cached_disp_norm_pct;
@@ -384,18 +397,23 @@ void app_prefs_get_display_power(uint8_t *normal_pct, uint8_t *dim_pct, uint32_t
     if (off_sec != NULL) {
         *off_sec = s_cached_disp_off_sec;
     }
+    if (fade_sec != NULL) {
+        *fade_sec = s_cached_disp_fade_sec;
+    }
 }
 
-bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t dim_sec, uint32_t off_sec)
+bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t dim_sec, uint32_t off_sec,
+                                 uint32_t fade_sec)
 {
     normal_pct = clamp_brightness_pct(normal_pct);
     dim_pct = clamp_brightness_pct(dim_pct);
     dim_sec = clamp_display_timeout_sec(dim_sec);
     off_sec = clamp_display_timeout_sec(off_sec);
+    fade_sec = clamp_display_fade_sec(fade_sec);
     normalize_display_timeouts(&dim_sec, &off_sec);
 
     if (normal_pct == s_cached_disp_norm_pct && dim_pct == s_cached_disp_dim_pct && dim_sec == s_cached_disp_dim_sec &&
-        off_sec == s_cached_disp_off_sec) {
+        off_sec == s_cached_disp_off_sec && fade_sec == s_cached_disp_fade_sec) {
         return true;
     }
 
@@ -416,6 +434,9 @@ bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t d
         err = nvs_set_u32(h, PREFS_KEY_DISP_OFF_SEC, off_sec);
     }
     if (err == ESP_OK) {
+        err = nvs_set_u32(h, PREFS_KEY_DISP_FADE_SEC, fade_sec);
+    }
+    if (err == ESP_OK) {
         err = nvs_commit(h);
     }
     nvs_close(h);
@@ -427,6 +448,7 @@ bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t d
     s_cached_disp_dim_pct = dim_pct;
     s_cached_disp_dim_sec = dim_sec;
     s_cached_disp_off_sec = off_sec;
+    s_cached_disp_fade_sec = fade_sec;
     return true;
 }
 

@@ -48,6 +48,11 @@ menu "Screen test 1 — Display power (dim / off)"
         default 300
         range 0 86400
 
+    config SCREEN_TEST_DISPLAY_FADE_S
+        int "Brightness fade duration (seconds, 0 = instant)"
+        default 1
+        range 0 60
+
 endmenu
 
 menu "Screen test 1 — Reolink doorbell (Front Gate)"

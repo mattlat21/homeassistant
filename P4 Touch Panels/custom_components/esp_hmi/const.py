@@ -15,6 +15,9 @@ IDLE_TIMEOUT_SECONDS_MAX = 31_536_000  # 365 days
 # Max seconds for display dim/off timeout number entities (matches firmware clamp).
 DISPLAY_TIMEOUT_SECONDS_MAX = 86_400
 
+# Max seconds for brightness fade duration (0 = instant).
+DISPLAY_FADE_SECONDS_MAX = 60
+
 # Display brightness range (percent).
 DISPLAY_BRIGHTNESS_MIN = 0
 DISPLAY_BRIGHTNESS_MAX = 100

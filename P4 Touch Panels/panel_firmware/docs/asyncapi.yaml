@@ -19,14 +19,15 @@ info:
     **Device parameters (panels → broker):** On each MQTT connect, device publishes retained JSON on `{nodeId}/status/parameters`
     (QoS 1) with firmware version, node/mac ids, chip info, HA device name from Kconfig, optional `wifi_ssid`,
     NVS-derived `default_screen`, `idle_timeout_screen`, `idle_timeout_seconds`, `normal_brightness`,
-    `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`, etc.
+    `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`, `brightness_fade_seconds`, etc.
 
     **Idle timeout (broker → panels):** Device subscribes to `{nodeId}/cmd/set_idle_timeout` (QoS 1) with JSON
     `{"screen":"<slug>","seconds":<n>}`; `seconds` 0 disables. Persists to NVS and updates the LVGL idle timer.
 
     **Display power (broker → panels):** Device subscribes to `{nodeId}/cmd/set_display_power` (QoS 1) with JSON
-    containing optional `normal_brightness`, `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`
-    (partial update OK). Persists to NVS and updates the LVGL display power timer (Normal → Dim → Off from inactivity).
+    containing optional `normal_brightness`, `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`,
+    `brightness_fade_seconds` (partial update OK). Persists to NVS and updates the LVGL display power timer
+    (Normal → Dim → Off from inactivity; transitions fade over `brightness_fade_seconds`, default 1, 0 = instant).
 
     **Wake display (broker → panels):** Device subscribes to `{nodeId}/cmd/wake_display` (QoS 1). Any payload resets
     LVGL inactivity and restores normal brightness without changing NVS.
@@ -125,6 +126,11 @@ channels:
               type: number
               minimum: 0
               description: Inactivity seconds before backlight off; 0 disables
+            brightness_fade_seconds:
+              type: number
+              minimum: 0
+              maximum: 60
+              description: Seconds to fade between brightness levels; 0 means instant
 
   '{nodeId}/cmd/set_display_power':
     description: |
@@ -132,6 +138,7 @@ channels:
       All fields optional (partial update merges with current NVS). Handled on LVGL thread via async dispatch.
       Timeouts measured from last LVGL activity (touch, gesture, programmatic nav). `0` disables a stage.
       When both dim and off timeouts are non-zero, off timeout is clamped to be >= dim timeout.
+      Brightness transitions fade over `brightness_fade_seconds` (default 1; 0 = instant).
     parameters:
       nodeId:
         description: Lowercase hex MAC-based id
@@ -169,11 +176,16 @@ channels:
               type: number
               minimum: 0
               description: Inactivity seconds before backlight off; 0 disables
+            brightness_fade_seconds:
+              type: number
+              minimum: 0
+              maximum: 60
+              description: Seconds to fade between brightness levels; 0 means instant
 
   '{nodeId}/cmd/wake_display':
     description: |
-      Wake the display: reset LVGL inactivity timers (dim/off and idle navigation countdown) and restore normal
-      brightness immediately. Does not change NVS. QoS 1 subscribe; any payload accepted. Handled on LVGL thread.
+      Wake the display: reset LVGL inactivity timers (dim/off and idle navigation countdown) and fade to normal
+      brightness over `brightness_fade_seconds`. Does not change NVS. QoS 1 subscribe; any payload accepted.
     parameters:
       nodeId:
         description: Lowercase hex MAC-based id

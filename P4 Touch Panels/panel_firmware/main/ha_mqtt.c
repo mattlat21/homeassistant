@@ -146,10 +146,12 @@ typedef struct {
     uint8_t dim_pct;
     uint32_t dim_sec;
     uint32_t off_sec;
+    uint32_t fade_sec;
     bool have_normal;
     bool have_dim;
     bool have_dim_sec;
     bool have_off_sec;
+    bool have_fade_sec;
 } display_power_async_msg_t;
 
 static const struct {
@@ -284,7 +286,8 @@ static void display_power_async_fn(void *user_data)
     uint8_t dim_pct;
     uint32_t dim_sec;
     uint32_t off_sec;
-    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec);
+    uint32_t fade_sec;
+    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec, &fade_sec);
     if (m->have_normal) {
         normal_pct = m->normal_pct;
     }
@@ -297,9 +300,12 @@ static void display_power_async_fn(void *user_data)
     if (m->have_off_sec) {
         off_sec = m->off_sec;
     }
-    bool ok = app_prefs_set_display_power(normal_pct, dim_pct, dim_sec, off_sec);
-    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec);
-    ui_display_power_configure(normal_pct, dim_pct, dim_sec, off_sec);
+    if (m->have_fade_sec) {
+        fade_sec = m->fade_sec;
+    }
+    bool ok = app_prefs_set_display_power(normal_pct, dim_pct, dim_sec, off_sec, fade_sec);
+    app_prefs_get_display_power(&normal_pct, &dim_pct, &dim_sec, &off_sec, &fade_sec);
+    ui_display_power_configure(normal_pct, dim_pct, dim_sec, off_sec, fade_sec);
     if (ok) {
         publish_device_status_parameters(s_client);
     }
@@ -534,6 +540,18 @@ static bool parse_set_display_power_json(const char *json, display_power_async_m
             return false;
         }
         out->have_off_sec = true;
+        any = true;
+    }
+    const cJSON *j_fade_sec = cJSON_GetObjectItemCaseSensitive(root, "brightness_fade_seconds");
+    if (j_fade_sec != NULL) {
+        if (!parse_u32_timeout_field(j_fade_sec, &out->fade_sec)) {
+            cJSON_Delete(root);
+            return false;
+        }
+        if (out->fade_sec > 60U) {
+            out->fade_sec = 60U;
+        }
+        out->have_fade_sec = true;
         any = true;
     }
     cJSON_Delete(root);
@@ -1049,11 +1067,13 @@ static void publish_device_status_parameters(esp_mqtt_client_handle_t client)
     uint8_t disp_dim = 0;
     uint32_t disp_dim_sec = 0;
     uint32_t disp_off_sec = 0;
-    app_prefs_get_display_power(&disp_norm, &disp_dim, &disp_dim_sec, &disp_off_sec);
+    uint32_t disp_fade_sec = 0;
+    app_prefs_get_display_power(&disp_norm, &disp_dim, &disp_dim_sec, &disp_off_sec, &disp_fade_sec);
     (void)cJSON_AddNumberToObject(j, "normal_brightness", (double)disp_norm);
     (void)cJSON_AddNumberToObject(j, "dim_brightness", (double)disp_dim);
     (void)cJSON_AddNumberToObject(j, "dim_timeout_seconds", (double)disp_dim_sec);
     (void)cJSON_AddNumberToObject(j, "screen_off_timeout_seconds", (double)disp_off_sec);
+    (void)cJSON_AddNumberToObject(j, "brightness_fade_seconds", (double)disp_fade_sec);
 
     char *printed = cJSON_PrintUnformatted(j);
     cJSON_Delete(j);

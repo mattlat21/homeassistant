@@ -17,6 +17,7 @@ from .const import (
     DATA_RUNTIME,
     DISPLAY_BRIGHTNESS_MAX,
     DISPLAY_BRIGHTNESS_MIN,
+    DISPLAY_FADE_SECONDS_MAX,
     DISPLAY_TIMEOUT_SECONDS_MAX,
     DOMAIN,
     IDLE_TIMEOUT_SECONDS_MAX,
@@ -93,6 +94,7 @@ async def async_setup_entry(
             ("dim_brightness", EspHmiDimBrightnessNumber),
             ("dim_timeout_seconds", EspHmiDimTimeoutSecondsNumber),
             ("screen_off_timeout_seconds", EspHmiScreenOffTimeoutSecondsNumber),
+            ("brightness_fade_seconds", EspHmiBrightnessFadeSecondsNumber),
         ):
             key = _entity_key(mac, suffix)
             if key in entities:
@@ -292,4 +294,32 @@ class EspHmiScreenOffTimeoutSecondsNumber(_EspHmiPanelNumber):
     async def async_set_native_value(self, value: float) -> None:
         sec = max(0, min(DISPLAY_TIMEOUT_SECONDS_MAX, int(value)))
         await self._publish_display_power({"screen_off_timeout_seconds": sec})
+        self.async_write_ha_state()
+
+
+class EspHmiBrightnessFadeSecondsNumber(_EspHmiPanelNumber):
+    _attr_name = "Brightness fade seconds"
+    _attr_native_min_value = 0
+    _attr_native_max_value = float(DISPLAY_FADE_SECONDS_MAX)
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = "s"
+
+    def __init__(self, entry_id: str, topic_prefix: str, mac: str) -> None:
+        super().__init__(entry_id, topic_prefix, mac, "brightness_fade_seconds")
+
+    @property
+    def native_value(self) -> float | None:
+        _, panel = self._runtime_panel()
+        if panel is None:
+            return None
+        return float(
+            _coerce_uint_seconds(
+                _panel_param(panel, "brightness_fade_seconds"),
+                DISPLAY_FADE_SECONDS_MAX,
+            )
+        )
+
+    async def async_set_native_value(self, value: float) -> None:
+        sec = max(0, min(DISPLAY_FADE_SECONDS_MAX, int(value)))
+        await self._publish_display_power({"brightness_fade_seconds": sec})
         self.async_write_ha_state()

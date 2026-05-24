@@ -275,6 +275,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             payload["dim_timeout_seconds"] = int(call.data["dim_timeout_seconds"])
         if "screen_off_timeout_seconds" in call.data:
             payload["screen_off_timeout_seconds"] = int(call.data["screen_off_timeout_seconds"])
+        if "brightness_fade_seconds" in call.data:
+            payload["brightness_fade_seconds"] = int(call.data["brightness_fade_seconds"])
         if not payload:
             return
         await _publish_cmd(

@@ -14,7 +14,10 @@ typedef enum {
 static lv_display_t *s_disp;
 static lv_timer_t *s_timer;
 static lv_timer_t *s_fade_timer;
+static lv_indev_t *s_touch_indev;
+static lv_indev_read_cb_t s_orig_touch_read;
 static disp_pwr_state_t s_state = DISP_PWR_NORMAL;
+static bool s_consume_touch_until_release;
 static uint8_t s_normal_pct;
 static uint8_t s_dim_pct;
 static uint32_t s_dim_sec;
@@ -107,6 +110,57 @@ static void refresh_hardware_brightness(void)
     set_brightness_target(brightness_for_state(s_state));
 }
 
+static void wake_from_off_touch(void)
+{
+    if (s_disp != NULL) {
+        lv_display_trigger_activity(s_disp);
+    }
+    s_state = DISP_PWR_NORMAL;
+    refresh_hardware_brightness();
+}
+
+static void touch_read_off_guard(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    if (s_orig_touch_read != NULL) {
+        s_orig_touch_read(indev, data);
+    }
+
+    const bool hw_pressed = (data->state == LV_INDEV_STATE_PRESSED);
+
+    if (s_consume_touch_until_release) {
+        data->state = LV_INDEV_STATE_RELEASED;
+        if (!hw_pressed) {
+            s_consume_touch_until_release = false;
+        }
+        lv_indev_reset(indev, NULL);
+        return;
+    }
+
+    if (s_state == DISP_PWR_OFF && hw_pressed) {
+        wake_from_off_touch();
+        s_consume_touch_until_release = true;
+        data->state = LV_INDEV_STATE_RELEASED;
+        lv_indev_reset(indev, NULL);
+    }
+}
+
+static void hook_touch_indev(void)
+{
+    if (s_touch_indev != NULL) {
+        return;
+    }
+    s_touch_indev = bsp_display_get_input_dev();
+    if (s_touch_indev == NULL) {
+        return;
+    }
+    s_orig_touch_read = lv_indev_get_read_cb(s_touch_indev);
+    if (s_orig_touch_read == NULL) {
+        s_touch_indev = NULL;
+        return;
+    }
+    lv_indev_set_read_cb(s_touch_indev, touch_read_off_guard);
+}
+
 static disp_pwr_state_t desired_state(uint32_t inactive_ms)
 {
     if (s_off_sec > 0U && inactive_ms >= s_off_sec * 1000U) {
@@ -122,6 +176,9 @@ static void apply_state(disp_pwr_state_t want)
 {
     if (want == s_state) {
         return;
+    }
+    if (want == DISP_PWR_OFF) {
+        s_consume_touch_until_release = false;
     }
     s_state = want;
     refresh_hardware_brightness();
@@ -179,4 +236,5 @@ void ui_display_power_init(lv_display_t *disp)
         lv_timer_set_repeat_count(s_fade_timer, -1);
         lv_timer_pause(s_fade_timer);
     }
+    hook_touch_indev();
 }

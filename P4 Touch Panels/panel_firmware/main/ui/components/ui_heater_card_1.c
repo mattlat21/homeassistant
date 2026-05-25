@@ -16,7 +16,6 @@
 #define HEATER_CARD_MODE_COLOR_COOL lv_color_hex(0x3B82F6)
 #define HEATER_CARD_MODE_COLOR_FAN lv_color_hex(0x22C55E)
 
-#define HEATER_CARD_TEMP_WIDTH_SAMPLE "99.9°"
 #define HEATER_CARD_MODE_OPTION_COUNT 4
 
 typedef enum {
@@ -34,11 +33,11 @@ typedef struct {
 } heater_mode_click_t;
 
 struct heater_card_meta {
-    lv_obj_t *lbl_status;
-    lv_obj_t *dot_status;
     lv_obj_t *lbl_icon;
     lv_obj_t *lbl_current;
     lv_obj_t *lbl_setpoint;
+    lv_obj_t *setpoint_col;
+    lv_obj_t *metrics_divider;
     lv_obj_t *icon_btn;
     lv_obj_t *cancel_btn;
     lv_obj_t *normal_layer;
@@ -108,18 +107,16 @@ static void refresh_setpoint(heater_card_meta_t *m)
     lv_label_set_text(m->lbl_setpoint, b);
 }
 
-static void set_step_button_slot_active(lv_obj_t *btn, bool active)
+static void set_layout_slot_visible(lv_obj_t *obj, bool visible)
 {
-    if (btn == NULL) {
+    if (obj == NULL) {
         return;
     }
-    lv_obj_remove_flag(btn, LV_OBJ_FLAG_HIDDEN);
-    if (active) {
-        lv_obj_set_style_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    if (visible) {
+        lv_obj_set_style_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
     } else {
-        lv_obj_set_style_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_remove_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_style_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
     }
 }
 
@@ -128,8 +125,26 @@ static void refresh_step_buttons(heater_card_meta_t *m)
     if (m == NULL || m->btn_minus == NULL || m->btn_plus == NULL || m->mode_picker_open) {
         return;
     }
-    set_step_button_slot_active(m->btn_minus, m->climate_control_on);
-    set_step_button_slot_active(m->btn_plus, m->climate_control_on);
+    const bool show = m->climate_control_on;
+    set_layout_slot_visible(m->btn_minus, show);
+    set_layout_slot_visible(m->btn_plus, show);
+    if (show) {
+        lv_obj_add_flag(m->btn_minus, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(m->btn_plus, LV_OBJ_FLAG_CLICKABLE);
+    } else {
+        lv_obj_remove_flag(m->btn_minus, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_remove_flag(m->btn_plus, LV_OBJ_FLAG_CLICKABLE);
+    }
+}
+
+static void refresh_setpoint_slot(heater_card_meta_t *m)
+{
+    if (m == NULL || m->mode_picker_open) {
+        return;
+    }
+    const bool show = m->climate_control_on;
+    set_layout_slot_visible(m->setpoint_col, show);
+    set_layout_slot_visible(m->metrics_divider, show);
 }
 
 static void refresh_status_icon(heater_card_meta_t *m)
@@ -157,29 +172,12 @@ static void refresh_status_icon(heater_card_meta_t *m)
 
 static void refresh_status(heater_card_meta_t *m)
 {
-    if (m == NULL || m->lbl_status == NULL || m->dot_status == NULL) {
+    if (m == NULL) {
         return;
     }
-    const char *status_text;
-    lv_opa_t dot_opa = LV_OPA_COVER;
-    lv_color_t dot_color = HEATER_CARD_MUTED;
-    if (m->climate_control_on && m->heater_on) {
-        status_text = "HEATING";
-        dot_color = HEATER_CARD_ACCENT;
-    } else if (m->climate_control_on) {
-        status_text = "CLIMATE";
-        dot_color = HEATER_CARD_MUTED;
-    } else {
-        status_text = "OFF";
-        dot_opa = LV_OPA_40;
-    }
-    lv_label_set_text(m->lbl_status, status_text);
-    lv_obj_set_style_text_color(m->lbl_status, dot_color, LV_PART_MAIN);
-    lv_obj_set_style_text_opa(m->lbl_status, dot_opa, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(m->dot_status, dot_color, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(m->dot_status, dot_opa, LV_PART_MAIN);
     refresh_status_icon(m);
     refresh_step_buttons(m);
+    refresh_setpoint_slot(m);
 }
 
 static heater_mode_ui_t active_mode_from_state(bool heater_on, bool climate_control_on)
@@ -279,7 +277,12 @@ static lv_obj_t *make_vdivider(lv_obj_t *parent, lv_coord_t height)
 {
     lv_obj_t *d = lv_obj_create(parent);
     lv_obj_remove_style_all(d);
-    lv_obj_set_size(d, 1, height);
+    lv_obj_set_width(d, 1);
+    if (height <= 0) {
+        lv_obj_set_height(d, LV_PCT(100));
+    } else {
+        lv_obj_set_height(d, height);
+    }
     lv_obj_set_style_bg_color(d, HEATER_CARD_DIVIDER, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(d, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_clear_flag(d, LV_OBJ_FLAG_SCROLLABLE);
@@ -337,9 +340,10 @@ static lv_obj_t *make_step_btn(lv_obj_t *parent, lv_coord_t size, const char *sy
     return b;
 }
 
-static lv_obj_t *make_mode_option(lv_obj_t *parent, lv_coord_t circle_sz, const char *icon_glyph, const char *label,
-                                  lv_color_t color, heater_card_meta_t *m, ui_heater_card_1_event_t event,
-                                  heater_mode_click_t *click_ud, lv_obj_t **out_btn)
+static lv_obj_t *make_mode_option(lv_obj_t *parent, lv_coord_t circle_sz, const char *icon_glyph,
+                                  const lv_font_t *icon_font, const char *label, lv_color_t color,
+                                  heater_card_meta_t *m, ui_heater_card_1_event_t event, heater_mode_click_t *click_ud,
+                                  lv_obj_t **out_btn)
 {
     lv_obj_t *col = lv_obj_create(parent);
     lv_obj_remove_style_all(col);
@@ -360,7 +364,7 @@ static lv_obj_t *make_mode_option(lv_obj_t *parent, lv_coord_t circle_sz, const 
 
     lv_obj_t *icon = lv_label_create(btn);
     lv_label_set_text(icon, icon_glyph);
-    lv_obj_set_style_text_font(icon, &ui_font_home_assistant_icons_56, LV_PART_MAIN);
+    lv_obj_set_style_text_font(icon, icon_font != NULL ? icon_font : &ui_font_home_assistant_icons_56, LV_PART_MAIN);
     lv_obj_set_style_text_color(icon, color, LV_PART_MAIN);
     lv_obj_center(icon);
 
@@ -380,34 +384,25 @@ static lv_obj_t *make_mode_option(lv_obj_t *parent, lv_coord_t circle_sz, const 
     return col;
 }
 
-static lv_obj_t *make_metric_col(lv_obj_t *parent, const char *title, bool title_accent, lv_obj_t **out_value)
+static lv_obj_t *make_metric_col(lv_obj_t *parent, bool value_accent, lv_obj_t **out_value)
 {
     lv_obj_t *col = lv_obj_create(parent);
     lv_obj_remove_style_all(col);
-    lv_obj_set_width(col, LV_SIZE_CONTENT);
-    lv_obj_set_height(col, LV_SIZE_CONTENT);
+    lv_obj_set_width(col, 0);
+    lv_obj_set_height(col, LV_PCT(100));
+    lv_obj_set_flex_grow(col, 1);
     lv_obj_clear_flag(col, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(col, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
     lv_obj_set_layout(col, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_flow(col, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(col, 4, LV_PART_MAIN);
-
-    lv_obj_t *lbl_title = lv_label_create(col);
-    lv_label_set_text(lbl_title, title);
-    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_title, title_accent ? HEATER_CARD_ACCENT : HEATER_CARD_MUTED, LV_PART_MAIN);
-    lv_obj_set_style_text_letter_space(lbl_title, 1, LV_PART_MAIN);
 
     lv_obj_t *lbl_val = lv_label_create(col);
-    lv_obj_set_style_text_font(lbl_val, &lv_font_montserrat_32, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_val, title_accent ? HEATER_CARD_ACCENT : HEATER_CARD_TEXT, LV_PART_MAIN);
-    lv_label_set_text(lbl_val, HEATER_CARD_TEMP_WIDTH_SAMPLE);
-    lv_obj_update_layout(lbl_val);
-    const lv_coord_t temp_w = lv_obj_get_width(lbl_val);
-    lv_obj_set_width(lbl_val, temp_w);
+    lv_obj_add_flag(lbl_val, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+    lv_obj_set_style_text_font(lbl_val, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_val, value_accent ? HEATER_CARD_ACCENT : HEATER_CARD_TEXT, LV_PART_MAIN);
+    lv_obj_set_width(lbl_val, LV_PCT(100));
     lv_obj_set_style_text_align(lbl_val, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_label_set_long_mode(lbl_val, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(col, temp_w);
     if (out_value != NULL) {
         *out_value = lbl_val;
     }
@@ -443,11 +438,11 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     m->cb = cb;
     m->user_data = user_data;
     m->mode_picker_open = false;
-    m->lbl_status = NULL;
-    m->dot_status = NULL;
     m->lbl_icon = NULL;
     m->lbl_current = NULL;
     m->lbl_setpoint = NULL;
+    m->setpoint_col = NULL;
+    m->metrics_divider = NULL;
     m->icon_btn = NULL;
     m->cancel_btn = NULL;
     m->normal_layer = NULL;
@@ -510,6 +505,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     lv_obj_set_height(content_col, LV_PCT(100));
     lv_obj_set_flex_grow(content_col, 1);
     lv_obj_clear_flag(content_col, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(content_col, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
     lv_obj_set_layout(content_col, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(content_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(content_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -531,52 +527,15 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     lv_obj_set_height(body, 0);
     lv_obj_set_flex_grow(body, 1);
     lv_obj_clear_flag(body, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(body, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
     lv_obj_set_layout(body, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(body, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(body, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(body, 8, LV_PART_MAIN);
 
-    lv_obj_t *identity_text = lv_obj_create(body);
-    lv_obj_remove_style_all(identity_text);
-    lv_obj_set_width(identity_text, LV_SIZE_CONTENT);
-    lv_obj_set_height(identity_text, LV_SIZE_CONTENT);
-    lv_obj_clear_flag(identity_text, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_layout(identity_text, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(identity_text, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(identity_text, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(identity_text, 4, LV_PART_MAIN);
-
-    lv_obj_t *lbl_title = lv_label_create(identity_text);
-    lv_label_set_text(lbl_title, "HEATER");
-    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_title, HEATER_CARD_TEXT, LV_PART_MAIN);
-
-    lv_obj_t *status_row = lv_obj_create(identity_text);
-    lv_obj_remove_style_all(status_row);
-    lv_obj_set_width(status_row, LV_SIZE_CONTENT);
-    lv_obj_set_height(status_row, LV_SIZE_CONTENT);
-    lv_obj_clear_flag(status_row, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_layout(status_row, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(status_row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(status_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(status_row, 6, LV_PART_MAIN);
-
-    m->dot_status = lv_obj_create(status_row);
-    lv_obj_remove_style_all(m->dot_status);
-    lv_obj_set_size(m->dot_status, 8, 8);
-    lv_obj_set_style_radius(m->dot_status, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(m->dot_status, HEATER_CARD_ACCENT, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(m->dot_status, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_clear_flag(m->dot_status, LV_OBJ_FLAG_SCROLLABLE);
-
-    m->lbl_status = lv_label_create(status_row);
-    lv_obj_set_style_text_font(m->lbl_status, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_set_style_text_color(m->lbl_status, HEATER_CARD_ACCENT, LV_PART_MAIN);
-
-    (void)make_vdivider(body, 64);
-    (void)make_metric_col(body, "CURRENT", false, &m->lbl_current);
-    (void)make_vdivider(body, 64);
-    (void)make_metric_col(body, "DESIRED", true, &m->lbl_setpoint);
+    (void)make_metric_col(body, false, &m->lbl_current);
+    m->metrics_divider = make_vdivider(body, 0);
+    m->setpoint_col = make_metric_col(body, true, &m->lbl_setpoint);
 
     m->mode_layer = lv_obj_create(card);
     lv_obj_remove_style_all(m->mode_layer);
@@ -589,21 +548,22 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     lv_obj_set_flex_align(m->mode_layer, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_add_flag(m->mode_layer, LV_OBJ_FLAG_HIDDEN);
 
-    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FIRE, "HEATING", HEATER_CARD_ACCENT, m,
-                           UI_HEATER_CARD_1_EVENT_MODE_HEATING, &m->mode_clicks[HEATER_MODE_UI_HEATING],
-                           &m->mode_btns[HEATER_MODE_UI_HEATING]);
-    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
-    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_THERMOMETER_LOW, "COOLING",
-                           HEATER_CARD_MODE_COLOR_COOL, m, UI_HEATER_CARD_1_EVENT_MODE_COOLING,
-                           &m->mode_clicks[HEATER_MODE_UI_COOLING], &m->mode_btns[HEATER_MODE_UI_COOLING]);
-    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
-    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FAN, "FAN", HEATER_CARD_MODE_COLOR_FAN, m,
-                           UI_HEATER_CARD_1_EVENT_MODE_FAN, &m->mode_clicks[HEATER_MODE_UI_FAN],
-                           &m->mode_btns[HEATER_MODE_UI_FAN]);
-    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
-    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_RADIATOR_OFF, "OFF", HEATER_CARD_MUTED, m,
-                           UI_HEATER_CARD_1_EVENT_MODE_OFF, &m->mode_clicks[HEATER_MODE_UI_OFF],
+    (void)make_mode_option(m->mode_layer, mode_circle_sz, LV_SYMBOL_POWER, &lv_font_montserrat_32, "OFF",
+                           HEATER_CARD_MUTED, m, UI_HEATER_CARD_1_EVENT_MODE_OFF, &m->mode_clicks[HEATER_MODE_UI_OFF],
                            &m->mode_btns[HEATER_MODE_UI_OFF]);
+    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
+    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FIRE, &ui_font_home_assistant_icons_56, "HEATING",
+                           HEATER_CARD_ACCENT, m, UI_HEATER_CARD_1_EVENT_MODE_HEATING,
+                           &m->mode_clicks[HEATER_MODE_UI_HEATING], &m->mode_btns[HEATER_MODE_UI_HEATING]);
+    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
+    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_THERMOMETER_LOW,
+                           &ui_font_home_assistant_icons_56, "COOLING", HEATER_CARD_MODE_COLOR_COOL, m,
+                           UI_HEATER_CARD_1_EVENT_MODE_COOLING, &m->mode_clicks[HEATER_MODE_UI_COOLING],
+                           &m->mode_btns[HEATER_MODE_UI_COOLING]);
+    (void)make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
+    (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FAN, &ui_font_home_assistant_icons_56, "FAN",
+                           HEATER_CARD_MODE_COLOR_FAN, m, UI_HEATER_CARD_1_EVENT_MODE_FAN,
+                           &m->mode_clicks[HEATER_MODE_UI_FAN], &m->mode_btns[HEATER_MODE_UI_FAN]);
 
     m->btn_minus = make_step_btn(card, btn_sz, LV_SYMBOL_MINUS, false, m, on_minus, edge_margin, edge_margin, 0,
                                  button_gap_px);
@@ -613,7 +573,6 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     refresh_current(m);
     refresh_setpoint(m);
     refresh_status(m);
-    refresh_step_buttons(m);
 
     lv_obj_set_user_data(card, m);
     lv_obj_add_event_cb(card, heater_card_meta_free, LV_EVENT_DELETE, m);

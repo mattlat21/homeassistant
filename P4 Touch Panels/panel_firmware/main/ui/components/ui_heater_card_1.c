@@ -193,6 +193,9 @@ static void refresh_setpoint_slot(heater_card_meta_t *m)
     set_layout_slot_visible(m->metrics_divider, show);
 }
 
+static void refresh_control_accent(heater_card_meta_t *m);
+static void style_circle_button(lv_obj_t *btn, lv_color_t accent, bool selected);
+
 static void refresh_status_icon(heater_card_meta_t *m)
 {
     if (m == NULL || m->lbl_icon == NULL || m->icon_btn == NULL) {
@@ -241,6 +244,7 @@ static void refresh_status(heater_card_meta_t *m)
     refresh_status_icon(m);
     refresh_step_buttons(m);
     refresh_setpoint_slot(m);
+    refresh_control_accent(m);
 }
 
 static heater_mode_ui_t active_mode_from_state(const heater_card_meta_t *m)
@@ -252,6 +256,48 @@ static heater_mode_ui_t active_mode_from_state(const heater_card_meta_t *m)
         return HEATER_MODE_UI_FAN;
     }
     return HEATER_MODE_UI_HEATING;
+}
+
+static lv_color_t accent_color_for_mode(heater_mode_ui_t mode)
+{
+    switch (mode) {
+    case HEATER_MODE_UI_HEATING:
+        return HEATER_CARD_ACCENT;
+    case HEATER_MODE_UI_COOLING:
+        return HEATER_CARD_MODE_COLOR_COOL;
+    case HEATER_MODE_UI_FAN:
+        return HEATER_CARD_MODE_COLOR_FAN;
+    default:
+        return HEATER_CARD_MUTED;
+    }
+}
+
+static void style_step_button_accent(lv_obj_t *btn, lv_color_t accent)
+{
+    if (btn == NULL) {
+        return;
+    }
+    style_circle_button(btn, accent, true);
+    const uint32_t n = lv_obj_get_child_count(btn);
+    if (n > 0) {
+        lv_obj_t *lbl = lv_obj_get_child(btn, 0);
+        if (lbl != NULL) {
+            lv_obj_set_style_text_color(lbl, accent, LV_PART_MAIN);
+        }
+    }
+}
+
+static void refresh_control_accent(heater_card_meta_t *m)
+{
+    if (m == NULL || m->profile == UI_HEATER_CARD_PROFILE_BLANK || !m->climate_control_on) {
+        return;
+    }
+    const lv_color_t accent = accent_color_for_mode(active_mode_from_state(m));
+    if (m->lbl_setpoint != NULL) {
+        lv_obj_set_style_text_color(m->lbl_setpoint, accent, LV_PART_MAIN);
+    }
+    style_step_button_accent(m->btn_minus, accent);
+    style_step_button_accent(m->btn_plus, accent);
 }
 
 static bool mode_option_is_actionable(const heater_card_meta_t *m, ui_heater_card_1_event_t event)
@@ -289,8 +335,10 @@ static void refresh_mode_highlights(heater_card_meta_t *m)
         if (m->mode_btns[i] == NULL) {
             continue;
         }
-        const bool selected = ((heater_mode_ui_t)i == active);
+        const heater_mode_ui_t mode = (heater_mode_ui_t)i;
+        const bool selected = (mode == active);
         lv_obj_set_style_border_width(m->mode_btns[i], selected ? 3 : 2, LV_PART_MAIN);
+        lv_obj_set_style_border_color(m->mode_btns[i], accent_color_for_mode(mode), LV_PART_MAIN);
     }
 }
 
@@ -321,6 +369,7 @@ static void set_mode_picker_open(heater_card_meta_t *m, bool open)
         lv_obj_remove_flag(m->icon_btn, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(m->cancel_btn, LV_OBJ_FLAG_HIDDEN);
         refresh_step_buttons(m);
+        refresh_control_accent(m);
     }
 }
 

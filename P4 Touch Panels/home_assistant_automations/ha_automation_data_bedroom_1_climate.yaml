@@ -1,0 +1,36 @@
+# Home Assistant: Our Bedroom climate → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/bedroom1/climate/* topics for the HVAC screen "Our Bedroom" card.
+
+alias: "ESP HMI - Data - Bedroom 1 Climate"
+description: ""
+variables:
+  climate_target: climate.bedroom_1_heater_bedroom_1_climate_control
+  heater_switch: switch.bedroom_1_heater
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.bedroom_1_heater_bedroom_1_climate_control
+      - switch.bedroom_1_heater
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/heater_on
+      payload: "{{ 'true' if is_state(heater_switch, 'on') else 'false' }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

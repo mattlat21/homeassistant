@@ -1,0 +1,36 @@
+# Home Assistant: Server Rack fan → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/server_rack/climate/* topics for the HVAC screen "Server Rack" card.
+
+alias: "ESP HMI - Data - Server Rack Climate"
+description: ""
+variables:
+  climate_target: climate.server_rack_fan_server_fan
+  heater_switch: switch.server_rack_fan
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.server_rack_fan_server_fan
+      - switch.server_rack_fan
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/heater_on
+      payload: "{{ 'true' if is_state(heater_switch, 'on') else 'false' }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

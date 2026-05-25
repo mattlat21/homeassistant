@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * Start Wi‑Fi STA (from Kconfig) and MQTT client. On MQTT connect, publishes
@@ -55,6 +56,21 @@ void ha_mqtt_set_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t c
 
 /** Add another climate state listener (e.g. HVAC screen); does not remove existing listeners. */
 void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
+
+/** HVAC screen: extra climate zones beyond the primary Kconfig bedroom3 topics (Ollie room). */
+#define HA_MQTT_HVAC_ZONE_BEDROOM_1 0
+#define HA_MQTT_HVAC_ZONE_SERVER_RACK 1
+#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 2
+
+/**
+ * Register retained climate topic quartet for an extra HVAC zone (bedroom1, server rack, …).
+ * Safe before MQTT connect; subscribes on next connect.
+ */
+void ha_mqtt_configure_hvac_zone(uint8_t zone_id, const char *topic_setpoint, const char *topic_current,
+                               const char *topic_heater_on, const char *topic_control);
+
+/** Single LVGL-thread listener for one extra HVAC zone (replaces prior callback for that zone). */
+void ha_mqtt_set_hvac_zone_climate_callback(uint8_t zone_id, ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
 
 /**
  * Called on the LVGL thread with a null-terminated Front Gate state string from MQTT

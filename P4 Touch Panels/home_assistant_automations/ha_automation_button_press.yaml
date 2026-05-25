@@ -1,4 +1,4 @@
-alias: ESP HMI MQTT Button Press
+alias: ESP HMI - Button Press to MQTT
 description: ""
 triggers:
   - trigger: mqtt
@@ -112,6 +112,99 @@ actions:
               entity_id: "{{ climate_target_entity }}"
             data:
               hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_bedroom_1_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+            data:
+              temperature: >
+                {{ (state_attr('climate.bedroom_1_heater_bedroom_1_climate_control', 'temperature') | float(21)
+                - 0.5) | round(1) }}
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_bedroom_1_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+            data:
+              temperature: >
+                {{ (state_attr('climate.bedroom_1_heater_bedroom_1_climate_control', 'temperature') | float(21)
+                + 0.5) | round(1) }}
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_bedroom_1_mode_off' }}"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.bedroom_1_heater
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_bedroom_1_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_server_rack_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.server_rack_fan_server_fan
+            data:
+              temperature: >
+                {{ (state_attr('climate.server_rack_fan_server_fan', 'temperature') | float(21)
+                - 0.5) | round(1) }}
+              hvac_mode: cool
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_server_rack_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.server_rack_fan_server_fan
+            data:
+              temperature: >
+                {{ (state_attr('climate.server_rack_fan_server_fan', 'temperature') | float(21)
+                + 0.5) | round(1) }}
+              hvac_mode: cool
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_server_rack_mode_off' }}"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.server_rack_fan
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.server_rack_fan_server_fan
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_server_rack_mode_fan' }}"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.server_rack_fan
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.server_rack_fan_server_fan
+            data:
+              hvac_mode: cool
       - conditions:
           - condition: template
             value_template: >-

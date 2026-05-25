@@ -16,6 +16,13 @@ typedef enum {
 
 typedef void (*ui_heater_card_1_cb_t)(ui_heater_card_1_event_t event, void *user_data);
 
+/** Which modes appear in the picker and how the status icon behaves. */
+typedef enum {
+    UI_HEATER_CARD_PROFILE_HEATER = 0,
+    UI_HEATER_CARD_PROFILE_FAN,
+    UI_HEATER_CARD_PROFILE_BLANK,
+} ui_heater_card_1_profile_t;
+
 /**
  * Horizontal heater summary card: icon + status, current/desired temps, −/+ step buttons.
  * Tapping the left icon opens an in-card mode picker (cancel + heating / cooling / fan / off).
@@ -25,10 +32,10 @@ typedef void (*ui_heater_card_1_cb_t)(ui_heater_card_1_event_t event, void *user
  * @param button_gap_px Horizontal gap between step buttons (0 = default 10).
  * @param room_name Label shown at the top between the icon and step buttons (may be NULL).
  */
-lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char *room_name, float current_temp_c,
-                                  float setpoint_c, bool heater_on, bool climate_control_on, ui_heater_card_1_cb_t cb,
-                                  void *user_data, lv_coord_t min_height_px, lv_coord_t circle_margin_px,
-                                  lv_coord_t button_gap_px);
+lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char *room_name,
+                                  ui_heater_card_1_profile_t profile, float current_temp_c, float setpoint_c,
+                                  bool heater_on, bool climate_control_on, ui_heater_card_1_cb_t cb, void *user_data,
+                                  lv_coord_t min_height_px, lv_coord_t circle_margin_px, lv_coord_t button_gap_px);
 
 void ui_heater_card_1_set_current_temp(lv_obj_t *card, float temp_c);
 void ui_heater_card_1_set_setpoint(lv_obj_t *card, float setpoint_c);

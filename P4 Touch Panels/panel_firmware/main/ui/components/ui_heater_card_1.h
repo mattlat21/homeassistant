@@ -8,12 +8,17 @@
 typedef enum {
     UI_HEATER_CARD_1_EVENT_SETPOINT_DEC = 0,
     UI_HEATER_CARD_1_EVENT_SETPOINT_INC,
+    UI_HEATER_CARD_1_EVENT_MODE_OFF,
+    UI_HEATER_CARD_1_EVENT_MODE_HEATING,
+    UI_HEATER_CARD_1_EVENT_MODE_COOLING,
+    UI_HEATER_CARD_1_EVENT_MODE_FAN,
 } ui_heater_card_1_event_t;
 
 typedef void (*ui_heater_card_1_cb_t)(ui_heater_card_1_event_t event, void *user_data);
 
 /**
  * Horizontal heater summary card: icon + status, current/desired temps, −/+ step buttons.
+ * Tapping the left icon opens an in-card mode picker (cancel + heating / cooling / fan / off).
  * Matches the Ollie room climate MQTT fields (setpoint, current, heater_on, climate_control_on).
  * @param min_height_px Minimum card height (0 = default 128).
  * @param circle_margin_px Margin around icon and outer step-button edges (0 = default 8).

@@ -41,6 +41,15 @@ static void hvac_heater_on_ui_event(ui_heater_card_1_event_t event, void *user_d
     case UI_HEATER_CARD_1_EVENT_SETPOINT_INC:
         (void)ha_mqtt_publish_ollie_button("climate_temp_up");
         break;
+    case UI_HEATER_CARD_1_EVENT_MODE_OFF:
+        (void)ha_mqtt_publish_ollie_button("climate_mode_off");
+        break;
+    case UI_HEATER_CARD_1_EVENT_MODE_HEATING:
+        (void)ha_mqtt_publish_ollie_button("climate_mode_cc");
+        break;
+    case UI_HEATER_CARD_1_EVENT_MODE_COOLING:
+    case UI_HEATER_CARD_1_EVENT_MODE_FAN:
+        break;
     default:
         break;
     }

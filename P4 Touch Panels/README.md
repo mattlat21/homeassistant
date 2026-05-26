@@ -148,7 +148,7 @@ The partition table uses two OTA app slots (`ota_0` / `ota_1`, see [`panel_firmw
 
 | Field | Required | Meaning |
 | ----- | -------- | ------- |
-| `url` | yes | HTTPS URL to the **`.bin`** firmware image |
+| `url` | yes | HTTP(S) URL to the **`.bin`** firmware image (HTTP requires `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP` in firmware) |
 | `version` | no | If it matches the running `esp_app_desc` version string (same as `PROJECT_VER`), the update is **skipped** |
 | `sha256` | no\* | 64 hex chars, SHA-256 of the **first `size` bytes** of the `.bin` file |
 | `size` | no\* | Byte length to hash (must match `.bin` size used for `sha256`) |
@@ -160,8 +160,10 @@ The partition table uses two OTA app slots (`ota_0` / `ota_1`, see [`panel_firmw
 **Example (`mosquitto_pub`):**
 
 ```bash
-mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"url":"https://example.com/esp_hmi.bin","version":"1.1.0"}' -q 1
+mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"url":"http://latimer.net/ha/fware/esphmi/v1.1.3/esp_hmi.bin","version":"1.1.3"}' -q 1
 ```
+
+**Progress (panel → HA):** While OTA runs, the panel publishes JSON on **`esp_hmi/device/<mac>/status/ota_progress`** (QoS 1, not retained), e.g. `{"state":"downloading","percent":42,"version":"1.1.3"}`. States: `idle`, `starting`, `downloading`, `verifying`, `success`, `failed` (optional `error`). The **ESP HMI Panels** integration exposes this as the **OTA update progress** sensor; use **Firmware version** + **Install firmware** on the device to trigger an update.
 
 **Example (Home Assistant action):**
 
@@ -169,7 +171,7 @@ mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"
 action: mqtt.publish
 data:
   topic: esp_hmi/device/aabbccddeeff/cmd/ota_update
-  payload: '{"url":"https://example.com/esp_hmi.bin","version":"1.1.0"}'
+  payload: '{"url":"http://latimer.net/ha/fware/esphmi/v1.1.3/esp_hmi.bin","version":"1.1.3"}'
   qos: 1
 ```
 

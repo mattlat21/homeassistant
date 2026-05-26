@@ -16,7 +16,9 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 - **Binary sensor** **MQTT connected** (from retained `status/mqtt_connected`; matches firmware MQTT discovery / LWT)
 - **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entities: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug); **Normal brightness**, **Dim brightness**, **Dim timeout seconds**, **Screen off timeout seconds**, **Brightness fade seconds** (partial JSON to `cmd/set_display_power`)
-- **Button** entities: **Full brightness** (wake display — restores normal brightness and resets inactivity timers), **Reboot**
+- **Button** entities: **Full brightness** (wake display — restores normal brightness and resets inactivity timers), **Reboot**, **Install firmware** (MQTT OTA to the version chosen below)
+- **Select** **Firmware version** — pick a published build (see `FIRMWARE_VERSION_OPTIONS` in `const.py`; images at `http://latimer.net/ha/fware/esphmi/vX.Y.Z/esp_hmi.bin`)
+- **Sensor** **OTA update progress** — live state from `status/ota_progress` while the panel downloads/installs
 - **Device triggers** for button presses (so automations can be created in the UI)
 - **Services** for the supported command topics:
   - `esp_hmi.switch_screen`

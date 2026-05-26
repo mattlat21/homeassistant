@@ -73,6 +73,9 @@ CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM=y
 CONFIG_ESP_TLS_INSECURE=y
 CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y
 
+# --- OTA: allow http:// firmware URLs (e.g. latimer.net) via esp_https_ota ---
+CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
+
 # --- LVGL: ThorVG + Lottie + gestures (see README) ---
 CONFIG_LV_CONF_SKIP=y
 CONFIG_LV_COLOR_DEPTH_24=y

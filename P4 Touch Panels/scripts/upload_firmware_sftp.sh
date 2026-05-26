@@ -222,40 +222,52 @@ if ! command -v sshpass >/dev/null 2>&1; then
 fi
 
 sftp_mkdir_p() {
+  # OpenSSH sftp -b aborts the whole batch on the first failing mkdir (e.g. directory
+  # already exists). Run one mkdir per path segment so existing dirs do not block parents.
   local remote_path="$1"
   local current="" part
-  local batch
-  batch="$(mktemp)"
-  trap 'rm -f "${batch}"' RETURN
+  local -a _parts=()
 
   IFS='/' read -r -a _parts <<<"${remote_path}"
   for part in "${_parts[@]}"; do
     [[ -n "${part}" ]] || continue
     current="${current:+$current/}${part}"
-    printf 'mkdir %s\n' "${current}" >>"${batch}"
-  done
+    local batch
+    batch="$(mktemp)"
+    printf 'mkdir %s\n' "${current}" >"${batch}"
 
-  SSHPASS="${SFTP_PASSWORD}" sshpass -e sftp \
-    -oBatchMode=no \
-    -oStrictHostKeyChecking=accept-new \
-    -P "${SFTP_PORT}" \
-    -b "${batch}" \
-    "${SFTP_USER}@${SFTP_HOST}" \
-    2>/dev/null || true
+    set +e
+    SSHPASS="${SFTP_PASSWORD}" sshpass -e sftp \
+      -oBatchMode=no \
+      -oStrictHostKeyChecking=accept-new \
+      -P "${SFTP_PORT}" \
+      -b "${batch}" \
+      "${SFTP_USER}@${SFTP_HOST}" >/dev/null 2>&1
+    set -e
+    rm -f "${batch}"
+  done
 }
 
 sftp_upload() {
-  local batch
+  local batch rc
   batch="$(mktemp)"
-  trap 'rm -f "${batch}"' RETURN
   printf 'put "%s" "%s"\n' "${LOCAL_BIN}" "${REMOTE_PATH}" >"${batch}"
 
+  set +e
   SSHPASS="${SFTP_PASSWORD}" sshpass -e sftp \
     -oBatchMode=no \
     -oStrictHostKeyChecking=accept-new \
     -P "${SFTP_PORT}" \
     -b "${batch}" \
     "${SFTP_USER}@${SFTP_HOST}"
+  rc=$?
+  set -e
+  rm -f "${batch}"
+
+  if [[ "${rc}" -ne 0 ]]; then
+    echo "error: SFTP upload failed (exit ${rc}) for ${REMOTE_PATH}" >&2
+    exit "${rc}"
+  fi
 }
 
 sftp_mkdir_p "${REMOTE_DIR}"

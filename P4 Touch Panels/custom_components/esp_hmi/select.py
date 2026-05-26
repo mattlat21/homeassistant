@@ -14,7 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import EspHmiRuntime, SIGNAL_NEW_DEVICE, SIGNAL_PARAMETERS_UPDATE
-from .const import DATA_RUNTIME, DOMAIN, SCREEN_OPTIONS
+from .const import DATA_RUNTIME, DOMAIN, FIRMWARE_VERSION_OPTIONS, SCREEN_OPTIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ async def async_setup_entry(
     default_by_mac: dict[str, EspHmiDefaultScreenSelect] = {}
     idle_by_mac: dict[str, EspHmiIdleTimeoutScreenSelect] = {}
     goto_by_mac: dict[str, EspHmiGoToScreenSelect] = {}
+    firmware_by_mac: dict[str, EspHmiFirmwareVersionSelect] = {}
 
     @callback
     def _maybe_add_for_mac(mac: str) -> None:
@@ -52,10 +53,12 @@ async def async_setup_entry(
         d = EspHmiDefaultScreenSelect(entry.entry_id, runtime.topic_prefix, mac)
         i = EspHmiIdleTimeoutScreenSelect(entry.entry_id, runtime.topic_prefix, mac)
         g = EspHmiGoToScreenSelect(entry.entry_id, runtime.topic_prefix, mac)
+        f = EspHmiFirmwareVersionSelect(entry.entry_id, runtime.topic_prefix, mac)
         default_by_mac[mac] = d
         idle_by_mac[mac] = i
         goto_by_mac[mac] = g
-        async_add_entities([d, i, g])
+        firmware_by_mac[mac] = f
+        async_add_entities([d, i, g, f])
 
     @callback
     def _on_new_device(entry_id: str, mac: str) -> None:
@@ -213,4 +216,42 @@ class EspHmiGoToScreenSelect(SelectEntity):
         await mqtt.async_publish(self.hass, topic, payload=payload, qos=1, retain=False)
         if panel is not None:
             panel.last_remote_nav_screen = option
+        self.async_write_ha_state()
+
+
+class EspHmiFirmwareVersionSelect(SelectEntity):
+    """Choose which published firmware version to install on the panel (OTA via MQTT)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Firmware version"
+    _attr_options = list(FIRMWARE_VERSION_OPTIONS)
+
+    def __init__(self, entry_id: str, topic_prefix: str, mac: str) -> None:
+        self._entry_id = entry_id
+        self._topic_prefix = topic_prefix.strip("/")
+        self._mac = mac
+        self._attr_unique_id = f"{mac}_firmware_version_select"
+
+    @property
+    def device_info(self):
+        return {"identifiers": {(DOMAIN, self._mac)}}
+
+    @property
+    def current_option(self) -> str | None:
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.panels.get(self._mac)
+        if panel is None:
+            return None
+        val = panel.ota_target_version
+        if isinstance(val, str) and val in FIRMWARE_VERSION_OPTIONS:
+            return val
+        return FIRMWARE_VERSION_OPTIONS[-1] if FIRMWARE_VERSION_OPTIONS else None
+
+    async def async_select_option(self, option: str) -> None:
+        if option not in FIRMWARE_VERSION_OPTIONS:
+            _LOGGER.debug("Ignoring unknown firmware version: %s", option)
+            return
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.get_or_create_panel(self._mac)
+        panel.ota_target_version = option
         self.async_write_ha_state()

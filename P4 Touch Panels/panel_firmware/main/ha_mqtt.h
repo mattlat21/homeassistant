@@ -14,6 +14,15 @@ void ha_mqtt_init(void);
 bool ha_mqtt_is_connected(void);
 
 /**
+ * Publish OTA progress to `esp_hmi/device/<MAC>/status/ota_progress` (QoS 1, not retained).
+ * @param state One of: idle, starting, downloading, verifying, success, failed
+ * @param percent 0–100 (meaningful for downloading / verifying)
+ * @param version Target firmware version string (may be empty)
+ * @param error_msg Optional error text when state is failed (ASCII)
+ */
+void ha_mqtt_publish_ota_progress(const char *state, int percent, const char *version, const char *error_msg);
+
+/**
  * Publish retained current UI screen slug to `esp_hmi/device/<MAC>/status/current_screen` (QoS 1).
  * Safe from LVGL thread after navigation; no-op if MQTT disconnected or topic not built yet.
  */

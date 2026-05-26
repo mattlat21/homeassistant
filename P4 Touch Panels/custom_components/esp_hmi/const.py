@@ -48,6 +48,15 @@ SERVICE_SET_DISPLAY_POWER = "set_display_power"
 SERVICE_WAKE_DISPLAY = "wake_display"
 SERVICE_REBOOT = "reboot"
 
+# Remote OTA (must match firmware CONFIG_ESP_HMI_OTA_MQTT_CMD_SUFFIX)
+OTA_CMD_SUFFIX = "cmd/ota_update"
+
+# Published firmware builds (add new versions when binaries are staged/uploaded)
+FIRMWARE_VERSION_OPTIONS: tuple[str, ...] = ("1.1.2", "1.1.3")
+
+# OTA image URL: {base}/v{version}/esp_hmi.bin
+FIRMWARE_OTA_URL_BASE = "http://latimer.net/ha/fware/esphmi"
+
 # Internal event name used by device_trigger.py
 EVENT_BUTTON_PRESS = "esp_hmi_button_press"
 

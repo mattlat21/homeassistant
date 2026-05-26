@@ -1,5 +1,7 @@
 #include "ota_update.h"
 
+#include "ha_mqtt.h"
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -61,6 +63,24 @@ typedef struct {
 
 static QueueHandle_t s_ota_queue;
 static volatile bool s_ota_busy;
+static char s_ota_target_version[32];
+static int s_last_ota_progress_pct = -1;
+
+static void ota_report_progress(const char *state, int percent, const char *error_msg)
+{
+    if (percent >= 0 && state != NULL && strcmp(state, "downloading") == 0) {
+        if (percent < s_last_ota_progress_pct && s_last_ota_progress_pct >= 0) {
+            return;
+        }
+        if (s_last_ota_progress_pct >= 0 && percent < s_last_ota_progress_pct + 5 && percent < 100) {
+            return;
+        }
+        s_last_ota_progress_pct = percent;
+    } else if (state != NULL && strcmp(state, "downloading") != 0) {
+        s_last_ota_progress_pct = percent;
+    }
+    ha_mqtt_publish_ota_progress(state, percent, s_ota_target_version, error_msg);
+}
 
 static bool hex32_from_string(const char *hex, uint8_t out[32])
 {
@@ -128,6 +148,9 @@ static esp_err_t verify_partition_sha256_prefix(const esp_partition_t *part, siz
 
 static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, bool verify_sha, size_t verify_len)
 {
+    s_last_ota_progress_pct = -1;
+    ota_report_progress("downloading", 0, NULL);
+
     bool ui_ok = screen_ota_progress_show_and_wait_for_display(5000);
     if (!ui_ok) {
         ESP_LOGW(TAG, "OTA progress UI did not appear (timeout or screen missing); continuing download");
@@ -157,6 +180,7 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
     esp_err_t err = esp_https_ota_begin(&ota_cfg, &h);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_https_ota_begin: %s", esp_err_to_name(err));
+        ota_report_progress("failed", 0, esp_err_to_name(err));
         screen_ota_progress_dismiss_async();
         return err;
     }
@@ -174,6 +198,7 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
                 }
             }
             screen_ota_progress_set_percent_async(pct);
+            ota_report_progress("downloading", pct, NULL);
         }
         if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
             break;
@@ -181,12 +206,14 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
     }
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_https_ota_perform: %s", esp_err_to_name(err));
+        ota_report_progress("failed", 0, esp_err_to_name(err));
         esp_https_ota_abort(h);
         screen_ota_progress_dismiss_async();
         return err;
     }
 
     if (verify_sha && expected_sha256 != NULL) {
+        ota_report_progress("verifying", 99, NULL);
         screen_ota_progress_set_percent_async(99);
         const esp_partition_t *upd = target_before;
         if (upd == NULL) {
@@ -205,6 +232,7 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
         err = verify_partition_sha256_prefix(upd, verify_len, expected_sha256);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "SHA256 verify failed (image may not match sha256/size)");
+            ota_report_progress("failed", 0, "sha256 verify failed");
             esp_https_ota_abort(h);
             screen_ota_progress_dismiss_async();
             return err;
@@ -213,9 +241,11 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
     }
 
     screen_ota_progress_set_percent_async(100);
+    ota_report_progress("success", 100, NULL);
     err = esp_https_ota_finish(h);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_https_ota_finish: %s", esp_err_to_name(err));
+        ota_report_progress("failed", 0, esp_err_to_name(err));
         screen_ota_progress_dismiss_async();
         return err;
     }
@@ -250,18 +280,27 @@ static void ota_worker_task(void *arg)
         if (!cJSON_IsString(j_url) || j_url->valuestring == NULL || j_url->valuestring[0] == '\0') {
             ESP_LOGW(TAG, "OTA JSON missing url");
             cJSON_Delete(root);
+            ha_mqtt_publish_ota_progress("failed", 0, "", "missing url");
             s_ota_busy = false;
             continue;
+        }
+
+        memset(s_ota_target_version, 0, sizeof(s_ota_target_version));
+        if (cJSON_IsString(j_ver) && j_ver->valuestring != NULL && j_ver->valuestring[0] != '\0') {
+            strncpy(s_ota_target_version, j_ver->valuestring, sizeof(s_ota_target_version) - 1);
         }
 
         const esp_app_desc_t *cur = esp_app_get_description();
         if (cJSON_IsString(j_ver) && j_ver->valuestring != NULL && j_ver->valuestring[0] != '\0' &&
             cur != NULL && strncmp(j_ver->valuestring, cur->version, sizeof(cur->version)) == 0) {
             ESP_LOGI(TAG, "OTA skipped (already running version %s)", cur->version);
+            ha_mqtt_publish_ota_progress("idle", 0, s_ota_target_version, "already installed");
             cJSON_Delete(root);
             s_ota_busy = false;
             continue;
         }
+
+        ota_report_progress("starting", 0, NULL);
 
         bool has_sha = cJSON_IsString(j_sha) && j_sha->valuestring != NULL && strlen(j_sha->valuestring) == 64;
         bool has_sz = cJSON_IsNumber(j_sz) && cJSON_GetNumberValue(j_sz) > 0;
@@ -287,7 +326,10 @@ static void ota_worker_task(void *arg)
         }
 
         ESP_LOGI(TAG, "OTA start url=%s", j_url->valuestring);
-        (void)run_https_ota(j_url->valuestring, expect_sha, verify, verify_len);
+        esp_err_t ota_err = run_https_ota(j_url->valuestring, expect_sha, verify, verify_len);
+        if (ota_err != ESP_OK) {
+            ha_mqtt_publish_ota_progress("idle", 0, s_ota_target_version, NULL);
+        }
 
         cJSON_Delete(root);
         s_ota_busy = false;

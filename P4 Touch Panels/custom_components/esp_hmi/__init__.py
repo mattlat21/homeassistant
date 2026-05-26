@@ -24,6 +24,7 @@ from .const import (
     DEFAULT_TOPIC_PREFIX,
     DOMAIN,
     EVENT_BUTTON_PRESS,
+    FIRMWARE_VERSION_OPTIONS,
     PLATFORMS,
     SERVICE_REBOOT,
     SERVICE_SET_DEFAULT_SCREEN,
@@ -50,6 +51,7 @@ CONFIG_SCHEMA = vol.Schema(
 SIGNAL_NEW_DEVICE = f"{DOMAIN}_new_device"
 SIGNAL_PARAMETERS_UPDATE = f"{DOMAIN}_parameters_update"
 SIGNAL_STATUS_UPDATE = f"{DOMAIN}_status_update"
+SIGNAL_OTA_PROGRESS_UPDATE = f"{DOMAIN}_ota_progress_update"
 
 
 def _now_utc() -> datetime:
@@ -92,6 +94,13 @@ class PanelState:
     current_screen: str | None = None
     #: From retained `status/mqtt_connected` (`ON` / `OFF`).
     mqtt_connected: bool | None = None
+    #: HA UI: firmware version selected for the next OTA install.
+    ota_target_version: str | None = None
+    #: From `status/ota_progress` JSON (idle, starting, downloading, …).
+    ota_progress_state: str | None = None
+    ota_progress_percent: int | None = None
+    ota_progress_version: str | None = None
+    ota_progress_error: str | None = None
 
 
 @dataclass
@@ -102,7 +111,10 @@ class EspHmiRuntime:
 
     def get_or_create_panel(self, mac: str) -> PanelState:
         if mac not in self.panels:
-            self.panels[mac] = PanelState(mac=mac)
+            panel = PanelState(mac=mac)
+            if FIRMWARE_VERSION_OPTIONS:
+                panel.ota_target_version = FIRMWARE_VERSION_OPTIONS[-1]
+            self.panels[mac] = panel
         return self.panels[mac]
 
 
@@ -180,6 +192,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         panel = runtime.get_or_create_panel(mac)
         panel.current_screen = text if text else None
         async_dispatcher_send(hass, SIGNAL_STATUS_UPDATE, entry.entry_id, mac)
+
+    async def _handle_ota_progress(msg: mqtt.ReceiveMessage) -> None:
+        mac = _mac_from_topic(topic_prefix, msg.topic)
+        if not mac:
+            return
+        try:
+            payload = json.loads(msg.payload)
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug("Invalid OTA progress JSON for %s", msg.topic)
+            return
+        if not isinstance(payload, dict):
+            return
+
+        panel = runtime.get_or_create_panel(mac)
+        state = payload.get("state")
+        panel.ota_progress_state = str(state) if isinstance(state, str) else None
+
+        percent = payload.get("percent")
+        if isinstance(percent, (int, float)):
+            panel.ota_progress_percent = max(0, min(100, int(percent)))
+        else:
+            panel.ota_progress_percent = None
+
+        ver = payload.get("version")
+        panel.ota_progress_version = str(ver) if isinstance(ver, str) and ver else None
+
+        err = payload.get("error")
+        panel.ota_progress_error = str(err) if isinstance(err, str) and err else None
+
+        async_dispatcher_send(hass, SIGNAL_OTA_PROGRESS_UPDATE, entry.entry_id, mac)
 
     async def _handle_mqtt_connected(msg: mqtt.ReceiveMessage) -> None:
         mac = _mac_from_topic(topic_prefix, msg.topic)
@@ -333,6 +375,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             f"{topic_prefix}/device/+/status/mqtt_connected",
             _handle_mqtt_connected,
+            qos=1,
+        )
+    )
+    runtime.unsubscribers.append(
+        await mqtt.async_subscribe(
+            hass,
+            f"{topic_prefix}/device/+/status/ota_progress",
+            _handle_ota_progress,
             qos=1,
         )
     )

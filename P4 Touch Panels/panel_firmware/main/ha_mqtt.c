@@ -47,6 +47,8 @@ static char s_status_parameters_topic[88];
 static char s_status_current_screen_topic[88];
 /** Retained ON/OFF: <s_node_id>/status/mqtt_connected (OFF via broker Last Will) */
 static char s_status_mqtt_connected_topic[88];
+/** OTA progress JSON (not retained): <s_node_id>/status/ota_progress */
+static char s_status_ota_progress_topic[88];
 /** JSON device identifier string (same as s_node_id) */
 static char s_device_identifier[40];
 static char s_mac_colon[18];
@@ -230,6 +232,7 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_status_parameters_topic, sizeof(s_status_parameters_topic), "%s/status/parameters", s_node_id);
     snprintf(s_status_current_screen_topic, sizeof(s_status_current_screen_topic), "%s/status/current_screen", s_node_id);
     snprintf(s_status_mqtt_connected_topic, sizeof(s_status_mqtt_connected_topic), "%s/status/mqtt_connected", s_node_id);
+    snprintf(s_status_ota_progress_topic, sizeof(s_status_ota_progress_topic), "%s/status/ota_progress", s_node_id);
     snprintf(s_mac_colon, sizeof(s_mac_colon), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3],
              mac[4], mac[5]);
 
@@ -1834,6 +1837,45 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 bool ha_mqtt_is_connected(void)
 {
     return s_mqtt_connected;
+}
+
+void ha_mqtt_publish_ota_progress(const char *state, int percent, const char *version, const char *error_msg)
+{
+#if CONFIG_ESP_HMI_OTA_ENABLE
+    if (state == NULL || !s_mqtt_connected || s_client == NULL || s_status_ota_progress_topic[0] == '\0') {
+        return;
+    }
+    if (percent < 0) {
+        percent = 0;
+    }
+    if (percent > 100) {
+        percent = 100;
+    }
+    const char *ver = (version != NULL && version[0] != '\0') ? version : "";
+    char payload[256];
+    int len;
+    if (error_msg != NULL && error_msg[0] != '\0') {
+        len = snprintf(payload, sizeof(payload),
+                       "{\"state\":\"%s\",\"percent\":%d,\"version\":\"%s\",\"error\":\"%s\"}", state, percent, ver,
+                       error_msg);
+    } else {
+        len = snprintf(payload, sizeof(payload), "{\"state\":\"%s\",\"percent\":%d,\"version\":\"%s\"}", state, percent,
+                       ver);
+    }
+    if (len <= 0 || (size_t)len >= sizeof(payload)) {
+        ESP_LOGW(TAG, "OTA progress JSON truncated");
+        return;
+    }
+    int msg_id = esp_mqtt_client_publish(s_client, s_status_ota_progress_topic, payload, len, 1, 0);
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "publish ota_progress failed");
+    }
+#else
+    (void)state;
+    (void)percent;
+    (void)version;
+    (void)error_msg;
+#endif
 }
 
 void ha_mqtt_publish_current_screen_state(void)

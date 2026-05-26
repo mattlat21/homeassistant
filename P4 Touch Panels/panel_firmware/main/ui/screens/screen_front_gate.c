@@ -49,8 +49,8 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
 
     lv_obj_t *canvas = NULL;
     const bool reolink_enabled =
-#ifdef CONFIG_SCREEN_TEST_REOLINK_HOST
-        CONFIG_SCREEN_TEST_REOLINK_HOST[0] != '\0';
+#ifdef CONFIG_ESP_HMI_REOLINK_HOST
+        CONFIG_ESP_HMI_REOLINK_HOST[0] != '\0';
 #else
         false;
 #endif

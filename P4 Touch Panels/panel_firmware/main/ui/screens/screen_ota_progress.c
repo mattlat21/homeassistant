@@ -9,7 +9,7 @@
 #include "ui/nav.h"
 #include "sdkconfig.h"
 
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
 
 static lv_obj_t *s_scr;
 static lv_obj_t *s_bar;
@@ -160,7 +160,7 @@ void screen_ota_progress_dismiss_async(void)
     (void)lv_async_call(dismiss_cb, NULL);
 }
 
-#else /* !CONFIG_SCREEN_TEST_OTA_ENABLE */
+#else /* !CONFIG_ESP_HMI_OTA_ENABLE */
 
 lv_obj_t *screen_ota_progress_create(lv_display_t *disp)
 {

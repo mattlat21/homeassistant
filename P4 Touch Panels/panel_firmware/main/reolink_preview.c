@@ -120,8 +120,8 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 
 static bool reolink_host_configured(void)
 {
-#ifdef CONFIG_SCREEN_TEST_REOLINK_HOST
-    return CONFIG_SCREEN_TEST_REOLINK_HOST[0] != '\0';
+#ifdef CONFIG_ESP_HMI_REOLINK_HOST
+    return CONFIG_ESP_HMI_REOLINK_HOST[0] != '\0';
 #else
     return false;
 #endif
@@ -134,7 +134,7 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
     }
 
     char url[384];
-#ifdef CONFIG_SCREEN_TEST_REOLINK_USE_HTTPS
+#ifdef CONFIG_ESP_HMI_REOLINK_USE_HTTPS
     const char *scheme = "https";
 #else
     const char *scheme = "http";
@@ -142,9 +142,9 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
     unsigned rs = (unsigned)esp_random();
     int n = snprintf(url, sizeof(url),
                      "%s://%s:%d/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%08x&user=%s&password=%s&width=%d&height=%d",
-                     scheme, CONFIG_SCREEN_TEST_REOLINK_HOST, CONFIG_SCREEN_TEST_REOLINK_PORT,
-                     CONFIG_SCREEN_TEST_REOLINK_CHANNEL, rs, CONFIG_SCREEN_TEST_REOLINK_USER,
-                     CONFIG_SCREEN_TEST_REOLINK_PASSWORD, REOLINK_PREVIEW_W, REOLINK_PREVIEW_H);
+                     scheme, CONFIG_ESP_HMI_REOLINK_HOST, CONFIG_ESP_HMI_REOLINK_PORT,
+                     CONFIG_ESP_HMI_REOLINK_CHANNEL, rs, CONFIG_ESP_HMI_REOLINK_USER,
+                     CONFIG_ESP_HMI_REOLINK_PASSWORD, REOLINK_PREVIEW_W, REOLINK_PREVIEW_H);
     if (n <= 0 || n >= (int)sizeof(url)) {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -174,7 +174,7 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
         .user_data = &acc,
         .timeout_ms = 15000,
         .buffer_size = 2048,
-#ifdef CONFIG_SCREEN_TEST_REOLINK_USE_HTTPS
+#ifdef CONFIG_ESP_HMI_REOLINK_USE_HTTPS
         .skip_cert_common_name_check = true,
 #endif
     };

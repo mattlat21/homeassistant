@@ -33,11 +33,11 @@ static app_id_t s_cached_default = APP_HOME;
 static bool s_have_cached;
 static app_id_t s_cached_idle_app = APP_HOME;
 static uint32_t s_cached_idle_sec;
-static uint8_t s_cached_disp_norm_pct = CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS;
-static uint8_t s_cached_disp_dim_pct = CONFIG_SCREEN_TEST_DISPLAY_DIM_BRIGHTNESS;
-static uint32_t s_cached_disp_dim_sec = CONFIG_SCREEN_TEST_DISPLAY_DIM_TIMEOUT_S;
-static uint32_t s_cached_disp_off_sec = CONFIG_SCREEN_TEST_DISPLAY_OFF_TIMEOUT_S;
-static uint32_t s_cached_disp_fade_sec = CONFIG_SCREEN_TEST_DISPLAY_FADE_S;
+static uint8_t s_cached_disp_norm_pct = CONFIG_ESP_HMI_DISPLAY_NORMAL_BRIGHTNESS;
+static uint8_t s_cached_disp_dim_pct = CONFIG_ESP_HMI_DISPLAY_DIM_BRIGHTNESS;
+static uint32_t s_cached_disp_dim_sec = CONFIG_ESP_HMI_DISPLAY_DIM_TIMEOUT_S;
+static uint32_t s_cached_disp_off_sec = CONFIG_ESP_HMI_DISPLAY_OFF_TIMEOUT_S;
+static uint32_t s_cached_disp_fade_sec = CONFIG_ESP_HMI_DISPLAY_FADE_S;
 
 static uint8_t clamp_brightness_pct(uint8_t pct)
 {
@@ -111,24 +111,24 @@ void app_prefs_init(void)
         s_cached_idle_sec = 0;
     }
 
-    uint8_t norm = (uint8_t)CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS;
+    uint8_t norm = (uint8_t)CONFIG_ESP_HMI_DISPLAY_NORMAL_BRIGHTNESS;
     err = nvs_get_u8(h, PREFS_KEY_DISP_NORM, &norm);
     s_cached_disp_norm_pct = clamp_brightness_pct(norm);
 
-    uint8_t dim = (uint8_t)CONFIG_SCREEN_TEST_DISPLAY_DIM_BRIGHTNESS;
+    uint8_t dim = (uint8_t)CONFIG_ESP_HMI_DISPLAY_DIM_BRIGHTNESS;
     err = nvs_get_u8(h, PREFS_KEY_DISP_DIM, &dim);
     s_cached_disp_dim_pct = clamp_brightness_pct(dim);
 
-    uint32_t dim_sec = CONFIG_SCREEN_TEST_DISPLAY_DIM_TIMEOUT_S;
+    uint32_t dim_sec = CONFIG_ESP_HMI_DISPLAY_DIM_TIMEOUT_S;
     err = nvs_get_u32(h, PREFS_KEY_DISP_DIM_SEC, &dim_sec);
     s_cached_disp_dim_sec = clamp_display_timeout_sec(dim_sec);
 
-    uint32_t off_sec = CONFIG_SCREEN_TEST_DISPLAY_OFF_TIMEOUT_S;
+    uint32_t off_sec = CONFIG_ESP_HMI_DISPLAY_OFF_TIMEOUT_S;
     err = nvs_get_u32(h, PREFS_KEY_DISP_OFF_SEC, &off_sec);
     s_cached_disp_off_sec = clamp_display_timeout_sec(off_sec);
     normalize_display_timeouts(&s_cached_disp_dim_sec, &s_cached_disp_off_sec);
 
-    uint32_t fade_sec = CONFIG_SCREEN_TEST_DISPLAY_FADE_S;
+    uint32_t fade_sec = CONFIG_ESP_HMI_DISPLAY_FADE_S;
     err = nvs_get_u32(h, PREFS_KEY_DISP_FADE_SEC, &fade_sec);
     s_cached_disp_fade_sec = clamp_display_fade_sec(fade_sec);
 

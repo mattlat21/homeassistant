@@ -6,7 +6,7 @@
 
 /**
  * Full-screen OTA progress UI (not registered in nav / not on home launcher).
- * Created from ui_shell when CONFIG_SCREEN_TEST_OTA_ENABLE.
+ * Created from ui_shell when CONFIG_ESP_HMI_OTA_ENABLE.
  */
 lv_obj_t *screen_ota_progress_create(lv_display_t *disp);
 

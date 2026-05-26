@@ -18,7 +18,7 @@
 #include "ui/screens/screen_house_battery.h"
 #include "ui/components/ui_gate_action.h"
 #include "ui/screens/screen_placeholder.h"
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
 #include "ui/screens/screen_ota_progress.h"
 #endif
 
@@ -74,7 +74,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_screen_load(scr_loading);
     screen_loading_begin(scr_loading);
 
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
     (void)screen_ota_progress_create(disp);
 #endif
 

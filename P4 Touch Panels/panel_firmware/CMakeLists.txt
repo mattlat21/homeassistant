@@ -6,4 +6,4 @@ set(FW_VER_PATCH 1)
 set(PROJECT_VER "${FW_VER_MAJOR}.${FW_VER_MINOR}.${FW_VER_PATCH}")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(screen_test_1)
+project(esp_hmi)

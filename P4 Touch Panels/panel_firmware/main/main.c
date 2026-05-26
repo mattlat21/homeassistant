@@ -6,7 +6,7 @@
 #include "ota_update.h"
 #include "ui/ui_shell.h"
 
-static const char *TAG = "screen_test_1";
+static const char *TAG = "esp_hmi";
 
 static void ui_shell_boot_async(void *user_data)
 {
@@ -55,7 +55,7 @@ void app_main(void)
         return;
     }
 
-    uint8_t boot_brightness = CONFIG_SCREEN_TEST_DISPLAY_NORMAL_BRIGHTNESS;
+    uint8_t boot_brightness = CONFIG_ESP_HMI_DISPLAY_NORMAL_BRIGHTNESS;
     app_prefs_get_display_power(&boot_brightness, NULL, NULL, NULL, NULL);
     err = bsp_display_brightness_set(boot_brightness);
     if (err != ESP_OK) {

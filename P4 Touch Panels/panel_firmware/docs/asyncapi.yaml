@@ -1,6 +1,6 @@
 asyncapi: '2.6.0'
 info:
-  title: screen_test_1 MQTT (ESP32-P4 Ollie Room)
+  title: esp_hmi MQTT (ESP32-P4 Ollie Room)
   version: '1.0.0'
   description: |
     Machine-readable MQTT contract for firmware in `main/ha_mqtt.c`.
@@ -9,12 +9,12 @@ info:
 
     **Node id** `nodeId`: `esp_hmi/device/` plus 12 lowercase hex digits from STA MAC (no separators).
 
-    **Room state (HA → panels):** Shared topic from Kconfig `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC` (default
-    `esp_hmi/data/bedroom3/desired_state`, plain UTF-8). If `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE` is non-empty,
+    **Room state (HA → panels):** Shared topic from Kconfig `ESP_HMI_MQTT_ROOM_STATE_TOPIC` (default
+    `esp_hmi/data/bedroom3/desired_state`, plain UTF-8). If `ESP_HMI_MQTT_ROOM_STATE_TOPIC_OVERRIDE` is non-empty,
     that full path is used instead. Retained; QoS 1 subscribe.
 
     **All panel presses:** Device publishes JSON on `{nodeId}/status/button_press` as `{"button": "…"}` (controls, Study heater button, and room options).
-    If `SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE` is non-empty, room publishes use that topic instead of `status/button_press`.
+    If `ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE` is non-empty, room publishes use that topic instead of `status/button_press`.
 
     **Device parameters (panels → broker):** On each MQTT connect, device publishes retained JSON on `{nodeId}/status/parameters`
     (QoS 1) with firmware version, node/mac ids, chip info, HA device name from Kconfig, optional `wifi_ssid`,
@@ -32,7 +32,7 @@ info:
     **Wake display (broker → panels):** Device subscribes to `{nodeId}/cmd/wake_display` (QoS 1). Any payload resets
     LVGL inactivity and restores normal brightness without changing NVS.
 
-    **Climate state (HA → panels):** Four shared topics (Kconfig `SCREEN_TEST_MQTT_CLIMATE_*_TOPIC`, defaults under
+    **Climate state (HA → panels):** Four shared topics (Kconfig `ESP_HMI_MQTT_CLIMATE_*_TOPIC`, defaults under
     `esp_hmi/data/bedroom3/climate/`): **setpoint** and **current** (°C, plain float text); **heater** (plain bool);
     **control** = HA `climate` entity state (e.g. `heat`/`off`) or legacy bool scalars. Device subscribes QoS 1; publish
     **retained** from HA so reconnect restores the UI after all four values have been seen at least once.
@@ -53,7 +53,7 @@ servers:
   broker:
     url: '{mqttBroker}'
     protocol: mqtt
-    description: Broker URI from Kconfig `SCREEN_TEST_MQTT_BROKER_URI` (credentials not in this file).
+    description: Broker URI from Kconfig `ESP_HMI_MQTT_BROKER_URI` (credentials not in this file).
     variables:
       mqttBroker:
         default: 'mqtt://192.168.1.52:1883'
@@ -313,7 +313,7 @@ channels:
 
   esp_hmi/data/house_battery/soc_percent:
     description: |
-      Retained battery state of charge (0–100 %), plain text float. Kconfig `SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC`.
+      Retained battery state of charge (0–100 %), plain text float. Kconfig `ESP_HMI_MQTT_HOUSE_BATTERY_SOC_TOPIC`.
       Mirrors `sensor.sigen_inverter_battery_state_of_charge` in Home Assistant. Device **subscribes** QoS 1.
     subscribe:
       operationId: subscribeHouseBatterySoc
@@ -331,7 +331,7 @@ channels:
 
   esp_hmi/data/bedroom3/climate/setpoint:
     description: |
-      Retained setpoint (°C), plain text float. Kconfig `SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC`. Maps from
+      Retained setpoint (°C), plain text float. Kconfig `ESP_HMI_MQTT_CLIMATE_SETPOINT_TOPIC`. Maps from
       `input_number.desired_temperature_in_ollie_s_bedroom` in HA. Device **subscribes** QoS 1.
     subscribe:
       operationId: subscribeOllieClimateSetpoint
@@ -348,7 +348,7 @@ channels:
 
   esp_hmi/data/bedroom3/climate/current:
     description: |
-      Retained current temperature (°C), plain text float. Kconfig `SCREEN_TEST_MQTT_CLIMATE_CURRENT_TOPIC`.
+      Retained current temperature (°C), plain text float. Kconfig `ESP_HMI_MQTT_CLIMATE_CURRENT_TOPIC`.
       Device **subscribes** QoS 1.
     subscribe:
       operationId: subscribeOllieClimateCurrent
@@ -364,7 +364,7 @@ channels:
 
   esp_hmi/data/bedroom3/climate/heater_on:
     description: |
-      Retained heater on/off (`true`/`false`). Kconfig `SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC`. Plain `true`/`false`, `on`/`off`, etc.
+      Retained heater on/off (`true`/`false`). Kconfig `ESP_HMI_MQTT_CLIMATE_HEATER_TOPIC`. Plain `true`/`false`, `on`/`off`, etc.
       Device **subscribes** QoS 1.
     subscribe:
       operationId: subscribeOllieClimateHeater
@@ -387,7 +387,7 @@ channels:
     description: |
       Retained HVAC / climate-control mode: Home Assistant `climate` entity **state** (e.g. `heat`, `off` from
       `hvac_modes`). Legacy plain-boolean payloads (`true`/`false`/`on`/`off`/`1`/`0`) still accepted. Kconfig
-      `SCREEN_TEST_MQTT_CLIMATE_CONTROL_TOPIC`. Device **subscribes** QoS 1.
+      `ESP_HMI_MQTT_CLIMATE_CONTROL_TOPIC`. Device **subscribes** QoS 1.
     subscribe:
       operationId: subscribeOllieClimateControl
       summary: Device receives climate HVAC state or legacy bool
@@ -411,7 +411,7 @@ channels:
 
   esp_hmi/data/bedroom3/desired_state:
     description: |
-      Current room mode (plain UTF-8). Default path matches `SCREEN_TEST_MQTT_ROOM_STATE_TOPIC`; override replaces it.
+      Current room mode (plain UTF-8). Default path matches `ESP_HMI_MQTT_ROOM_STATE_TOPIC`; override replaces it.
       Device **subscribes** QoS 1. Publish **retained** from HA. Firmware trims ASCII whitespace; unknown values are ignored.
       Max usable length 47 bytes before NUL (`HA_MQTT_ROOM_OPTION_MAX - 1`).
     subscribe:
@@ -516,7 +516,7 @@ channels:
                   minItems: 1
                 name:
                   type: string
-                  description: From Kconfig `SCREEN_TEST_HA_DEVICE_NAME`
+                  description: From Kconfig `ESP_HMI_HA_DEVICE_NAME`
                 manufacturer:
                   const: Espressif
                 model:

@@ -1,4 +1,4 @@
-# screen_test_1
+# esp_hmi
 
 ESP-IDF + LVGL multi-screen demo for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (720×720 circular display via BSP + `esp_lvgl_port`).
 
@@ -24,7 +24,7 @@ HA remains the **source of truth**; every panel **subscribes** to the same retai
 
 ## Home Assistant: Ollie climate ↔ MQTT
 
-The panel **subscribes** to four **shared** topics (defaults below; full paths from Kconfig `SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC`, `…_CURRENT_TOPIC`, `…_HEATER_TOPIC`, `…_CONTROL_TOPIC`). Each message is **retained**, plain text, QoS 1:
+The panel **subscribes** to four **shared** topics (defaults below; full paths from Kconfig `ESP_HMI_MQTT_CLIMATE_SETPOINT_TOPIC`, `…_CURRENT_TOPIC`, `…_HEATER_TOPIC`, `…_CONTROL_TOPIC`). Each message is **retained**, plain text, QoS 1:
 
 | Topic (default) | Payload | HA source (example) |
 | ----------------- | ------- | ------------------- |
@@ -140,7 +140,7 @@ mosquitto_pub -h <broker> -t 'esp_hmi/device/<mac>/cmd/set_display_power' \
 
 The partition table uses two OTA app slots (`ota_0` / `ota_1`, see [`panel_firmware/partitions.csv`](panel_firmware/partitions.csv)) with **rollback** support (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` in [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults)). On boot, a successful app run calls `esp_ota_mark_app_valid_cancel_rollback()` so the bootloader keeps the new firmware.
 
-**Subscribe topic** (QoS **1**, suffix configurable in menu **Screen test 1 — OTA**):
+**Subscribe topic** (QoS **1**, suffix configurable in menu **ESP HMI — OTA**):
 
 **`esp_hmi/device/<aabbccddeeff>/<suffix>`** — default suffix **`cmd/ota_update`** → full topic example: `esp_hmi/device/30eda0e20a9e/cmd/ota_update`.
 
@@ -160,7 +160,7 @@ The partition table uses two OTA app slots (`ota_0` / `ota_1`, see [`panel_firmw
 **Example (`mosquitto_pub`):**
 
 ```bash
-mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"url":"https://example.com/screen_test_1.bin","version":"1.1.0"}' -q 1
+mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"url":"https://example.com/esp_hmi.bin","version":"1.1.0"}' -q 1
 ```
 
 **Example (Home Assistant action):**
@@ -169,23 +169,23 @@ mosquitto_pub -h <broker> -t 'esp_hmi/device/aabbccddeeff/cmd/ota_update' -m '{"
 action: mqtt.publish
 data:
   topic: esp_hmi/device/aabbccddeeff/cmd/ota_update
-  payload: '{"url":"https://example.com/screen_test_1.bin","version":"1.1.0"}'
+  payload: '{"url":"https://example.com/esp_hmi.bin","version":"1.1.0"}'
   qos: 1
 ```
 
-**Security:** Public HTTPS hosts should use the default CA bundle (`SCREEN_TEST_OTA_SKIP_CERT_VERIFY` off). For LAN / self-signed firmware servers, enable **Screen test 1 — OTA → Skip HTTPS server certificate verification** and ensure your global TLS settings match (this repo’s defaults already allow insecure TLS for other HTTP clients—still treat OTA URLs as trusted inputs).
+**Security:** Public HTTPS hosts should use the default CA bundle (`ESP_HMI_OTA_SKIP_CERT_VERIFY` off). For LAN / self-signed firmware servers, enable **ESP HMI — OTA → Skip HTTPS server certificate verification** and ensure your global TLS settings match (this repo’s defaults already allow insecure TLS for other HTTP clients—still treat OTA URLs as trusted inputs).
 
 **First migration from factory-only layout:** After changing [`panel_firmware/partitions.csv`](panel_firmware/partitions.csv), do a **full chip erase** or flash with erase before the first OTA-capable image so partition metadata is consistent.
 
 ## Configuration
 
-- **Wi‑Fi / MQTT / Home Assistant**: Menu **Screen test 1 — Network / Home Assistant** (`panel_firmware/main/Kconfig.projbuild`). Set **WiFi SSID** (required for MQTT; leave empty to skip Wi‑Fi/MQTT and keep UI-only). Defaults: broker `mqtt://192.168.1.52:1883`, MQTT user `mqttdevice`, device name `ESP32-P4 Ollie Room`. On **ESP32-P4**, Wi‑Fi runs on the onboard **ESP32‑C6** via **esp_hosted** (SDIO) and **esp_wifi_remote**; [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) disables `CONFIG_ESP_HOST_WIFI_ENABLED` (mutually exclusive with remote Wi‑Fi) and selects the Espressif **ESP32‑P4 Function EV** SDIO pin preset with **C6** slave target. **Do not commit real Wi‑Fi or MQTT secrets** in a public repo—override in local `sdkconfig` or clear Kconfig defaults before pushing.
-- **Room mode MQTT topics** (same menu): **HA → panels** use **`SCREEN_TEST_MQTT_ROOM_STATE_TOPIC`** (default `esp_hmi/data/bedroom3/desired_state`, retained plain-text: `Normal`, `Rest Time`, or `Sleep Time`). Override with **`SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE`** if needed. **Panels → HA** room taps **publish** **`{"button": "…"}`** on **`esp_hmi/device/<MAC>/status/button_press`**. Optional **`SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE`**: if set, that JSON is published to that topic instead of `status/button_press`.
-- **Climate MQTT topics** (same menu): Four full topic strings (`SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC`, `…_CURRENT_TOPIC`, `…_HEATER_TOPIC`, `…_CONTROL_TOPIC`), defaults under `esp_hmi/data/bedroom3/climate/`. Plain scalar payloads; see [Ollie climate](#home-assistant-ollie-climate--mqtt) and [`panel_firmware/docs/asyncapi.yaml`](panel_firmware/docs/asyncapi.yaml).
+- **Wi‑Fi / MQTT / Home Assistant**: Menu **ESP HMI — Network / Home Assistant** (`panel_firmware/main/Kconfig.projbuild`). Set **WiFi SSID** (required for MQTT; leave empty to skip Wi‑Fi/MQTT and keep UI-only). Defaults: broker `mqtt://192.168.1.52:1883`, MQTT user `mqttdevice`, device name `ESP32-P4 Ollie Room`. On **ESP32-P4**, Wi‑Fi runs on the onboard **ESP32‑C6** via **esp_hosted** (SDIO) and **esp_wifi_remote**; [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) disables `CONFIG_ESP_HOST_WIFI_ENABLED` (mutually exclusive with remote Wi‑Fi) and selects the Espressif **ESP32‑P4 Function EV** SDIO pin preset with **C6** slave target. **Do not commit real Wi‑Fi or MQTT secrets** in a public repo—override in local `sdkconfig` or clear Kconfig defaults before pushing.
+- **Room mode MQTT topics** (same menu): **HA → panels** use **`ESP_HMI_MQTT_ROOM_STATE_TOPIC`** (default `esp_hmi/data/bedroom3/desired_state`, retained plain-text: `Normal`, `Rest Time`, or `Sleep Time`). Override with **`ESP_HMI_MQTT_ROOM_STATE_TOPIC_OVERRIDE`** if needed. **Panels → HA** room taps **publish** **`{"button": "…"}`** on **`esp_hmi/device/<MAC>/status/button_press`**. Optional **`ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE`**: if set, that JSON is published to that topic instead of `status/button_press`.
+- **Climate MQTT topics** (same menu): Four full topic strings (`ESP_HMI_MQTT_CLIMATE_SETPOINT_TOPIC`, `…_CURRENT_TOPIC`, `…_HEATER_TOPIC`, `…_CONTROL_TOPIC`), defaults under `esp_hmi/data/bedroom3/climate/`. Plain scalar payloads; see [Ollie climate](#home-assistant-ollie-climate--mqtt) and [`panel_firmware/docs/asyncapi.yaml`](panel_firmware/docs/asyncapi.yaml).
 - **Lottie / ThorVG**: Enabled in [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) (`CONFIG_LV_USE_VECTOR_GRAPHIC`, `CONFIG_LV_USE_THORVG`, `CONFIG_LV_USE_THORVG_INTERNAL`, `CONFIG_LV_USE_LOTTIE`, plus `CONFIG_LV_FONT_MONTSERRAT_24` for symbols). Equivalent path in menuconfig: **Component config → LVGL** (vector graphics, ThorVG, Lottie). **Gesture navigation** requires `CONFIG_LV_USE_FLOAT` and `CONFIG_LV_USE_GESTURE_RECOGNITION` (also set in defaults).
-- **Loading duration**: **Screen test 1 UI → Loading screen duration (ms)** (`CONFIG_SCREEN_TEST_LOADING_MS`, default 3000), defined in [`panel_firmware/main/Kconfig.projbuild`](panel_firmware/main/Kconfig.projbuild).
+- **Loading duration**: **ESP HMI UI → Loading screen duration (ms)** (`CONFIG_ESP_HMI_LOADING_MS`, default 3000), defined in [`panel_firmware/main/Kconfig.projbuild`](panel_firmware/main/Kconfig.projbuild).
 - **Flash / partitions**: The firmware is ~1.2 MiB; the project uses a **custom** [`panel_firmware/partitions.csv`](panel_firmware/partitions.csv) with **two ~2.5 MiB OTA app slots** (`ota_0` / `ota_1`), **otadata**, and **16 MiB** flash in defaults (`CONFIG_ESPTOOLPY_FLASHSIZE_16MB`). If you already have a local `sdkconfig` from an older profile, run `idf.py menuconfig` and align **Serial flasher → Flash size** and **Partition Table** with `panel_firmware/sdkconfig.defaults`, or remove `sdkconfig` and run `idf.py set-target esp32p4` again so defaults apply cleanly.
-- **OTA (MQTT / HTTPS)**: Menu **Screen test 1 — OTA** (`panel_firmware/main/Kconfig.projbuild`). Enable **`SCREEN_TEST_OTA_ENABLE`**, set **`SCREEN_TEST_OTA_MQTT_CMD_SUFFIX`** (default `cmd/ota_update`), timeout, and optional skip-verify for self-signed URLs. See [OTA firmware update](#ota-firmware-update-https-mqtt-command).
+- **OTA (MQTT / HTTPS)**: Menu **ESP HMI — OTA** (`panel_firmware/main/Kconfig.projbuild`). Enable **`ESP_HMI_OTA_ENABLE`**, set **`ESP_HMI_OTA_MQTT_CMD_SUFFIX`** (default `cmd/ota_update`), timeout, and optional skip-verify for self-signed URLs. See [OTA firmware update](#ota-firmware-update-https-mqtt-command).
 - **LVGL task stack (Lottie / ThorVG)**: [`panel_firmware/main/main.c`](panel_firmware/main/main.c) starts the display with **`bsp_display_start_with_config`** and sets **`task_stack` to 32 KiB**. The BSP default from `ESP_LVGL_PORT_INIT_CONFIG()` is only **7168** bytes; ThorVG’s software renderer uses enough stack that a smaller value triggers a **stack protection fault** in `taskLVGL` (often reported inside `tvgSwRle.cpp`).
 - **Main task stack / Lottie thread**: LVGL’s `lv_lottie_set_src_data()` calls **`lottie_update()` immediately** on the calling thread. [`panel_firmware/main/main.c`](panel_firmware/main/main.c) defers **`ui_shell_init()`** with **`lv_async_call()`** so that draw uses **`taskLVGL`’s** stack. [`panel_firmware/sdkconfig.defaults`](panel_firmware/sdkconfig.defaults) still sets **`CONFIG_ESP_MAIN_TASK_STACK_SIZE=32768`** as a safety margin if your `sdkconfig` picks it up (an older `sdkconfig` may keep the default ~4 KiB until you reconfigure).
 
@@ -231,7 +231,7 @@ On first build, ESP-IDF resolves the [Waveshare BSP](https://components.espressi
 
 ## ESP32-C6 co-processor (esp_hosted slave)
 
-The C6 is **not** flashed with this project’s `screen_test_1.bin`. It must run **Espressif esp_hosted slave** firmware whose version matches the **esp_hosted** component in [`panel_firmware/main/idf_component.yml`](panel_firmware/main/idf_component.yml) / [`panel_firmware/dependencies.lock`](panel_firmware/dependencies.lock). Boards often ship with a compatible image already.
+The C6 is **not** flashed with this project’s `esp_hmi.bin`. It must run **Espressif esp_hosted slave** firmware whose version matches the **esp_hosted** component in [`panel_firmware/main/idf_component.yml`](panel_firmware/main/idf_component.yml) / [`panel_firmware/dependencies.lock`](panel_firmware/dependencies.lock). Boards often ship with a compatible image already.
 
 If Wi‑Fi never associates after the host changes (no `got IP`, transport errors in the log):
 

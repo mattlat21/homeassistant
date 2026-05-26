@@ -37,7 +37,7 @@ void ha_mqtt_set_ollie_room_state_callback(ha_mqtt_room_state_cb_t cb, void *use
 
 /**
  * Publish selected room mode as JSON `{"button": "<option>"}` on `esp_hmi/device/<MAC>/status/button_press` (QoS 1, not retained).
- * If Kconfig `SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE` is set, publishes the same JSON there instead.
+ * If Kconfig `ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE` is set, publishes the same JSON there instead.
  * Updates last-applied cache so identical retained state echoes are ignored.
  * @return false if disconnected or publish failed.
  */
@@ -45,7 +45,7 @@ bool ha_mqtt_publish_ollie_room_option(const char *option);
 
 /**
  * LVGL-thread callback: apply climate widget from retained per-field MQTT topics (see asyncapi / README).
- * @param heater_on mirrored from MQTT `SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC` (e.g. `switch.bedroom_3_heater` in HA)
+ * @param heater_on mirrored from MQTT `ESP_HMI_MQTT_CLIMATE_HEATER_TOPIC` (e.g. `switch.bedroom_3_heater` in HA)
  * @param climate_control_on true when HA climate HVAC mode is active (e.g. `heat`); false for `off` (see MQTT control topic)
  */
 /** Parsed from climate `control` MQTT (HA entity state); unknown (-1) for legacy bool payloads. */

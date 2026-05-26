@@ -2,7 +2,7 @@
 
 #include "sdkconfig.h"
 
-#if CONFIG_SCREEN_TEST_UI_WATCHDOG_ENABLE
+#if CONFIG_ESP_HMI_UI_WATCHDOG_ENABLE
 
 #include <stdatomic.h>
 
@@ -27,7 +27,7 @@ static void heartbeat_timer_cb(lv_timer_t *timer)
 static void freeze_monitor_task(void *arg)
 {
     (void)arg;
-    const int64_t timeout_us = (int64_t)CONFIG_SCREEN_TEST_UI_WATCHDOG_TIMEOUT_S * 1000000LL;
+    const int64_t timeout_us = (int64_t)CONFIG_ESP_HMI_UI_WATCHDOG_TIMEOUT_S * 1000000LL;
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(2000));
@@ -35,7 +35,7 @@ static void freeze_monitor_task(void *arg)
         const int64_t now = esp_timer_get_time();
         if (now - last > timeout_us) {
             ESP_LOGE(TAG, "UI freeze: LVGL heartbeat stale > %ds — rebooting",
-                     CONFIG_SCREEN_TEST_UI_WATCHDOG_TIMEOUT_S);
+                     CONFIG_ESP_HMI_UI_WATCHDOG_TIMEOUT_S);
             esp_restart();
         }
     }
@@ -65,7 +65,7 @@ void ui_watchdog_init(void)
     }
 }
 
-#else /* !CONFIG_SCREEN_TEST_UI_WATCHDOG_ENABLE */
+#else /* !CONFIG_ESP_HMI_UI_WATCHDOG_ENABLE */
 
 void ui_watchdog_init(void) {}
 

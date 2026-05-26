@@ -34,7 +34,7 @@ def _parse_cmake_lists(text: str) -> tuple[int, int, int, str]:
     m_proj = re.search(r"^\s*project\s*\(\s*(\w+)\s*\)", text, re.MULTILINE)
     if not (m_major and m_minor and m_patch):
         raise ValueError("Could not parse FW_VER_MAJOR/MINOR/PATCH from CMakeLists.txt")
-    name = m_proj.group(1) if m_proj else "screen_test_1"
+    name = m_proj.group(1) if m_proj else "esp_hmi"
     return int(m_major.group(1)), int(m_minor.group(1)), int(m_patch.group(1)), name
 
 

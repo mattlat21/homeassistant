@@ -1,5 +1,5 @@
 # Home Assistant: room desired state → MQTT (HA → panels). See README.
-# Must match firmware SCREEN_TEST_MQTT_ROOM_STATE_TOPIC (default esp_hmi/data/bedroom3/desired_state).
+# Must match firmware ESP_HMI_MQTT_ROOM_STATE_TOPIC (default esp_hmi/data/bedroom3/desired_state).
 
 alias: ESP HMI - Data - Bedroom 3 Mode
 description: Updates Bedroom 3's desired state over MQTT

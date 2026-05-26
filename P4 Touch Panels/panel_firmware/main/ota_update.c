@@ -21,7 +21,7 @@
 #include "mbedtls/sha256.h"
 #include "sdkconfig.h"
 
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
 #include "ui/screens/screen_ota_progress.h"
 #endif
 
@@ -49,7 +49,7 @@ static void maybe_mark_app_valid(void)
 #endif
 }
 
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
 
 #define OTA_JSON_QUEUE_MAX 768
 #define OTA_WORKER_STACK (1024 * 12)
@@ -138,11 +138,11 @@ static esp_err_t run_https_ota(const char *url, const uint8_t *expected_sha256, 
 
     esp_http_client_config_t http_cfg = {
         .url = url,
-        .timeout_ms = CONFIG_SCREEN_TEST_OTA_HTTP_TIMEOUT_MS,
+        .timeout_ms = CONFIG_ESP_HMI_OTA_HTTP_TIMEOUT_MS,
         .keep_alive_enable = true,
     };
 
-#if CONFIG_SCREEN_TEST_OTA_SKIP_CERT_VERIFY
+#if CONFIG_ESP_HMI_OTA_SKIP_CERT_VERIFY
     http_cfg.skip_cert_common_name_check = true;
     http_cfg.crt_bundle_attach = NULL;
 #else
@@ -345,7 +345,7 @@ bool ota_update_request_from_mqtt_json(const char *json)
     return true;
 }
 
-#else /* !CONFIG_SCREEN_TEST_OTA_ENABLE */
+#else /* !CONFIG_ESP_HMI_OTA_ENABLE */
 
 void ota_update_init(void)
 {
@@ -358,4 +358,4 @@ bool ota_update_request_from_mqtt_json(const char *json)
     return false;
 }
 
-#endif /* CONFIG_SCREEN_TEST_OTA_ENABLE */
+#endif /* CONFIG_ESP_HMI_OTA_ENABLE */

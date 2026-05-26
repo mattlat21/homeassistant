@@ -1,5 +1,5 @@
 # Home Assistant: front gate sensor state → retained MQTT (HA → panels).
-# Must match firmware SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC (default esp_hmi/data/front_gate/state).
+# Must match firmware ESP_HMI_MQTT_FRONT_GATE_STATE_TOPIC (default esp_hmi/data/front_gate/state).
 #
 # The Front Gate screen subscribes to this topic and maps plain-text payloads to the pill:
 #   open            → green label "Gate Open"

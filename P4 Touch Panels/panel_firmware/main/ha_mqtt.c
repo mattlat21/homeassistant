@@ -64,8 +64,8 @@ static char s_set_display_power_topic[88];
 static char s_wake_display_topic[88];
 /** Any payload triggers delayed reboot after a short FreeRTOS deferral. */
 static char s_reboot_cmd_topic[72];
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
-/** `<s_node_id>/<SCREEN_TEST_OTA_MQTT_CMD_SUFFIX>` — JSON OTA command (QoS 1). */
+#if CONFIG_ESP_HMI_OTA_ENABLE
+/** `<s_node_id>/<ESP_HMI_OTA_MQTT_CMD_SUFFIX>` — JSON OTA command (QoS 1). */
 static char s_ota_topic[96];
 #endif
 
@@ -233,33 +233,33 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_mac_colon, sizeof(s_mac_colon), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3],
              mac[4], mac[5]);
 
-    if (CONFIG_SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE[0] != '\0') {
-        strncpy(s_room_state_topic, CONFIG_SCREEN_TEST_MQTT_ROOM_STATE_TOPIC_OVERRIDE, sizeof(s_room_state_topic) - 1);
+    if (CONFIG_ESP_HMI_MQTT_ROOM_STATE_TOPIC_OVERRIDE[0] != '\0') {
+        strncpy(s_room_state_topic, CONFIG_ESP_HMI_MQTT_ROOM_STATE_TOPIC_OVERRIDE, sizeof(s_room_state_topic) - 1);
         s_room_state_topic[sizeof(s_room_state_topic) - 1] = '\0';
     } else {
-        strncpy(s_room_state_topic, CONFIG_SCREEN_TEST_MQTT_ROOM_STATE_TOPIC, sizeof(s_room_state_topic) - 1);
+        strncpy(s_room_state_topic, CONFIG_ESP_HMI_MQTT_ROOM_STATE_TOPIC, sizeof(s_room_state_topic) - 1);
         s_room_state_topic[sizeof(s_room_state_topic) - 1] = '\0';
     }
-    if (CONFIG_SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE[0] != '\0') {
-        strncpy(s_room_set_topic, CONFIG_SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE, sizeof(s_room_set_topic) - 1);
+    if (CONFIG_ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE[0] != '\0') {
+        strncpy(s_room_set_topic, CONFIG_ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE, sizeof(s_room_set_topic) - 1);
         s_room_set_topic[sizeof(s_room_set_topic) - 1] = '\0';
     } else {
-        snprintf(s_room_set_topic, sizeof(s_room_set_topic), "%s/%s", s_node_id, CONFIG_SCREEN_TEST_MQTT_ROOM_SET_SUFFIX);
+        snprintf(s_room_set_topic, sizeof(s_room_set_topic), "%s/%s", s_node_id, CONFIG_ESP_HMI_MQTT_ROOM_SET_SUFFIX);
     }
 
-    strncpy(s_climate_topic_setpoint, CONFIG_SCREEN_TEST_MQTT_CLIMATE_SETPOINT_TOPIC,
+    strncpy(s_climate_topic_setpoint, CONFIG_ESP_HMI_MQTT_CLIMATE_SETPOINT_TOPIC,
             sizeof(s_climate_topic_setpoint) - 1);
     s_climate_topic_setpoint[sizeof(s_climate_topic_setpoint) - 1] = '\0';
-    strncpy(s_climate_topic_current, CONFIG_SCREEN_TEST_MQTT_CLIMATE_CURRENT_TOPIC, sizeof(s_climate_topic_current) - 1);
+    strncpy(s_climate_topic_current, CONFIG_ESP_HMI_MQTT_CLIMATE_CURRENT_TOPIC, sizeof(s_climate_topic_current) - 1);
     s_climate_topic_current[sizeof(s_climate_topic_current) - 1] = '\0';
-    strncpy(s_climate_topic_heater, CONFIG_SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC, sizeof(s_climate_topic_heater) - 1);
+    strncpy(s_climate_topic_heater, CONFIG_ESP_HMI_MQTT_CLIMATE_HEATER_TOPIC, sizeof(s_climate_topic_heater) - 1);
     s_climate_topic_heater[sizeof(s_climate_topic_heater) - 1] = '\0';
-    strncpy(s_climate_topic_control, CONFIG_SCREEN_TEST_MQTT_CLIMATE_CONTROL_TOPIC, sizeof(s_climate_topic_control) - 1);
+    strncpy(s_climate_topic_control, CONFIG_ESP_HMI_MQTT_CLIMATE_CONTROL_TOPIC, sizeof(s_climate_topic_control) - 1);
     s_climate_topic_control[sizeof(s_climate_topic_control) - 1] = '\0';
-    strncpy(s_front_gate_state_topic, CONFIG_SCREEN_TEST_MQTT_FRONT_GATE_STATE_TOPIC, sizeof(s_front_gate_state_topic) - 1);
+    strncpy(s_front_gate_state_topic, CONFIG_ESP_HMI_MQTT_FRONT_GATE_STATE_TOPIC, sizeof(s_front_gate_state_topic) - 1);
     s_front_gate_state_topic[sizeof(s_front_gate_state_topic) - 1] = '\0';
     snprintf(s_study_heater_state_topic, sizeof(s_study_heater_state_topic), "esp_hmi/data/study/heater_on");
-    strncpy(s_house_battery_soc_topic, CONFIG_SCREEN_TEST_MQTT_HOUSE_BATTERY_SOC_TOPIC,
+    strncpy(s_house_battery_soc_topic, CONFIG_ESP_HMI_MQTT_HOUSE_BATTERY_SOC_TOPIC,
             sizeof(s_house_battery_soc_topic) - 1);
     s_house_battery_soc_topic[sizeof(s_house_battery_soc_topic) - 1] = '\0';
 
@@ -270,8 +270,8 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_set_display_power_topic, sizeof(s_set_display_power_topic), "%s/cmd/set_display_power", s_node_id);
     snprintf(s_wake_display_topic, sizeof(s_wake_display_topic), "%s/cmd/wake_display", s_node_id);
     snprintf(s_reboot_cmd_topic, sizeof(s_reboot_cmd_topic), "%s/cmd/reboot", s_node_id);
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
-    snprintf(s_ota_topic, sizeof(s_ota_topic), "%s/%s", s_node_id, CONFIG_SCREEN_TEST_OTA_MQTT_CMD_SUFFIX);
+#if CONFIG_ESP_HMI_OTA_ENABLE
+    snprintf(s_ota_topic, sizeof(s_ota_topic), "%s/%s", s_node_id, CONFIG_ESP_HMI_OTA_MQTT_CMD_SUFFIX);
 #endif
 }
 
@@ -770,7 +770,7 @@ static void subscribe_remote_screen_topics(void)
     }
 }
 
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
 static void subscribe_ota_topic(void)
 {
     if (s_client == NULL || s_ota_topic[0] == '\0') {
@@ -1124,7 +1124,7 @@ static void publish_mqtt_connected_on(esp_mqtt_client_handle_t client)
 
 static void publish_discovery_configs(esp_mqtt_client_handle_t client)
 {
-    const char *dev_name = CONFIG_SCREEN_TEST_HA_DEVICE_NAME;
+    const char *dev_name = CONFIG_ESP_HMI_HA_DEVICE_NAME;
 
     for (size_t i = 0; i < sizeof(s_ollie_buttons) / sizeof(s_ollie_buttons[0]); i++) {
         char topic[96];
@@ -1306,7 +1306,7 @@ static void publish_device_status_parameters(esp_mqtt_client_handle_t client)
     (void)cJSON_AddNumberToObject(j, "chip_cores", chip.cores);
     (void)cJSON_AddNumberToObject(j, "chip_revision", chip.revision);
 
-    (void)cJSON_AddStringToObject(j, "ha_device_name", CONFIG_SCREEN_TEST_HA_DEVICE_NAME);
+    (void)cJSON_AddStringToObject(j, "ha_device_name", CONFIG_ESP_HMI_HA_DEVICE_NAME);
 
     wifi_ap_record_t ap = { 0 };
     if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK && ap.ssid[0] != '\0') {
@@ -1374,7 +1374,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_house_battery_soc_topic();
         subscribe_set_default_screen_topic();
         subscribe_remote_screen_topics();
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
         subscribe_ota_topic();
 #endif
         publish_device_status_parameters(s_client);
@@ -1733,7 +1733,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             }
             break;
         }
-#if CONFIG_SCREEN_TEST_OTA_ENABLE
+#if CONFIG_ESP_HMI_OTA_ENABLE
         if (strcmp(tbuf, s_ota_topic) == 0) {
             if (ev->data_len <= 0 || ev->data_len >= HA_MQTT_OTA_PAYLOAD_MAX) {
                 ESP_LOGW(TAG, "OTA payload bad len (%d)", ev->data_len);
@@ -1769,14 +1769,14 @@ static void start_mqtt_client(void)
     s_mqtt_started = true;
 
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_SCREEN_TEST_MQTT_BROKER_URI,
+        .broker.address.uri = CONFIG_ESP_HMI_MQTT_BROKER_URI,
     };
 
-    if (CONFIG_SCREEN_TEST_MQTT_USER[0] != '\0') {
-        mqtt_cfg.credentials.username = CONFIG_SCREEN_TEST_MQTT_USER;
+    if (CONFIG_ESP_HMI_MQTT_USER[0] != '\0') {
+        mqtt_cfg.credentials.username = CONFIG_ESP_HMI_MQTT_USER;
     }
-    if (CONFIG_SCREEN_TEST_MQTT_PASSWORD[0] != '\0') {
-        mqtt_cfg.credentials.authentication.password = CONFIG_SCREEN_TEST_MQTT_PASSWORD;
+    if (CONFIG_ESP_HMI_MQTT_PASSWORD[0] != '\0') {
+        mqtt_cfg.credentials.authentication.password = CONFIG_ESP_HMI_MQTT_PASSWORD;
     }
 
     mqtt_cfg.session.last_will.topic = s_status_mqtt_connected_topic;
@@ -1993,7 +1993,7 @@ bool ha_mqtt_publish_ollie_room_option(const char *option)
         return false;
     }
     const char *topic = s_button_press_topic;
-    if (CONFIG_SCREEN_TEST_MQTT_ROOM_SET_TOPIC_OVERRIDE[0] != '\0' && s_room_set_topic[0] != '\0') {
+    if (CONFIG_ESP_HMI_MQTT_ROOM_SET_TOPIC_OVERRIDE[0] != '\0' && s_room_set_topic[0] != '\0') {
         topic = s_room_set_topic;
     }
     int msg_id = esp_mqtt_client_publish(s_client, topic, body, n, 1, 0);
@@ -2007,8 +2007,8 @@ bool ha_mqtt_publish_ollie_room_option(const char *option)
 
 void ha_mqtt_init(void)
 {
-    if (CONFIG_SCREEN_TEST_WIFI_SSID[0] == '\0') {
-        ESP_LOGW(TAG, "SCREEN_TEST_WIFI_SSID empty — skipping Wi-Fi/MQTT");
+    if (CONFIG_ESP_HMI_WIFI_SSID[0] == '\0') {
+        ESP_LOGW(TAG, "ESP_HMI_WIFI_SSID empty — skipping Wi-Fi/MQTT");
         return;
     }
 
@@ -2040,8 +2040,8 @@ void ha_mqtt_init(void)
                                                         &inst_got_ip));
 
     wifi_config_t wifi_config = { 0 };
-    strncpy((char *)wifi_config.sta.ssid, CONFIG_SCREEN_TEST_WIFI_SSID, sizeof(wifi_config.sta.ssid) - 1);
-    strncpy((char *)wifi_config.sta.password, CONFIG_SCREEN_TEST_WIFI_PASSWORD, sizeof(wifi_config.sta.password) - 1);
+    strncpy((char *)wifi_config.sta.ssid, CONFIG_ESP_HMI_WIFI_SSID, sizeof(wifi_config.sta.ssid) - 1);
+    strncpy((char *)wifi_config.sta.password, CONFIG_ESP_HMI_WIFI_PASSWORD, sizeof(wifi_config.sta.password) - 1);
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -2062,5 +2062,5 @@ void ha_mqtt_init(void)
     }
 
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "WiFi STA starting (SSID=%s)", CONFIG_SCREEN_TEST_WIFI_SSID);
+    ESP_LOGI(TAG, "WiFi STA starting (SSID=%s)", CONFIG_ESP_HMI_WIFI_SSID);
 }

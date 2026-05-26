@@ -29,6 +29,9 @@ static uint8_t s_fade_from_pct;
 static uint16_t s_fade_steps_total;
 static uint16_t s_fade_step;
 static bool s_fading;
+static lv_obj_t *s_black_screen;
+
+static void sync_black_screen(void);
 
 static void apply_brightness_immediate(uint8_t pct)
 {
@@ -59,6 +62,7 @@ static void fade_timer_cb(lv_timer_t *t)
         apply_brightness_immediate(s_target_pct);
         s_fading = false;
         lv_timer_pause(s_fade_timer);
+        sync_black_screen();
         return;
     }
     int32_t delta = (int32_t)s_target_pct - (int32_t)s_fade_from_pct;
@@ -86,6 +90,7 @@ static void set_brightness_target(uint8_t target)
         }
         apply_brightness_immediate(target);
         s_target_pct = target;
+        sync_black_screen();
         return;
     }
 
@@ -97,6 +102,7 @@ static void set_brightness_target(uint8_t target)
     }
     s_fade_step = 0U;
     s_fading = true;
+    sync_black_screen();
     if (s_fade_timer != NULL) {
         lv_timer_reset(s_fade_timer);
         lv_timer_resume(s_fade_timer);
@@ -110,12 +116,44 @@ static void refresh_hardware_brightness(void)
     set_brightness_target(brightness_for_state(s_state));
 }
 
+static void ensure_black_screen(void)
+{
+    if (s_black_screen != NULL || s_disp == NULL) {
+        return;
+    }
+    const int32_t dw = lv_display_get_horizontal_resolution(s_disp);
+    const int32_t dh = lv_display_get_vertical_resolution(s_disp);
+    s_black_screen = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_black_screen);
+    lv_obj_set_size(s_black_screen, (lv_coord_t)dw, (lv_coord_t)dh);
+    lv_obj_set_style_bg_color(s_black_screen, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_black_screen, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(s_black_screen, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(s_black_screen, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void sync_black_screen(void)
+{
+    ensure_black_screen();
+    if (s_black_screen == NULL) {
+        return;
+    }
+    const bool show = (s_state == DISP_PWR_OFF && !s_fading && s_current_pct == 0U);
+    if (show) {
+        lv_obj_remove_flag(s_black_screen, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(s_black_screen);
+    } else {
+        lv_obj_add_flag(s_black_screen, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 static void wake_from_off_touch(void)
 {
     if (s_disp != NULL) {
         lv_display_trigger_activity(s_disp);
     }
     s_state = DISP_PWR_NORMAL;
+    sync_black_screen();
     refresh_hardware_brightness();
 }
 
@@ -182,6 +220,7 @@ static void apply_state(disp_pwr_state_t want)
     }
     s_state = want;
     refresh_hardware_brightness();
+    sync_black_screen();
 }
 
 static void sync_state_from_inactivity(void)
@@ -216,6 +255,7 @@ void ui_display_power_wake(void)
         lv_display_trigger_activity(s_disp);
     }
     s_state = DISP_PWR_NORMAL;
+    sync_black_screen();
     refresh_hardware_brightness();
 }
 
@@ -237,4 +277,5 @@ void ui_display_power_init(lv_display_t *disp)
         lv_timer_pause(s_fade_timer);
     }
     hook_touch_indev();
+    ensure_black_screen();
 }

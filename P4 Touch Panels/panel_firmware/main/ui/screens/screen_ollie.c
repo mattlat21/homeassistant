@@ -32,8 +32,9 @@ static lv_obj_t *s_fan_modal;
 static void ollie_mqtt_publish_payload(void *user_data);
 
 static void ollie_climate_apply_from_mqtt(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
-                                          void *user_data)
+                                          int8_t hvac_mode, void *user_data)
 {
+    (void)hvac_mode;
     (void)user_data;
     if (s_climate_widget == NULL) {
         return;

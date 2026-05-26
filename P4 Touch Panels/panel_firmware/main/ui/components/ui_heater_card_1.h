@@ -20,6 +20,8 @@ typedef void (*ui_heater_card_1_cb_t)(ui_heater_card_1_event_t event, void *user
 typedef enum {
     UI_HEATER_CARD_PROFILE_HEATER = 0,
     UI_HEATER_CARD_PROFILE_FAN,
+    UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN,
+    UI_HEATER_CARD_PROFILE_HEAT_COOL,
     UI_HEATER_CARD_PROFILE_BLANK,
 } ui_heater_card_1_profile_t;
 
@@ -40,3 +42,6 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
 void ui_heater_card_1_set_current_temp(lv_obj_t *card, float temp_c);
 void ui_heater_card_1_set_setpoint(lv_obj_t *card, float setpoint_c);
 void ui_heater_card_1_set_switch_state(lv_obj_t *card, bool heater_on, bool climate_control_on);
+
+/** @param hvac_mode `HA_MQTT_CLIMATE_HVAC_*` from MQTT control topic; unknown (-1) keeps profile defaults. */
+void ui_heater_card_1_set_hvac_mode(lv_obj_t *card, int8_t hvac_mode);

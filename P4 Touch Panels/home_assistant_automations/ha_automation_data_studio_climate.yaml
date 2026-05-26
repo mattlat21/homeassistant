@@ -1,0 +1,37 @@
+# Home Assistant: Studio AC → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/studio/climate/* for the HVAC "Studio" card.
+# No separate run-state feedback: heater_on is true whenever the climate entity is not off.
+
+alias: "ESP HMI - Data - Studio Climate"
+description: ""
+variables:
+  climate_target: climate.studio_ac
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.studio_ac
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/heater_on
+      payload: >-
+        {{ 'true' if states(climate_target) not in ['off', 'unavailable', 'unknown']
+        else 'false' }}
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

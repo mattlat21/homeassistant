@@ -21,37 +21,41 @@ static lv_obj_t *s_heater_cards[HVAC_HEATER_CARD_COUNT];
 static const hvac_card_def_t s_card_defs[HVAC_HEATER_CARD_COUNT] = {
     { "Ollie's Room", UI_HEATER_CARD_PROFILE_HEATER, NULL, -1 },
     { "Our Bedroom", UI_HEATER_CARD_PROFILE_HEATER, "climate_bedroom_1", HA_MQTT_HVAC_ZONE_BEDROOM_1 },
-    { "Upstairs Bedroom", UI_HEATER_CARD_PROFILE_BLANK, NULL, -1 },
-    { "Studio", UI_HEATER_CARD_PROFILE_BLANK, NULL, -1 },
+    { "Upstairs Bedroom", UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN, "climate_upstairs_bedroom",
+      HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM },
+    { "Studio", UI_HEATER_CARD_PROFILE_HEAT_COOL, "climate_studio", HA_MQTT_HVAC_ZONE_STUDIO },
     { "Server Rack", UI_HEATER_CARD_PROFILE_FAN, "climate_server_rack", HA_MQTT_HVAC_ZONE_SERVER_RACK },
 };
 
 static void hvac_apply_heater_card(lv_obj_t *card, float setpoint_c, float current_c, bool heater_on,
-                                   bool climate_control_on)
+                                   bool climate_control_on, int8_t hvac_mode)
 {
     if (card == NULL) {
         return;
     }
     ui_heater_card_1_set_switch_state(card, heater_on, climate_control_on);
+    ui_heater_card_1_set_hvac_mode(card, hvac_mode);
     ui_heater_card_1_set_setpoint(card, setpoint_c);
     ui_heater_card_1_set_current_temp(card, current_c);
 }
 
 static void hvac_climate_apply_card0(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
-                                     void *user_data)
+                                     int8_t hvac_mode, void *user_data)
 {
+    (void)hvac_mode;
     (void)user_data;
-    hvac_apply_heater_card(s_heater_cards[0], setpoint_c, current_c, heater_on, climate_control_on);
+    hvac_apply_heater_card(s_heater_cards[0], setpoint_c, current_c, heater_on, climate_control_on,
+                           HA_MQTT_CLIMATE_HVAC_UNKNOWN);
 }
 
 static void hvac_climate_apply_zone(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
-                                    void *user_data)
+                                    int8_t hvac_mode, void *user_data)
 {
     const unsigned card_idx = (unsigned)(uintptr_t)user_data;
     if (card_idx >= HVAC_HEATER_CARD_COUNT) {
         return;
     }
-    hvac_apply_heater_card(s_heater_cards[card_idx], setpoint_c, current_c, heater_on, climate_control_on);
+    hvac_apply_heater_card(s_heater_cards[card_idx], setpoint_c, current_c, heater_on, climate_control_on, hvac_mode);
 }
 
 static void hvac_publish_action(const hvac_card_def_t *def, const char *suffix)
@@ -99,6 +103,7 @@ static void hvac_heater_on_ui_event(ui_heater_card_1_event_t event, void *user_d
         hvac_publish_action(def, "mode_fan");
         break;
     case UI_HEATER_CARD_1_EVENT_MODE_COOLING:
+        hvac_publish_action(def, "mode_cool");
         break;
     default:
         break;
@@ -115,6 +120,13 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_BEDROOM_1, "esp_hmi/data/bedroom1/climate/setpoint",
                                "esp_hmi/data/bedroom1/climate/current", "esp_hmi/data/bedroom1/climate/heater_on",
                                "esp_hmi/data/bedroom1/climate/control");
+    ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM, "esp_hmi/data/upstairs_bedroom/climate/setpoint",
+                               "esp_hmi/data/upstairs_bedroom/climate/current",
+                               "esp_hmi/data/upstairs_bedroom/climate/heater_on",
+                               "esp_hmi/data/upstairs_bedroom/climate/control");
+    ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_STUDIO, "esp_hmi/data/studio/climate/setpoint",
+                               "esp_hmi/data/studio/climate/current", "esp_hmi/data/studio/climate/heater_on",
+                               "esp_hmi/data/studio/climate/control");
     ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_SERVER_RACK, "esp_hmi/data/server_rack/climate/setpoint",
                                "esp_hmi/data/server_rack/climate/current", "esp_hmi/data/server_rack/climate/heater_on",
                                "esp_hmi/data/server_rack/climate/control");
@@ -148,6 +160,9 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
 
     ha_mqtt_add_ollie_climate_state_callback(hvac_climate_apply_card0, NULL);
     ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_BEDROOM_1, hvac_climate_apply_zone, (void *)(uintptr_t)1);
+    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM, hvac_climate_apply_zone,
+                                           (void *)(uintptr_t)2);
+    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_climate_apply_zone, (void *)(uintptr_t)3);
     ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_SERVER_RACK, hvac_climate_apply_zone,
                                            (void *)(uintptr_t)4);
 

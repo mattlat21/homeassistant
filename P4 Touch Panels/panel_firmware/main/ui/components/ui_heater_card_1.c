@@ -1,5 +1,7 @@
 #include "ui/components/ui_heater_card_1.h"
 
+#include "ha_mqtt.h"
+
 #include <math.h>
 #include <stdio.h>
 
@@ -32,6 +34,10 @@ typedef struct {
     heater_card_meta_t *meta;
 } heater_mode_click_t;
 
+static bool profile_uses_hvac_mode(const heater_card_meta_t *m);
+static heater_mode_ui_t active_mode_from_state(const heater_card_meta_t *m);
+static lv_color_t accent_color_for_mode(heater_mode_ui_t mode);
+
 struct heater_card_meta {
     lv_obj_t *lbl_icon;
     lv_obj_t *lbl_current;
@@ -50,6 +56,7 @@ struct heater_card_meta {
     float setpoint_c;
     bool heater_on;
     bool climate_control_on;
+    int8_t hvac_mode;
     bool mode_picker_open;
     ui_heater_card_1_profile_t profile;
     ui_heater_card_1_cb_t cb;
@@ -223,6 +230,31 @@ static void refresh_status_icon(heater_card_meta_t *m)
         lv_obj_set_style_border_color(m->icon_btn, col, LV_PART_MAIN);
         return;
     }
+    if (profile_uses_hvac_mode(m)) {
+        const heater_mode_ui_t mode = active_mode_from_state(m);
+        const lv_color_t col = accent_color_for_mode(mode);
+        switch (mode) {
+        case HEATER_MODE_UI_COOLING:
+            lv_label_set_text(m->lbl_icon, UI_HA_ICON_THERMOMETER_LOW);
+            break;
+        case HEATER_MODE_UI_FAN:
+            lv_label_set_text(m->lbl_icon, UI_HA_ICON_FAN);
+            break;
+        case HEATER_MODE_UI_HEATING:
+            lv_label_set_text(m->lbl_icon, UI_HA_ICON_FIRE);
+            break;
+        default:
+            lv_label_set_text(m->lbl_icon, LV_SYMBOL_POWER);
+            lv_obj_set_style_text_font(m->lbl_icon, &lv_font_montserrat_32, LV_PART_MAIN);
+            lv_obj_set_style_text_color(m->lbl_icon, HEATER_CARD_MUTED, LV_PART_MAIN);
+            lv_obj_set_style_border_color(m->icon_btn, HEATER_CARD_MUTED, LV_PART_MAIN);
+            return;
+        }
+        lv_obj_set_style_text_font(m->lbl_icon, &ui_font_home_assistant_icons_56, LV_PART_MAIN);
+        lv_obj_set_style_text_color(m->lbl_icon, col, LV_PART_MAIN);
+        lv_obj_set_style_border_color(m->icon_btn, col, LV_PART_MAIN);
+        return;
+    }
     if (m->heater_on) {
         lv_label_set_text(m->lbl_icon, UI_HA_ICON_FIRE);
         lv_obj_set_style_text_font(m->lbl_icon, &ui_font_home_assistant_icons_56, LV_PART_MAIN);
@@ -247,10 +279,33 @@ static void refresh_status(heater_card_meta_t *m)
     refresh_control_accent(m);
 }
 
+static bool profile_uses_hvac_mode(const heater_card_meta_t *m)
+{
+    return m != NULL &&
+           (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN || m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL);
+}
+
+static heater_mode_ui_t heater_mode_from_hvac(int8_t hvac_mode)
+{
+    switch (hvac_mode) {
+    case HA_MQTT_CLIMATE_HVAC_HEAT:
+        return HEATER_MODE_UI_HEATING;
+    case HA_MQTT_CLIMATE_HVAC_COOL:
+        return HEATER_MODE_UI_COOLING;
+    case HA_MQTT_CLIMATE_HVAC_FAN:
+        return HEATER_MODE_UI_FAN;
+    default:
+        return HEATER_MODE_UI_OFF;
+    }
+}
+
 static heater_mode_ui_t active_mode_from_state(const heater_card_meta_t *m)
 {
     if (m == NULL || !m->climate_control_on) {
         return HEATER_MODE_UI_OFF;
+    }
+    if (profile_uses_hvac_mode(m) && m->hvac_mode != HA_MQTT_CLIMATE_HVAC_UNKNOWN) {
+        return heater_mode_from_hvac(m->hvac_mode);
     }
     if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
         return HEATER_MODE_UI_FAN;
@@ -308,6 +363,14 @@ static bool mode_option_is_actionable(const heater_card_meta_t *m, ui_heater_car
     if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
         return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_FAN;
     }
+    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
+        return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING ||
+               event == UI_HEATER_CARD_1_EVENT_MODE_COOLING || event == UI_HEATER_CARD_1_EVENT_MODE_FAN;
+    }
+    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL) {
+        return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING ||
+               event == UI_HEATER_CARD_1_EVENT_MODE_COOLING;
+    }
     return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING;
 }
 
@@ -321,6 +384,12 @@ static bool mode_option_visible(const heater_card_meta_t *m, heater_mode_ui_t mo
     }
     if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
         return mode == HEATER_MODE_UI_FAN;
+    }
+    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
+        return mode == HEATER_MODE_UI_HEATING || mode == HEATER_MODE_UI_COOLING || mode == HEATER_MODE_UI_FAN;
+    }
+    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL) {
+        return mode == HEATER_MODE_UI_HEATING || mode == HEATER_MODE_UI_COOLING;
     }
     return mode == HEATER_MODE_UI_HEATING;
 }
@@ -572,6 +641,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     m->setpoint_c = setpoint_c;
     m->heater_on = heater_on;
     m->climate_control_on = climate_control_on;
+    m->hvac_mode = HA_MQTT_CLIMATE_HVAC_UNKNOWN;
     m->profile = profile;
     m->cb = cb;
     m->user_data = user_data;
@@ -758,6 +828,19 @@ void ui_heater_card_1_set_switch_state(lv_obj_t *card, bool heater_on, bool clim
     }
     m->heater_on = heater_on;
     m->climate_control_on = climate_control_on;
+    refresh_status(m);
+    if (m->mode_picker_open) {
+        refresh_mode_highlights(m);
+    }
+}
+
+void ui_heater_card_1_set_hvac_mode(lv_obj_t *card, int8_t hvac_mode)
+{
+    heater_card_meta_t *m = heater_card_get_meta(card);
+    if (m == NULL) {
+        return;
+    }
+    m->hvac_mode = hvac_mode;
     refresh_status(m);
     if (m->mode_picker_open) {
         refresh_mode_highlights(m);

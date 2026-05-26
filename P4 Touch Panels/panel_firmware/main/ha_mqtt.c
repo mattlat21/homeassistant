@@ -95,12 +95,14 @@ static float s_climate_cache_sp;
 static float s_climate_cache_cur;
 static bool s_climate_cache_heat;
 static bool s_climate_cache_control;
+static int8_t s_climate_cache_hvac_mode;
 /** Bits: setpoint, current, heater, control — UI updates only once all retained fields received. */
 static uint8_t s_climate_seen_mask;
 static float s_climate_last_sp;
 static float s_climate_last_cur;
 static bool s_climate_last_heat;
 static bool s_climate_last_control;
+static int8_t s_climate_last_hvac_mode;
 static bool s_climate_have_last_applied;
 /** True while an lv_async climate apply is queued; further dispatches coalesce (read cache when callback runs). */
 static bool s_climate_async_pending;
@@ -122,11 +124,13 @@ typedef struct {
     float cache_cur;
     bool cache_heat;
     bool cache_control;
+    int8_t cache_hvac_mode;
     uint8_t seen_mask;
     float last_sp;
     float last_cur;
     bool last_heat;
     bool last_control;
+    int8_t last_hvac_mode;
     bool have_last_applied;
     bool async_pending;
     ha_mqtt_ollie_climate_apply_cb_t cb;
@@ -821,29 +825,58 @@ static bool parse_bool_scalar(char *payload, bool *out)
     return false;
 }
 
-/** Climate control topic: legacy bool scalars, or HA `climate` entity state (`heat` → UI climate mode on, `off` → off). */
-static bool parse_climate_control_scalar(char *payload, bool *out)
+static int8_t climate_hvac_mode_from_payload(const char *payload)
 {
+    if (payload == NULL || payload[0] == '\0') {
+        return HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+    }
+    if (strcasecmp(payload, "off") == 0) {
+        return HA_MQTT_CLIMATE_HVAC_OFF;
+    }
+    if (strcasecmp(payload, "heat") == 0 || strcasecmp(payload, "auto") == 0) {
+        return HA_MQTT_CLIMATE_HVAC_HEAT;
+    }
+    if (strcasecmp(payload, "cool") == 0 || strcasecmp(payload, "dry") == 0) {
+        return HA_MQTT_CLIMATE_HVAC_COOL;
+    }
+    if (strcasecmp(payload, "fan_only") == 0) {
+        return HA_MQTT_CLIMATE_HVAC_FAN;
+    }
+    return HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+}
+
+/** Climate control topic: legacy bool scalars, or HA `climate` entity state string. */
+static bool parse_climate_control_scalar(char *payload, bool *out, int8_t *hvac_mode_out)
+{
+    if (hvac_mode_out != NULL) {
+        *hvac_mode_out = HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+    }
     if (parse_bool_scalar(payload, out)) {
+        if (hvac_mode_out != NULL) {
+            *hvac_mode_out = *out ? HA_MQTT_CLIMATE_HVAC_HEAT : HA_MQTT_CLIMATE_HVAC_OFF;
+        }
         return true;
     }
     trim_payload_edges(payload);
     if (payload[0] == '\0') {
         return false;
     }
-    if (strcasecmp(payload, "heat") == 0 || strcasecmp(payload, "auto") == 0 || strcasecmp(payload, "cool") == 0 ||
-        strcasecmp(payload, "dry") == 0 || strcasecmp(payload, "fan_only") == 0) {
-        *out = true;
+    const int8_t mode = climate_hvac_mode_from_payload(payload);
+    if (mode != HA_MQTT_CLIMATE_HVAC_UNKNOWN) {
+        *out = (mode != HA_MQTT_CLIMATE_HVAC_OFF);
+        if (hvac_mode_out != NULL) {
+            *hvac_mode_out = mode;
+        }
         return true;
     }
     return false;
 }
 
-static void climate_dispatch_listeners(float sp, float cur, bool heat, bool cc)
+static void climate_dispatch_listeners(float sp, float cur, bool heat, bool cc, int8_t hvac_mode)
 {
     for (size_t i = 0; i < s_climate_listener_count; i++) {
         if (s_climate_listeners[i].cb != NULL) {
-            s_climate_listeners[i].cb(sp, cur, heat, cc, s_climate_listeners[i].user_data);
+            s_climate_listeners[i].cb(sp, cur, heat, cc, hvac_mode, s_climate_listeners[i].user_data);
         }
     }
 }
@@ -853,7 +886,8 @@ static void climate_try_dispatch_to_listener(ha_mqtt_ollie_climate_apply_cb_t cb
     if (cb == NULL || s_climate_seen_mask != CLIMATE_SEEN_ALL) {
         return;
     }
-    cb(s_climate_cache_sp, s_climate_cache_cur, s_climate_cache_heat, s_climate_cache_control, user_data);
+    cb(s_climate_cache_sp, s_climate_cache_cur, s_climate_cache_heat, s_climate_cache_control,
+       s_climate_cache_hvac_mode, user_data);
 }
 
 static void climate_state_async_fn(void *user_data)
@@ -867,7 +901,8 @@ static void climate_state_async_fn(void *user_data)
 
     /* Read live cache on LVGL thread so multiple MQTT updates coalesce; avoids stale snapshot order (heater vs control). */
     if (s_climate_have_last_applied && s_climate_last_sp == s_climate_cache_sp && s_climate_last_cur == s_climate_cache_cur &&
-        s_climate_last_heat == s_climate_cache_heat && s_climate_last_control == s_climate_cache_control) {
+        s_climate_last_heat == s_climate_cache_heat && s_climate_last_control == s_climate_cache_control &&
+        s_climate_last_hvac_mode == s_climate_cache_hvac_mode) {
         return;
     }
 
@@ -875,13 +910,15 @@ static void climate_state_async_fn(void *user_data)
     float cur = s_climate_cache_cur;
     bool heat = s_climate_cache_heat;
     bool cc = s_climate_cache_control;
+    int8_t hvac_mode = s_climate_cache_hvac_mode;
 
-    climate_dispatch_listeners(sp, cur, heat, cc);
+    climate_dispatch_listeners(sp, cur, heat, cc, hvac_mode);
 
     s_climate_last_sp = sp;
     s_climate_last_cur = cur;
     s_climate_last_heat = heat;
     s_climate_last_control = cc;
+    s_climate_last_hvac_mode = hvac_mode;
     s_climate_have_last_applied = true;
 }
 
@@ -927,7 +964,8 @@ static void try_dispatch_climate_from_cache(void)
         return;
     }
     if (s_climate_have_last_applied && s_climate_last_sp == s_climate_cache_sp && s_climate_last_cur == s_climate_cache_cur &&
-        s_climate_last_heat == s_climate_cache_heat && s_climate_last_control == s_climate_cache_control) {
+        s_climate_last_heat == s_climate_cache_heat && s_climate_last_control == s_climate_cache_control &&
+        s_climate_last_hvac_mode == s_climate_cache_hvac_mode) {
         return;
     }
     if (s_climate_async_pending) {
@@ -964,15 +1002,18 @@ static void hvac_zone_state_async_fn(void *user_data)
         return;
     }
     if (slot->have_last_applied && slot->last_sp == slot->cache_sp && slot->last_cur == slot->cache_cur &&
-        slot->last_heat == slot->cache_heat && slot->last_control == slot->cache_control) {
+        slot->last_heat == slot->cache_heat && slot->last_control == slot->cache_control &&
+        slot->last_hvac_mode == slot->cache_hvac_mode) {
         return;
     }
 
-    slot->cb(slot->cache_sp, slot->cache_cur, slot->cache_heat, slot->cache_control, slot->user_data);
+    slot->cb(slot->cache_sp, slot->cache_cur, slot->cache_heat, slot->cache_control, slot->cache_hvac_mode,
+             slot->user_data);
     slot->last_sp = slot->cache_sp;
     slot->last_cur = slot->cache_cur;
     slot->last_heat = slot->cache_heat;
     slot->last_control = slot->cache_control;
+    slot->last_hvac_mode = slot->cache_hvac_mode;
     slot->have_last_applied = true;
 }
 
@@ -986,7 +1027,8 @@ static void try_dispatch_hvac_zone_from_cache(uint8_t zone_id)
         return;
     }
     if (slot->have_last_applied && slot->last_sp == slot->cache_sp && slot->last_cur == slot->cache_cur &&
-        slot->last_heat == slot->cache_heat && slot->last_control == slot->cache_control) {
+        slot->last_heat == slot->cache_heat && slot->last_control == slot->cache_control &&
+        slot->last_hvac_mode == slot->cache_hvac_mode) {
         return;
     }
     if (slot->async_pending) {
@@ -1055,11 +1097,13 @@ static bool handle_hvac_zone_climate_mqtt(uint8_t zone_id, const char *topic, co
     }
     if (strcmp(topic, slot->topic_control) == 0) {
         bool b = false;
-        if (!parse_climate_control_scalar(pbuf, &b)) {
+        int8_t mode = HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+        if (!parse_climate_control_scalar(pbuf, &b, &mode)) {
             ESP_LOGW(TAG, "hvac zone %u control parse failed", (unsigned)zone_id);
             return true;
         }
         slot->cache_control = b;
+        slot->cache_hvac_mode = mode;
         slot->seen_mask |= CLIMATE_SEEN_CTRL;
         try_dispatch_hvac_zone_from_cache(zone_id);
         return true;
@@ -1452,8 +1496,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             memcpy(payload, ev->data, (size_t)ev->data_len);
             payload[ev->data_len] = '\0';
             bool b = false;
-            if (parse_climate_control_scalar(payload, &b)) {
+            int8_t mode = HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+            if (parse_climate_control_scalar(payload, &b, &mode)) {
                 s_climate_cache_control = b;
+                s_climate_cache_hvac_mode = mode;
                 s_climate_seen_mask |= CLIMATE_SEEN_CTRL;
                 try_dispatch_climate_from_cache();
             } else {
@@ -1901,11 +1947,12 @@ void ha_mqtt_set_hvac_zone_climate_callback(uint8_t zone_id, ha_mqtt_ollie_clima
     slot->cb = cb;
     slot->user_data = user_data;
     if (cb != NULL && slot->configured && slot->seen_mask == CLIMATE_SEEN_ALL) {
-        cb(slot->cache_sp, slot->cache_cur, slot->cache_heat, slot->cache_control, user_data);
+        cb(slot->cache_sp, slot->cache_cur, slot->cache_heat, slot->cache_control, slot->cache_hvac_mode, user_data);
         slot->last_sp = slot->cache_sp;
         slot->last_cur = slot->cache_cur;
         slot->last_heat = slot->cache_heat;
         slot->last_control = slot->cache_control;
+        slot->last_hvac_mode = slot->cache_hvac_mode;
         slot->have_last_applied = true;
     }
 }

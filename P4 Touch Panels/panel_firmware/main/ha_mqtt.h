@@ -48,8 +48,15 @@ bool ha_mqtt_publish_ollie_room_option(const char *option);
  * @param heater_on mirrored from MQTT `SCREEN_TEST_MQTT_CLIMATE_HEATER_TOPIC` (e.g. `switch.bedroom_3_heater` in HA)
  * @param climate_control_on true when HA climate HVAC mode is active (e.g. `heat`); false for `off` (see MQTT control topic)
  */
+/** Parsed from climate `control` MQTT (HA entity state); unknown (-1) for legacy bool payloads. */
+#define HA_MQTT_CLIMATE_HVAC_UNKNOWN (-1)
+#define HA_MQTT_CLIMATE_HVAC_OFF 0
+#define HA_MQTT_CLIMATE_HVAC_HEAT 1
+#define HA_MQTT_CLIMATE_HVAC_COOL 2
+#define HA_MQTT_CLIMATE_HVAC_FAN 3
+
 typedef void (*ha_mqtt_ollie_climate_apply_cb_t)(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
-                                                 void *user_data);
+                                                 int8_t hvac_mode, void *user_data);
 
 /** Register handler for merged climate state from MQTT (safe to call before MQTT connects). */
 void ha_mqtt_set_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
@@ -60,7 +67,9 @@ void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t c
 /** HVAC screen: extra climate zones beyond the primary Kconfig bedroom3 topics (Ollie room). */
 #define HA_MQTT_HVAC_ZONE_BEDROOM_1 0
 #define HA_MQTT_HVAC_ZONE_SERVER_RACK 1
-#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 2
+#define HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM 2
+#define HA_MQTT_HVAC_ZONE_STUDIO 3
+#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 4
 
 /**
  * Register retained climate topic quartet for an extra HVAC zone (bedroom1, server rack, …).

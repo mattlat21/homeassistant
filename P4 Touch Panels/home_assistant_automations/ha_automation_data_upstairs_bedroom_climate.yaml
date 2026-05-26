@@ -1,0 +1,37 @@
+# Home Assistant: Upstairs Bedroom AC → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/upstairs_bedroom/climate/* for the HVAC "Upstairs Bedroom" card.
+# No separate run-state feedback: heater_on is true whenever the climate entity is not off.
+
+alias: "ESP HMI - Data - Upstairs Bedroom Climate"
+description: ""
+variables:
+  climate_target: climate.upstairs_bedroom_ac
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.upstairs_bedroom_ac
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/heater_on
+      payload: >-
+        {{ 'true' if states(climate_target) not in ['off', 'unavailable', 'unknown']
+        else 'false' }}
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

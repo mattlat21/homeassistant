@@ -207,6 +207,123 @@ actions:
               hvac_mode: cool
       - conditions:
           - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              temperature: >
+                {{ (state_attr('climate.upstairs_bedroom_ac', 'temperature') | float(21)
+                - 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.upstairs_bedroom_ac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              temperature: >
+                {{ (state_attr('climate.upstairs_bedroom_ac', 'temperature') | float(21)
+                + 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.upstairs_bedroom_ac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_mode_off' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_mode_cool' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              hvac_mode: cool
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_upstairs_bedroom_mode_fan' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.upstairs_bedroom_ac
+            data:
+              hvac_mode: fan_only
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_studio_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.studio_ac
+            data:
+              temperature: >
+                {{ (state_attr('climate.studio_ac', 'temperature') | float(21) - 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.studio_ac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_studio_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.studio_ac
+            data:
+              temperature: >
+                {{ (state_attr('climate.studio_ac', 'temperature') | float(21) + 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.studio_ac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_studio_mode_off' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.studio_ac
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_studio_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.studio_ac
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_studio_mode_cool' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.studio_ac
+            data:
+              hvac_mode: cool
+      - conditions:
+          - condition: template
             value_template: >-
               {{ trigger.payload_json.button in ['Normal', 'Rest Time', 'Sleep
               Time'] }}

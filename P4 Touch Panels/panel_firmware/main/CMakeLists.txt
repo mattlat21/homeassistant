@@ -5,6 +5,8 @@ idf_component_register(
         "ota_update.c"
         "ha_mqtt.c"
         "reolink_preview.c"
+        "reolink_audio.c"
+        "audio_demo.c"
         "ui/ui_shell.c"
         "ui/ui_watchdog.c"
         "ui/ui_layout_grid.c"
@@ -61,6 +63,7 @@ idf_component_register(
         mbedtls
         esp_partition
         espressif__esp_new_jpeg
+        espressif__esp_audio_codec
         esp_timer
 )
 

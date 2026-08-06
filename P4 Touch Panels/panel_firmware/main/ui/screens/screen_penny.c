@@ -1,5 +1,6 @@
 #include "ui/screens/screen_penny.h"
 
+#include "reolink_audio.h"
 #include "reolink_preview.h"
 #include "sdkconfig.h"
 #include "ui/ui_brand_gradient.h"
@@ -9,6 +10,25 @@
 #include "lvgl.h"
 #include <string.h>
 
+static void penny_screen_event(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_SCREEN_LOADED) {
+        const reolink_audio_config_t aud = {
+#ifdef CONFIG_ESP_HMI_REOLINK_PENNY_HOST
+            .host = CONFIG_ESP_HMI_REOLINK_PENNY_HOST,
+#else
+            .host = "",
+#endif
+            .user = CONFIG_ESP_HMI_REOLINK_USER,
+            .password = CONFIG_ESP_HMI_REOLINK_PASSWORD,
+        };
+        reolink_audio_start(&aud);
+    } else if (code == LV_EVENT_SCREEN_UNLOADED) {
+        reolink_audio_stop();
+    }
+}
+
 lv_obj_t *screen_penny_create(lv_display_t *disp)
 {
     (void)disp;
@@ -16,6 +36,8 @@ lv_obj_t *screen_penny_create(lv_display_t *disp)
     lv_obj_remove_style_all(scr);
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
     ui_brand_gradient_apply(scr);
+
+    reolink_audio_init();
 
     const int32_t box_w = 720;
     const int32_t box_h = 480;
@@ -80,6 +102,9 @@ lv_obj_t *screen_penny_create(lv_display_t *disp)
         .channel = CONFIG_ESP_HMI_REOLINK_CHANNEL,
     };
     reolink_preview_bind(scr, canvas, &cam);
+
+    lv_obj_add_event_cb(scr, penny_screen_event, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(scr, penny_screen_event, LV_EVENT_SCREEN_UNLOADED, NULL);
 
     return scr;
 }

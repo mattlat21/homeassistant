@@ -3,3 +3,4 @@ dependencies:
   espressif/esp_hosted: '~2.12.0'
   espressif/esp_wifi_remote: '~1.4.0'
   espressif/esp_new_jpeg: ^1.0.0
+  espressif/esp_audio_codec: ^2.3.0

@@ -275,9 +275,18 @@ static void apply_snap_on_lvgl(void *user_data)
         return;
     }
     if (ud->canvas != NULL && ud->rgb != NULL && ud->w == REOLINK_PREVIEW_W && ud->h == REOLINK_PREVIEW_H) {
-        void *dst = (void *)lv_canvas_get_buf(ud->canvas);
+        uint8_t *dst = (uint8_t *)lv_canvas_get_buf(ud->canvas);
         if (dst != NULL) {
-            memcpy(dst, ud->rgb, (size_t)REOLINK_PREVIEW_W * REOLINK_PREVIEW_H * 3);
+            /* esp_new_jpeg RGB888 is R,G,B; LVGL LV_COLOR_FORMAT_RGB888 stores B,G,R. */
+            const uint8_t *src = ud->rgb;
+            const size_t pixels = (size_t)REOLINK_PREVIEW_W * (size_t)REOLINK_PREVIEW_H;
+            for (size_t i = 0; i < pixels; i++) {
+                dst[0] = src[2];
+                dst[1] = src[1];
+                dst[2] = src[0];
+                dst += 3;
+                src += 3;
+            }
             lv_obj_invalidate(ud->canvas);
         }
     } else if (ud->rgb != NULL && (ud->w != REOLINK_PREVIEW_W || ud->h != REOLINK_PREVIEW_H)) {

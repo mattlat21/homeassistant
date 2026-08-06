@@ -90,6 +90,14 @@ menu "ESP HMI — Reolink doorbell (Front Gate)"
         default 0
         range 0 7
 
+    config ESP_HMI_REOLINK_PENNY_HOST
+        string "Penny's Room camera IP or hostname (empty = disable preview)"
+        default ""
+        help
+            LAN address of Penny's Room camera, e.g. 192.168.1.197.
+            Reuses Front Gate port, HTTPS, user, password, and channel settings.
+            If empty, the Penny's Room screen shows a placeholder with no network fetches.
+
 endmenu
 
 menu "ESP HMI — Network / Home Assistant"

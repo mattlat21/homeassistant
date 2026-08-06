@@ -1,9 +1,8 @@
 #include "reolink_preview.h"
 
-#include "sdkconfig.h"
-
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +27,7 @@ static const char *TAG = "reolink_preview";
 #define JPEG_BODY_MAX (256 * 1024)
 #define FAST_POLL_US (1000000ULL)
 #define SLOW_POLL_US (300000000ULL)
+#define REOLINK_PREVIEW_MAX 2
 
 typedef struct {
     uint8_t *buf;
@@ -43,7 +43,26 @@ typedef struct {
     char content_type[96];
 } snap_http_probe_meta_t;
 
+typedef struct {
+    reolink_cam_config_t cfg;
+    lv_obj_t *canvas;
+    esp_timer_handle_t timer_fast;
+    esp_timer_handle_t timer_slow;
+    bool active;
+} reolink_instance_t;
+
+typedef struct {
+    uint8_t *rgb;
+    uint16_t w;
+    uint16_t h;
+    lv_obj_t *canvas;
+} snap_lvgl_ud_t;
+
 static snap_http_probe_meta_t s_snap_http_probe_meta;
+static QueueHandle_t s_queue;
+static TaskHandle_t s_worker;
+static reolink_instance_t s_inst[REOLINK_PREVIEW_MAX];
+static int s_inst_count;
 
 /** Down/upscale RGB888 with nearest neighbor; output allocated with jpeg_calloc_align. */
 static uint8_t *reolink_scale_rgb888_nn(const uint8_t *src, uint16_t sw, uint16_t sh, uint16_t dw, uint16_t dh)
@@ -76,18 +95,6 @@ static uint8_t *reolink_scale_rgb888_nn(const uint8_t *src, uint16_t sw, uint16_
     return dst;
 }
 
-typedef struct {
-    uint8_t *rgb;
-    uint16_t w;
-    uint16_t h;
-} snap_lvgl_ud_t;
-
-static QueueHandle_t s_queue;
-static esp_timer_handle_t s_timer_fast;
-static esp_timer_handle_t s_timer_slow;
-static lv_obj_t *s_canvas;
-static TaskHandle_t s_worker;
-
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
     http_jpeg_accum_t *acc = (http_jpeg_accum_t *)evt->user_data;
@@ -118,33 +125,26 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static bool reolink_host_configured(void)
+static bool reolink_cfg_host_ok(const reolink_cam_config_t *cfg)
 {
-#ifdef CONFIG_ESP_HMI_REOLINK_HOST
-    return CONFIG_ESP_HMI_REOLINK_HOST[0] != '\0';
-#else
-    return false;
-#endif
+    return cfg != NULL && cfg->host != NULL && cfg->host[0] != '\0';
 }
 
-static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
+static esp_err_t reolink_fetch_jpeg(const reolink_cam_config_t *cam, uint8_t **out_buf, int *out_len)
 {
-    if (!reolink_host_configured()) {
+    if (!reolink_cfg_host_ok(cam)) {
         return ESP_ERR_INVALID_STATE;
     }
 
     char url[384];
-#ifdef CONFIG_ESP_HMI_REOLINK_USE_HTTPS
-    const char *scheme = "https";
-#else
-    const char *scheme = "http";
-#endif
+    const char *scheme = cam->use_https ? "https" : "http";
     unsigned rs = (unsigned)esp_random();
+    const char *user = cam->user != NULL ? cam->user : "";
+    const char *password = cam->password != NULL ? cam->password : "";
     int n = snprintf(url, sizeof(url),
                      "%s://%s:%d/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%08x&user=%s&password=%s&width=%d&height=%d",
-                     scheme, CONFIG_ESP_HMI_REOLINK_HOST, CONFIG_ESP_HMI_REOLINK_PORT,
-                     CONFIG_ESP_HMI_REOLINK_CHANNEL, rs, CONFIG_ESP_HMI_REOLINK_USER,
-                     CONFIG_ESP_HMI_REOLINK_PASSWORD, REOLINK_PREVIEW_W, REOLINK_PREVIEW_H);
+                     scheme, cam->host, cam->port, cam->channel, rs, user, password, REOLINK_PREVIEW_W,
+                     REOLINK_PREVIEW_H);
     if (n <= 0 || n >= (int)sizeof(url)) {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -174,9 +174,7 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
         .user_data = &acc,
         .timeout_ms = 15000,
         .buffer_size = 2048,
-#ifdef CONFIG_ESP_HMI_REOLINK_USE_HTTPS
-        .skip_cert_common_name_check = true,
-#endif
+        .skip_cert_common_name_check = cam->use_https,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
@@ -190,7 +188,7 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
         s_snap_http_probe_meta.http_status = esp_http_client_get_status_code(client);
         s_snap_http_probe_meta.content_length = acc.content_length;
         memcpy(s_snap_http_probe_meta.content_type, acc.content_type, sizeof(acc.content_type));
-        ESP_LOGW(TAG, "HTTP perform failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "HTTP perform failed (%s): %s", cam->host, esp_err_to_name(err));
         esp_http_client_cleanup(client);
         heap_caps_free(body);
         return err;
@@ -203,7 +201,7 @@ static esp_err_t reolink_fetch_jpeg(uint8_t **out_buf, int *out_len)
     esp_http_client_cleanup(client);
 
     if (code != 200 || acc.len < 100) {
-        ESP_LOGW(TAG, "bad response: status=%d len=%d", code, acc.len);
+        ESP_LOGW(TAG, "bad response (%s): status=%d len=%d", cam->host, code, acc.len);
         heap_caps_free(body);
         return ESP_FAIL;
     }
@@ -276,11 +274,11 @@ static void apply_snap_on_lvgl(void *user_data)
     if (ud == NULL) {
         return;
     }
-    if (s_canvas != NULL && ud->rgb != NULL && ud->w == REOLINK_PREVIEW_W && ud->h == REOLINK_PREVIEW_H) {
-        void *dst = (void *)lv_canvas_get_buf(s_canvas);
+    if (ud->canvas != NULL && ud->rgb != NULL && ud->w == REOLINK_PREVIEW_W && ud->h == REOLINK_PREVIEW_H) {
+        void *dst = (void *)lv_canvas_get_buf(ud->canvas);
         if (dst != NULL) {
             memcpy(dst, ud->rgb, (size_t)REOLINK_PREVIEW_W * REOLINK_PREVIEW_H * 3);
-            lv_obj_invalidate(s_canvas);
+            lv_obj_invalidate(ud->canvas);
         }
     } else if (ud->rgb != NULL && (ud->w != REOLINK_PREVIEW_W || ud->h != REOLINK_PREVIEW_H)) {
         ESP_LOGW(TAG, "snap size %" PRIu16 "x%" PRIu16 " (expected %dx%d)", ud->w, ud->h, REOLINK_PREVIEW_W,
@@ -292,15 +290,19 @@ static void apply_snap_on_lvgl(void *user_data)
     free(ud);
 }
 
-static void run_fetch_and_schedule_lvgl(void)
+static void run_fetch_and_schedule_lvgl(int idx)
 {
-    if (!reolink_host_configured()) {
+    if (idx < 0 || idx >= s_inst_count) {
+        return;
+    }
+    reolink_instance_t *inst = &s_inst[idx];
+    if (!inst->active || !reolink_cfg_host_ok(&inst->cfg) || inst->canvas == NULL) {
         return;
     }
 
     uint8_t *jpeg = NULL;
     int jpeg_len = 0;
-    if (reolink_fetch_jpeg(&jpeg, &jpeg_len) != ESP_OK) {
+    if (reolink_fetch_jpeg(&inst->cfg, &jpeg, &jpeg_len) != ESP_OK) {
         return;
     }
 
@@ -341,6 +343,7 @@ static void run_fetch_and_schedule_lvgl(void)
     ud->rgb = rgb;
     ud->w = w;
     ud->h = h;
+    ud->canvas = inst->canvas;
 
     if (lv_async_call(apply_snap_on_lvgl, ud) != LV_RESULT_OK) {
         jpeg_free_align(rgb);
@@ -351,99 +354,130 @@ static void run_fetch_and_schedule_lvgl(void)
 static void reolink_worker_task(void *arg)
 {
     (void)arg;
-    uint8_t msg = 0;
+    uint8_t idx = 0;
     for (;;) {
-        if (xQueueReceive(s_queue, &msg, portMAX_DELAY) != pdTRUE) {
+        if (xQueueReceive(s_queue, &idx, portMAX_DELAY) != pdTRUE) {
             continue;
         }
-        run_fetch_and_schedule_lvgl();
+        run_fetch_and_schedule_lvgl((int)idx);
     }
 }
 
-static void timer_fast_cb(void *arg)
+static void enqueue_instance(int idx)
 {
-    (void)arg;
-    uint8_t m = 1;
+    if (s_queue == NULL || idx < 0 || idx >= REOLINK_PREVIEW_MAX) {
+        return;
+    }
+    uint8_t m = (uint8_t)idx;
     (void)xQueueSend(s_queue, &m, 0);
 }
 
-static void timer_slow_cb(void *arg)
+static void timer_cb(void *arg)
 {
-    (void)arg;
-    uint8_t m = 0;
-    (void)xQueueSend(s_queue, &m, 0);
+    enqueue_instance((int)(intptr_t)arg);
 }
 
-static void front_gate_screen_event(lv_event_t *e)
+static void preview_screen_event(lv_event_t *e)
 {
+    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (idx < 0 || idx >= s_inst_count) {
+        return;
+    }
+    reolink_instance_t *inst = &s_inst[idx];
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_SCREEN_LOADED) {
-        if (s_timer_slow != NULL) {
-            esp_timer_stop(s_timer_slow);
+        if (inst->timer_slow != NULL) {
+            esp_timer_stop(inst->timer_slow);
         }
-        if (s_timer_fast != NULL) {
-            esp_timer_start_periodic(s_timer_fast, FAST_POLL_US);
+        if (inst->timer_fast != NULL) {
+            esp_timer_start_periodic(inst->timer_fast, FAST_POLL_US);
         }
     } else if (code == LV_EVENT_SCREEN_UNLOADED) {
-        if (s_timer_fast != NULL) {
-            esp_timer_stop(s_timer_fast);
+        if (inst->timer_fast != NULL) {
+            esp_timer_stop(inst->timer_fast);
         }
-        if (s_timer_slow != NULL) {
-            esp_timer_start_periodic(s_timer_slow, SLOW_POLL_US);
+        if (inst->timer_slow != NULL) {
+            esp_timer_start_periodic(inst->timer_slow, SLOW_POLL_US);
         }
     }
 }
 
-void reolink_preview_bind(lv_obj_t *front_gate_screen, lv_obj_t *canvas)
+static bool ensure_shared_worker(void)
 {
-    s_canvas = canvas;
-
-    if (!reolink_host_configured()) {
-        ESP_LOGI(TAG, "Reolink host empty — preview disabled");
-        return;
-    }
-
-    if (canvas == NULL) {
-        ESP_LOGW(TAG, "no canvas — preview disabled");
-        return;
-    }
-
     if (s_queue != NULL) {
-        return;
+        return true;
     }
 
-    s_queue = xQueueCreate(4, sizeof(uint8_t));
+    s_queue = xQueueCreate(8, sizeof(uint8_t));
     if (s_queue == NULL) {
         ESP_LOGE(TAG, "queue create failed");
-        return;
+        return false;
     }
 
     if (xTaskCreatePinnedToCore(reolink_worker_task, "reolink_snap", 12288, NULL, 5, &s_worker, 0) != pdPASS) {
         ESP_LOGE(TAG, "worker task create failed");
         vQueueDelete(s_queue);
         s_queue = NULL;
+        return false;
+    }
+    return true;
+}
+
+void reolink_preview_bind(lv_obj_t *screen, lv_obj_t *canvas, const reolink_cam_config_t *cfg)
+{
+    if (!reolink_cfg_host_ok(cfg)) {
+        ESP_LOGI(TAG, "Reolink host empty — preview disabled");
         return;
     }
+
+    if (canvas == NULL || screen == NULL) {
+        ESP_LOGW(TAG, "no canvas/screen — preview disabled");
+        return;
+    }
+
+    if (s_inst_count >= REOLINK_PREVIEW_MAX) {
+        ESP_LOGE(TAG, "too many Reolink previews (max %d)", REOLINK_PREVIEW_MAX);
+        return;
+    }
+
+    if (!ensure_shared_worker()) {
+        return;
+    }
+
+    const int idx = s_inst_count;
+    reolink_instance_t *inst = &s_inst[idx];
+    memset(inst, 0, sizeof(*inst));
+    inst->cfg = *cfg;
+    inst->canvas = canvas;
+    inst->active = true;
+
+    static const char *const fast_names[REOLINK_PREVIEW_MAX] = {"rl_fast_0", "rl_fast_1"};
+    static const char *const slow_names[REOLINK_PREVIEW_MAX] = {"rl_slow_0", "rl_slow_1"};
 
     const esp_timer_create_args_t fast_args = {
-        .callback = &timer_fast_cb,
-        .name = "reolink_fast",
+        .callback = &timer_cb,
+        .arg = (void *)(intptr_t)idx,
+        .name = fast_names[idx],
     };
     const esp_timer_create_args_t slow_args = {
-        .callback = &timer_slow_cb,
-        .name = "reolink_slow",
+        .callback = &timer_cb,
+        .arg = (void *)(intptr_t)idx,
+        .name = slow_names[idx],
     };
-    if (esp_timer_create(&fast_args, &s_timer_fast) != ESP_OK || esp_timer_create(&slow_args, &s_timer_slow) != ESP_OK) {
-        ESP_LOGE(TAG, "esp_timer_create failed");
+    if (esp_timer_create(&fast_args, &inst->timer_fast) != ESP_OK ||
+        esp_timer_create(&slow_args, &inst->timer_slow) != ESP_OK) {
+        ESP_LOGE(TAG, "esp_timer_create failed for %s", cfg->host);
+        inst->active = false;
         return;
     }
 
-    lv_obj_add_event_cb(front_gate_screen, front_gate_screen_event, LV_EVENT_SCREEN_LOADED, NULL);
-    lv_obj_add_event_cb(front_gate_screen, front_gate_screen_event, LV_EVENT_SCREEN_UNLOADED, NULL);
+    s_inst_count++;
 
-    esp_timer_start_periodic(s_timer_slow, SLOW_POLL_US);
-    uint8_t prime = 0;
-    (void)xQueueSend(s_queue, &prime, 0);
+    lv_obj_add_event_cb(screen, preview_screen_event, LV_EVENT_SCREEN_LOADED, (void *)(intptr_t)idx);
+    lv_obj_add_event_cb(screen, preview_screen_event, LV_EVENT_SCREEN_UNLOADED, (void *)(intptr_t)idx);
 
-    ESP_LOGI(TAG, "Reolink preview bound (fast 1s on screen, slow 5m off screen)");
+    esp_timer_start_periodic(inst->timer_slow, SLOW_POLL_US);
+    enqueue_instance(idx);
+
+    ESP_LOGI(TAG, "Reolink preview bound host=%s (fast 1s on screen, slow 5m off screen)", cfg->host);
 }

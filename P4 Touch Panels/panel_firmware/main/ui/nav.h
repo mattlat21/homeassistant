@@ -18,6 +18,7 @@ typedef enum {
     APP_STUDIO,
     APP_HVAC,
     APP_HOUSE_BATTERY,
+    APP_PENNY_ROOM,
     APP_COUNT,
 } app_id_t;
 

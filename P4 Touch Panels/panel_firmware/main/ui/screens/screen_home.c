@@ -52,6 +52,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         const lv_font_t *icon_font; /* NULL → Home Assistant subset font */
     } const tiles[] = {
         { UI_HA_ICON_TEDDY_BEAR, "Ollie's Room", APP_OLLIE_ROOM, NULL },
+        { UI_HA_ICON_BED, "Penny's Room", APP_PENNY_ROOM, NULL },
         { UI_HA_ICON_GATE, "Front Gate", APP_FRONT_GATE, NULL },
         { UI_HA_ICON_DESK, "Study", APP_STUDY, NULL },
         { LV_SYMBOL_HOME, "Front Door", APP_FRONT_DOOR, &lv_font_montserrat_48 },

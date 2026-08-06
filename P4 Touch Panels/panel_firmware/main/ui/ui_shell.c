@@ -16,6 +16,7 @@
 #include "ui/screens/screen_front_door.h"
 #include "ui/screens/screen_hvac.h"
 #include "ui/screens/screen_house_battery.h"
+#include "ui/screens/screen_penny.h"
 #include "ui/components/ui_gate_action.h"
 #include "ui/screens/screen_placeholder.h"
 #if CONFIG_ESP_HMI_OTA_ENABLE
@@ -42,6 +43,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_obj_t *scr_studio = screen_placeholder_create(disp, "Studio", true);
     lv_obj_t *scr_hvac = screen_hvac_create(disp);
     lv_obj_t *scr_house_battery = screen_house_battery_create(disp);
+    lv_obj_t *scr_penny = screen_penny_create(disp);
 
     nav_register_screen(APP_HOME, scr_home);
     nav_register_screen(APP_OLLIE_ROOM, scr_ollie);
@@ -56,6 +58,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_register_screen(APP_STUDIO, scr_studio);
     nav_register_screen(APP_HVAC, scr_hvac);
     nav_register_screen(APP_HOUSE_BATTERY, scr_house_battery);
+    nav_register_screen(APP_PENNY_ROOM, scr_penny);
 
     nav_install_gesture_on_screen(scr_home);
     nav_install_gesture_on_screen(scr_ollie);
@@ -70,6 +73,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_install_gesture_on_screen(scr_studio);
     nav_install_gesture_on_screen(scr_hvac);
     nav_install_gesture_on_screen(scr_house_battery);
+    nav_install_gesture_on_screen(scr_penny);
 
     lv_screen_load(scr_loading);
     screen_loading_begin(scr_loading);

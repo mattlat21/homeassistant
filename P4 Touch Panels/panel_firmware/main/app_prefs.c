@@ -233,6 +233,10 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_HOUSE_BATTERY;
         return true;
     }
+    if (strcasecmp(slug, "penny_room") == 0) {
+        *out = APP_PENNY_ROOM;
+        return true;
+    }
     return false;
 }
 
@@ -291,6 +295,9 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_HOUSE_BATTERY:
         slug = "house_battery";
         break;
+    case APP_PENNY_ROOM:
+        slug = "penny_room";
+        break;
     default:
         return false;
     }
@@ -327,6 +334,8 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "HVAC";
     case APP_HOUSE_BATTERY:
         return "House Battery";
+    case APP_PENNY_ROOM:
+        return "Penny's Room";
     default:
         return "?";
     }

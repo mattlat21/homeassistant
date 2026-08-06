@@ -20,6 +20,7 @@ idf_component_register(
         "ui/screens/screen_placeholder.c"
         "ui/screens/screen_dashboard.c"
         "ui/screens/screen_front_gate.c"
+        "ui/screens/screen_penny.c"
         "ui/screens/screen_front_door.c"
         "ui/screens/screen_pipboy.c"
         "ui/screens/screen_settings.c"

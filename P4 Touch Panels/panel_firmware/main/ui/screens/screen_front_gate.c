@@ -116,7 +116,23 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
     ui_gate_action_bind(s_gate_action_btn, s_gate_action_label);
     ui_gate_action_set_status_pill(s_gate_state_pill, s_gate_state_label);
 
-    reolink_preview_bind(scr, canvas);
+    const reolink_cam_config_t cam = {
+#ifdef CONFIG_ESP_HMI_REOLINK_HOST
+        .host = CONFIG_ESP_HMI_REOLINK_HOST,
+#else
+        .host = "",
+#endif
+        .port = CONFIG_ESP_HMI_REOLINK_PORT,
+#ifdef CONFIG_ESP_HMI_REOLINK_USE_HTTPS
+        .use_https = true,
+#else
+        .use_https = false,
+#endif
+        .user = CONFIG_ESP_HMI_REOLINK_USER,
+        .password = CONFIG_ESP_HMI_REOLINK_PASSWORD,
+        .channel = CONFIG_ESP_HMI_REOLINK_CHANNEL,
+    };
+    reolink_preview_bind(scr, canvas, &cam);
 
     return scr;
 }

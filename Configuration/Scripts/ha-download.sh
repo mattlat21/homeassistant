@@ -25,7 +25,6 @@ rsync -av \
     --delete \
     --exclude='.git/' \
     --exclude='secrets.yaml' \
-    --exclude='.storage/' \
     --exclude='.cloud/' \
     --exclude='home-assistant_v2.db*' \
     --exclude='home-assistant.log*' \

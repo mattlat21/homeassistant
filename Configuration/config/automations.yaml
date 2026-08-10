@@ -1475,3 +1475,67 @@
     data:
       option: penny_room
   mode: single
+- id: '1786363446147'
+  alias: Prewarm Matt's Electric Blanket
+  description: Turn on Matt's electric blanket before bedtime
+  triggers:
+  - trigger: template
+    value_template: >
+      {% set bedtime = today_at(states('input_datetime.matt_s_bedtime')) %}
+      {% set mins = states('input_number.electric_blanket_prewarm_duration') | int(0) %}
+      {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,
+        microsecond=0) }}
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.matt_s_electric_blanket
+  mode: single
+- id: '1786363446148'
+  alias: Prewarm Cathy's Electric Blanket
+  description: Turn on Cathy's electric blanket before bedtime
+  triggers:
+  - trigger: template
+    value_template: >
+      {% set bedtime = today_at(states('input_datetime.cathy_s_bedtime')) %}
+      {% set mins = states('input_number.electric_blanket_prewarm_duration') | int(0) %}
+      {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,
+        microsecond=0) }}
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.cathy_s_electric_blanket
+  mode: single
+- id: '1786363446149'
+  alias: Turn off Matt's Electric Blanket at Bedtime
+  description: ''
+  triggers:
+  - trigger: time
+    at: input_datetime.matt_s_bedtime
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.matt_s_electric_blanket
+  mode: single
+- id: '1786363446150'
+  alias: Turn off Cathy's Electric Blanket at Bedtime
+  description: ''
+  triggers:
+  - trigger: time
+    at: input_datetime.cathy_s_bedtime
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.cathy_s_electric_blanket
+  mode: single

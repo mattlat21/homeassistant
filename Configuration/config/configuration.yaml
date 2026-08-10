@@ -1,0 +1,461 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+
+
+# Shelly Devices
+mqtt:
+
+  switch:
+    - name: "Shelly Pro 4PM Channel 1"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch1
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:0"
+      value_template: "{{ value_json.output }}"
+      command_topic: "shellypro4pm-c8f09e8467d4/rpc"
+      payload_on:  '{"id":1,"src":"homeassistant","method":"Switch.Set","params":{"id":0,"on":true}}'
+      payload_off: '{"id":1,"src":"homeassistant","method":"Switch.Set","params":{"id":0,"on":false}}'
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+        suggested_area: "Switchboard"
+
+    - name: "Shelly Pro 4PM Channel 2"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch2
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:1"
+      value_template: "{{ value_json.output }}"
+      command_topic: "shellypro4pm-c8f09e8467d4/rpc"
+      payload_on:  '{"id":1,"src":"homeassistant","method":"Switch.Set","params":{"id":0,"on":true}}'
+      payload_off: '{"id":1,"src":"homeassistant","method":"Switch.Set","params":{"id":0,"on":false}}'
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+        suggested_area: "Switchboard"
+
+    - name: "Shelly Pro 4PM Channel 3"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch3
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:2"
+      value_template: "{{ value_json.output }}"
+      command_topic: "shellypro4pm-c8f09e8467d4/rpc"
+      payload_on: '{"id":1,"method":"Switch.Set","params":{"id":2,"on":true}}'
+      payload_off: '{"id":1,"method":"Switch.Set","params":{"id":2,"on":false}}'
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+        suggested_area: "Switchboard"
+
+    - name: "Shelly Pro 4PM Channel 4"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch4
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:3"
+      value_template: "{{ value_json.output }}"
+      command_topic: "shellypro4pm-c8f09e8467d4/rpc"
+      payload_on: '{"id":1,"method":"Switch.Set","params":{"id":3,"on":true}}'
+      payload_off: '{"id":1,"method":"Switch.Set","params":{"id":3,"on":false}}'
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+        suggested_area: "Switchboard"
+
+
+  sensor:
+    # -------- Channel 1 --------
+    - name: "Shelly Pro 4PM Ch1 Power"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch1_power
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:0"
+      value_template: "{{ value_json.apower }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch1 Energy"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch1_energy
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:0"
+      value_template: "{{ value_json.aenergy.total }}"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch1 Voltage"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch1_voltage
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:0"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch1 Current"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch1_current
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:0"
+      value_template: "{{ value_json.current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+
+    # -------- Channel 2 --------
+    - name: "Shelly Pro 4PM Ch2 Power"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch2_power
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:1"
+      value_template: "{{ value_json.apower }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch2 Energy"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch2_energy
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:1"
+      value_template: "{{ value_json.aenergy.total }}"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch2 Voltage"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch2_voltage
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:1"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch2 Current"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch2_current
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:1"
+      value_template: "{{ value_json.current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+
+    # -------- Channel 3 --------
+    - name: "Shelly Pro 4PM Ch3 Power"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch3_power
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:2"
+      value_template: "{{ value_json.apower }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch3 Energy"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch3_energy
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:2"
+      value_template: "{{ value_json.aenergy.total }}"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch3 Voltage"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch3_voltage
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:2"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch3 Current"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch3_current
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:2"
+      value_template: "{{ value_json.current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+
+    # -------- Channel 4 --------
+    - name: "Shelly Pro 4PM Ch4 Power"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch4_power
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:3"
+      value_template: "{{ value_json.apower }}"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch4 Energy"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch4_energy
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:3"
+      value_template: "{{ value_json.aenergy.total }}"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch4 Voltage"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch4_voltage
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:3"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+    - name: "Shelly Pro 4PM Ch4 Current"
+      unique_id: shelly_pro4pm_c8f09e8467d4_ch4_current
+      state_topic: "shellypro4pm-c8f09e8467d4/status/switch:3"
+      value_template: "{{ value_json.current }}"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      device:
+        identifiers: ["shellypro4pm-c8f09e8467d4"]
+        name: "Shelly Pro 4PM (c8f09e8467d4)"
+        manufacturer: "Shelly"
+        model: "Pro 4PM"
+
+
+smartir:
+
+climate:
+  - platform: smartir
+    name: Upstairs Bedroom AC
+    unique_id: upstairs_bedroom_ac
+    device_code: 1124
+    controller_data: remote.upstairs_aircon
+    # temperature_sensor: sensor.dummy_temperature
+    temperature_sensor: sensor.temp_upstairs_bedroom_sht4x_temperature
+    humidity_sensor: sensor.temp_upstairs_bedroom_sht4x_humidity
+    # power_sensor: binary_sensor.ac_power
+    
+  - platform: smartir
+    name: Studio AC
+    unique_id: studio_ac
+    device_code: 1740
+    controller_data: remote.studio_aircon
+    # temperature_sensor: sensor.dummy_temperature
+    temperature_sensor: sensor.temp_studio_sht4x_temperature
+    humidity_sensor: sensor.temp_studio_sht4x_humidity
+    # power_sensor: binary_sensor.ac_power
+    
+template:
+- sensor:
+  - unit_of_measurement: °C
+    default_entity_id: sensor.dummy_temperature
+    state: '25'
+    name: dummy_temperature
+
+- fan:
+  - speed_count: 3
+    turn_on:
+    - action: script.rf_fan_medium
+    - target:
+        entity_id:
+        - input_select.rf_fan_speed
+      data:
+        option: medium
+      action: input_select.select_option
+    turn_off:
+    - action: script.rf_fan_off
+    - target:
+        entity_id:
+        - input_select.rf_fan_speed
+      data:
+        option: 'off'
+      action: input_select.select_option
+    set_percentage:
+    - choose:
+      - conditions:
+        - value_template: '{{ (percentage|int) <= 0 }}'
+          condition: template
+        sequence:
+        - action: script.rf_fan_off
+        - target:
+            entity_id:
+            - input_select.rf_fan_speed
+          data:
+            option: 'off'
+          action: input_select.select_option
+      - conditions:
+        - value_template: '{{ (percentage|int) <= 34 }}'
+          condition: template
+        sequence:
+        - action: script.rf_fan_low
+        - target:
+            entity_id:
+            - input_select.rf_fan_speed
+          data:
+            option: low
+          action: input_select.select_option
+      - conditions:
+        - value_template: '{{ (percentage|int) <= 67 }}'
+          condition: template
+        sequence:
+        - action: script.rf_fan_medium
+        - target:
+            entity_id:
+            - input_select.rf_fan_speed
+          data:
+            option: medium
+          action: input_select.select_option
+      - conditions: []
+        sequence:
+        - action: script.rf_fan_high
+        - target:
+            entity_id:
+            - input_select.rf_fan_speed
+          data:
+            option: high
+          action: input_select.select_option
+    default_entity_id: fan.ceiling_fan_rf
+    name: Ceiling Fan (RF)
+    percentage: '{% set m = {''off'': 0, ''low'': 33, ''medium'': 66, ''high'': 100}
+      %} {{ m.get(states(''input_select.rf_fan_speed'')|lower, 0) }}'
+    
+# sensor:
+#  - platform: template
+#    sensors:
+#      dummy_temperature:
+#        value_template: 25
+#        unit_of_measurement: "°C"
+        
+#fan:
+#  - platform: template
+#    fans:
+#      ceiling_fan_rf:
+#        friendly_name: "Ceiling Fan (RF)"
+#        # Show current speed as a percentage based on the input_select
+#        percentage_template: >
+#          {% set m = {'off': 0, 'low': 33, 'medium': 66, 'high': 100} %}
+#          {{ m.get(states('input_select.rf_fan_speed')|lower, 0) }}
+#        speed_count: 3
+#        # Turn on goes to Medium by default (change if you prefer Low/High)
+#        turn_on:
+#          - service: script.rf_fan_medium
+#          - service: input_select.select_option
+#            target: { entity_id: input_select.rf_fan_speed }
+#            data: { option: "medium" }
+#        turn_off:
+#          - service: script.rf_fan_off
+#          - service: input_select.select_option
+#            target: { entity_id: input_select.rf_fan_speed }
+#            data: { option: "off" }
+#        set_percentage:
+#          - choose:
+#              - conditions: "{{ (percentage|int) <= 0 }}"
+#                sequence:
+#                  - service: script.rf_fan_off
+#                  - service: input_select.select_option
+#                    target: { entity_id: input_select.rf_fan_speed }
+#                    data: { option: "off" }
+#              - conditions: "{{ (percentage|int) <= 34 }}"
+#                sequence:
+#                  - service: script.rf_fan_low
+#                  - service: input_select.select_option
+#                    target: { entity_id: input_select.rf_fan_speed }
+#                    data: { option: "low" }
+#              - conditions: "{{ (percentage|int) <= 67 }}"
+#                sequence:
+#                  - service: script.rf_fan_medium
+#                  - service: input_select.select_option
+#                    target: { entity_id: input_select.rf_fan_speed }
+#                    data: { option: "medium" }
+#              - conditions: []
+#                sequence:
+#                  - service: script.rf_fan_high
+#                  - service: input_select.select_option
+#                    target: { entity_id: input_select.rf_fan_speed }
+#                    data: { option: "high" }
+       
+shell_command:
+  truenas_shutdown: 'ssh -i /config/.ssh/id_ed25519_truenas -o StrictHostKeyChecking=no -o UserKnownHostsFile=/config/.ssh/known_hosts homeassistant@truenas.local "sudo /usr/sbin/poweroff"'
+                    
+notify:
+  - name: matt_and_cathy_phones
+    platform: group
+    services:
+      - service: mobile_app_matt_iphone12
+      - service: mobile_app_pixel_4a
+      
+input_text:
+  remote_url:
+    name: Remote URL
+    initial: !secret remote_url
+  local_url:
+    name: Local URL
+    initial: !secret local_url

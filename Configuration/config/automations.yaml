@@ -1,0 +1,1477 @@
+- id: '1756558651320'
+  alias: Entrance Hallway Motion Detected
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.entrance_hallway_sensor
+    from: 'off'
+    to: 'on'
+  conditions: []
+  actions:
+  - if:
+    - condition: sun
+      before: sunrise
+      after: sunset
+      before_offset: 02:00:00
+      after_offset: -02:00:00
+    then:
+    - if:
+      - condition: time
+        after: '22:00:00'
+        before: 06:00:00
+      then:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 2000
+          brightness_pct: 1
+          transition: 5
+        target:
+          entity_id: light.entrance_hallway_lights
+      else:
+      - if:
+        - condition: time
+          after: '21:00:00'
+          before: 07:00:00
+        then:
+        - action: light.turn_on
+          metadata: {}
+          data:
+            color_temp_kelvin: 3383
+            brightness_pct: 30
+            transition: 5
+          target:
+            entity_id: light.entrance_hallway_lights
+        else:
+        - action: light.turn_on
+          metadata: {}
+          data:
+            color_temp_kelvin: 3843
+            brightness_pct: 100
+            transition: 5
+          target:
+            entity_id: light.entrance_hallway_lights
+  mode: single
+- id: '1756558803905'
+  alias: Entrance Hallway No Motion Detected
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.entrance_hallway_sensor
+    from: 'on'
+    to: 'off'
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 30
+      milliseconds: 0
+  - condition: state
+    state:
+    - 'off'
+    - unavailable
+    - unknown
+    entity_id: binary_sensor.dining_room_presence_sensor_presence
+  - action: light.turn_off
+    metadata: {}
+    data:
+      transition: 20
+    target:
+      entity_id: light.entrance_hallway_lights
+  mode: single
+- id: '1757135430295'
+  alias: Activate Front Gate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_button.activate_gate
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      device_id: ab349c3b7fef36f2a9691ea1a94ce82f
+  mode: single
+- id: '1757333552451'
+  alias: Edith is Home Notification
+  description: ''
+  triggers:
+  - device_id: 30470710cb8987036107fc1fda5a62a3
+    domain: device_tracker
+    entity_id: 7b55a134c1c1cde50e0833433a4e1a25
+    type: enters
+    trigger: device
+    zone: zone.home
+  conditions: []
+  actions:
+  - data:
+      message: Edith is at our house
+      title: Edith's home
+    action: notify.mobile_app_matt_iphone12
+  mode: single
+- id: '1757334575532'
+  alias: Edith has left our house
+  description: ''
+  triggers:
+  - device_id: 30470710cb8987036107fc1fda5a62a3
+    domain: device_tracker
+    entity_id: 7b55a134c1c1cde50e0833433a4e1a25
+    type: leaves
+    trigger: device
+    zone: zone.home
+  conditions: []
+  actions:
+  - data:
+      message: Edith has left our house
+      title: Edith's left
+    action: notify.mobile_app_matt_iphone12
+  mode: single
+- id: '1759139804110'
+  alias: Ollie Crying Alert
+  description: Sends a notification when crying is detected
+  triggers:
+  - entity_id: binary_sensor.ollie_bedroom_baby_crying
+    to: 'on'
+    for: 00:00:10
+    trigger: state
+  conditions:
+  - condition: template
+    value_template: '{% set last = state_attr(''automation.ollie_crying_alert'', ''last_triggered'')
+      %} {{ last is none or (as_timestamp(now()) - as_timestamp(last)) > 120 }}
+
+      '
+  - condition: state
+    entity_id: input_select.ollie_room_desired_state
+    state:
+    - Rest Time
+    - Sleep Time
+  actions:
+  - data:
+      entity_id: camera.ollie_bedroom_fluent
+      filename: /config/www/ollie_crying_snapshot.jpg
+    action: camera.snapshot
+  - delay: 00:00:02
+  - data:
+      title: Ollie Crying
+      message: Crying detected!
+      data:
+        image: '{{ states(''input_text.remote_url'') }}/local/ollie_crying_snapshot.jpg?t={{
+          now().timestamp() | int }}'
+        url: /lovelace/kids-room-monitoring
+    action: notify.matt_and_cathy_phones
+  mode: single
+- id: '1759873598904'
+  alias: front_gate_motion
+  description: Sends a notification when motion detect at the front gate
+  triggers:
+  - entity_id:
+    - binary_sensor.front_gate_person
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    trigger: state
+  - trigger: state
+    entity_id:
+    - binary_sensor.front_gate_vehicle
+    to: 'on'
+  conditions:
+  - condition: template
+    value_template: '{% set last = state_attr(''automation.front_gate_motion'', ''last_triggered'')
+      %} {{ last is none or (as_timestamp(now()) - as_timestamp(last)) > 120 }}
+
+      '
+  actions:
+  - data:
+      filename: /config/www/front_gate_snapshot.jpg
+    action: camera.snapshot
+    target:
+      device_id:
+      - b688c28bac0961588d49e22eaab61911
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - data:
+      title: Front Gate
+      message: Motion Detected
+      data:
+        image: '{{ states(''input_text.remote_url'') }}/local/front_gate_snapshot.jpg?t={{
+          now().timestamp() | int }}'
+        url: /lovelace/kids-room-monitoring
+    action: notify.matt_and_cathy_phones
+  mode: single
+- id: '1760245825034'
+  alias: Apple TV Test
+  description: ''
+  triggers: []
+  conditions: []
+  actions:
+  - action: media_player.turn_on
+    metadata: {}
+    data: {}
+    target:
+      device_id: 047b90697e3eb2eca0b2e4db4abedcff
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 10
+      milliseconds: 0
+  - action: media_player.play_media
+    data:
+      media:
+        media_content_id: https://iview.abc.net.au/show/bananas-in-pyjamas
+        media_content_type: url
+        metadata: {}
+    target:
+      device_id: 047b90697e3eb2eca0b2e4db4abedcff
+  mode: single
+- id: '1760923917242'
+  alias: 2pm Turn off enery sucking devices at
+  description: ''
+  triggers:
+  - trigger: time
+    at: '13:56:00'
+    weekday:
+    - sat
+    - fri
+    - thu
+    - wed
+    - tue
+    - mon
+    - sun
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id: tech_cupboard
+  - action: climate.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - climate.studio_ac
+      - climate.upstairs_bedroom_ac
+      - climate.bedroom_3_heater_bedroom_3_climate_control
+      - climate.bedroom_1_heater_bedroom_1_climate_control
+      - climate.faikin_study_mqtt_hvac
+  - action: climate.set_temperature
+    metadata: {}
+    target:
+      entity_id: climate.fakin_main_mqtt_hvac
+    data:
+      temperature: 18
+  mode: single
+- id: '1762492926228'
+  alias: Turn on gate
+  description: ''
+  triggers:
+  - event_data:
+      actionID: B01CD912-61FB-4A36-97CA-7F520FDE3FE8
+    event_type: ios.action_fired
+    trigger: event
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      device_id: ab349c3b7fef36f2a9691ea1a94ce82f
+  mode: single
+- id: '1764759952132'
+  alias: Turn off fairy lights
+  description: ''
+  triggers:
+  - trigger: time
+    at: '22:30:00'
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 4c7f3631bd78daad93f8a4f9f0094955
+    entity_id: a8829f08007db1a0246147e85a79bc21
+    domain: switch
+    metadata:
+      secondary: false
+  - type: turn_off
+    device_id: 37374bdd7fbf4ceb2c874ef1147d4e07
+    entity_id: 44e648dd59aaa61b77697d4a98e93e23
+    domain: switch
+  mode: single
+- id: '1764927125403'
+  alias: Turn Driveway Lights Off
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+  - trigger: time
+    at: '22:30:00'
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 95f4050fd19191ac5575c1e4fd5081f3
+    entity_id: 71eccbe193d81d39c156629f0083337f
+    domain: switch
+    metadata:
+      secondary: false
+  - type: turn_off
+    device_id: fdb53979b17c91a7219fd5d9c573e8af
+    entity_id: 03b7942202feaf3e0c729daa4a7a3648
+    domain: switch
+  mode: single
+- id: '1764927264220'
+  alias: Turn Driveway Lights On
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunset
+  - trigger: sun
+    event: sunset
+    offset: -02:00:00
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 95f4050fd19191ac5575c1e4fd5081f3
+    entity_id: 71eccbe193d81d39c156629f0083337f
+    domain: switch
+  - type: turn_on
+    device_id: fdb53979b17c91a7219fd5d9c573e8af
+    entity_id: 03b7942202feaf3e0c729daa4a7a3648
+    domain: switch
+  mode: single
+- id: '1764932536320'
+  alias: Turn Off Fountain
+  description: ''
+  triggers:
+  - trigger: time
+    at: '13:55:00'
+  - trigger: time
+    at: '23:00:00'
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 686313bcec6d1e950b4e1b4e3f6099d1
+    entity_id: 99c4dc950a308e59547f3a5a141f4e41
+    domain: switch
+    metadata:
+      secondary: false
+  mode: single
+- id: '1764932565670'
+  alias: Turn On Fountain
+  description: ''
+  triggers:
+  - trigger: time
+    at: '11:05:00'
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 686313bcec6d1e950b4e1b4e3f6099d1
+    entity_id: 99c4dc950a308e59547f3a5a141f4e41
+    domain: switch
+  mode: single
+- id: '1765108105584'
+  alias: Turn off Climate Control
+  description: ''
+  triggers:
+  - trigger: time
+    at: 07:30:00
+  - trigger: time
+    at: '15:00:00'
+  conditions: []
+  actions:
+  - action: input_boolean.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.ollies_room_climate_control
+  mode: single
+- id: '1765108281280'
+  alias: Set temp to 20 deg at 4:30 am
+  description: ''
+  triggers:
+  - trigger: time
+    at: 04:30:00
+  conditions: []
+  actions:
+  - action: input_number.set_value
+    metadata: {}
+    data:
+      value: 21
+    target:
+      entity_id: input_number.desired_temperature_in_ollie_s_bedroom
+  mode: single
+- id: '1765108323413'
+  alias: Set temp to 18 deg at 7:30am
+  description: ''
+  triggers:
+  - trigger: time
+    at: 07:30:00
+  conditions: []
+  actions:
+  - action: input_number.set_value
+    metadata: {}
+    data:
+      value: 18
+    target:
+      entity_id: input_number.desired_temperature_in_ollie_s_bedroom
+  mode: single
+- id: '1765508572358'
+  alias: Play Ollie Playlist on Bedroom HomePod (Music Assistant)
+  description: Play "Ollie Media Playlist 01" on the bedroom HomePod via Music Assistant
+  triggers:
+  - entity_id: input_boolean.play_ollie_playlist
+    to: 'on'
+    trigger: state
+  actions:
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.4
+    target:
+      device_id: e77d1cd8d0b9d9b39bc294a83930bf81
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - target:
+      entity_id: media_player.bedroom_2
+    data:
+      media_id: Ollie Dance
+      media_type: playlist
+      enqueue: replace
+    action: music_assistant.play_media
+  - target:
+      entity_id: input_boolean.play_ollie_playlist
+    action: input_boolean.turn_off
+  mode: single
+- id: '1765513657188'
+  alias: Handle Tag Scan
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: tag_scanned
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.event.data.tag_id in tags }}'
+  - condition: template
+    value_template: '{{ trigger.event.data.device_id in media_players }}'
+  actions:
+  - variables:
+      media_player_entity_id: '{{ media_players[trigger.event.data.device_id] }}'
+      media_content_id: '{{ tags[trigger.event.data.tag_id].media_content_id }}'
+      media_content_type: '{{ tags[trigger.event.data.tag_id].media_content_type }}'
+  - action: media_player.play_media
+    target:
+      entity_id: '{{ media_player_entity_id }}'
+    data:
+      media:
+        media_content_id: '{{ media_content_id }}'
+        media_content_type: '{{ media_content_type }}'
+        metadata: {}
+  - delay: 2
+  max_exceeded: silent
+  variables:
+    media_players:
+      534b418df6a5787612b93a69d68980fc: media_player.kitchen_2
+    tags:
+      53-B2-B1-7E-01-00-01:
+        media_content_id: Ollie Dance
+        media_content_type: playlist
+      53-70-AA-7E-01-00-01:
+        media_content_id: 60s Night
+        media_content_type: playlist
+- id: '1765515516561'
+  alias: Media Handle Tag Remove
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: esphome.tag_removed
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.event.data.device_id in media_players }}'
+  actions:
+  - variables:
+      media_player_entity_id: '{{ media_players[trigger.event.data.device_id] }}'
+  - action: media_player.media_stop
+    target:
+      entity_id: '{{ media_player_entity_id }}'
+  - delay: 2
+  mode: single
+  max_exceeded: silent
+  variables:
+    media_players:
+      534b418df6a5787612b93a69d68980fc: media_player.bedroom_2
+- id: '1765968398129'
+  alias: Turn Server Fan On
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.temp_server_rack_sht4x_temperature
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+    above: 25
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      device_id: 42b5f7aac72493aae10971a6f089a4b5
+  mode: single
+- id: '1765968684945'
+  alias: Turn Server Fan Off
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.temp_server_rack_sht4x_temperature
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    below: 21
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      device_id: 42b5f7aac72493aae10971a6f089a4b5
+  mode: single
+- id: '1772530947583'
+  alias: Dining Room Motion Detected
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 7db759005e275b991ffbb0adbcd8fefc
+    entity_id: 0bac931cfb11509d80e1c38acc5d906c
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.dining_room_lights
+    data:
+      transition: 3
+  mode: single
+- id: '1772531073463'
+  alias: Dining Room No Motion Detected
+  description: ''
+  triggers:
+  - type: not_occupied
+    device_id: 7db759005e275b991ffbb0adbcd8fefc
+    entity_id: 0bac931cfb11509d80e1c38acc5d906c
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 8
+      seconds: 0
+      milliseconds: 0
+  - condition: state
+    state:
+    - 'off'
+    - unavailable
+    - unknown
+    entity_id: binary_sensor.dining_room_presence_sensor_presence
+  - action: light.turn_off
+    metadata: {}
+    target:
+      entity_id: light.dining_room_lights
+    data:
+      transition: 7
+  mode: single
+- id: '1774489096179'
+  alias: Gate Opened Notification
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.front_gate_controller_gate_is_open
+    to:
+    - 'on'
+    from:
+    - 'off'
+  conditions: []
+  actions:
+  - action: notify.mobile_app_matt_iphone12
+    metadata: {}
+    data:
+      message: Gate Open
+  mode: single
+- id: '1774954945812'
+  alias: Screen Test
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - device_tracker.espressif_4
+    attribute: button
+    to:
+    - charge
+  conditions: []
+  actions: []
+  mode: single
+- id: '1774956827728'
+  alias: Screen Test 2
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: f2a5b6d9714bc76f512a1c7bbfdbed4c
+    type: button_short_press
+    subtype: button_2
+    trigger: device
+  conditions: []
+  actions: []
+  mode: single
+- id: '1775424786456'
+  alias: ESP HMI - Data - Bedroom 3 Mode
+  description: Updates Bedroom 3's desired state over MQTT
+  triggers:
+  - trigger: state
+    entity_id: input_select.ollie_room_desired_state
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/desired_state
+      payload: '{{ states(''input_select.ollie_room_desired_state'') }}'
+      retain: true
+  mode: single
+- id: '1775427148820'
+  alias: ESP HMI - Button Press to MQTT
+  description: ''
+  triggers:
+  - trigger: mqtt
+    topic: esp_hmi/device/+/status/button_press
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''light'' }}'
+      sequence:
+      - action: remote.send_command
+        target:
+          device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+        data:
+          device: rf_fan
+          command: light_toggle
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''fan_1'' }}'
+      sequence:
+      - action: remote.send_command
+        target:
+          device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+        data:
+          device: rf_fan
+          command: fan_low
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''fan_2'' }}'
+      sequence:
+      - action: remote.send_command
+        target:
+          device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+        data:
+          device: rf_fan
+          command: fan_medium
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''fan_3'' }}'
+      sequence:
+      - action: remote.send_command
+        target:
+          device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+        data:
+          device: rf_fan
+          command: fan_high
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''fan_off'' }}'
+      sequence:
+      - action: remote.send_command
+        target:
+          device_id: 6cfa37efcfa4f2c8163cf2981fdf239e
+        data:
+          device: rf_fan
+          command: fan_off
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_temp_dn'' }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: '{{ climate_target_entity }}'
+        data:
+          temperature: '{{ (state_attr(climate_target_entity, ''temperature'') | float(21)
+            - 0.5) | round(1) }}
+
+            '
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_temp_up'' }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: '{{ climate_target_entity }}'
+        data:
+          temperature: '{{ (state_attr(climate_target_entity, ''temperature'') | float(21)
+            + 0.5) | round(1) }}
+
+            '
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_mode_off'' }}'
+      sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: '{{ heater_switch_entity }}'
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: '{{ climate_target_entity }}'
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_mode_on'' }}'
+      sequence:
+      - action: switch.turn_on
+        target:
+          entity_id: '{{ heater_switch_entity }}'
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: '{{ climate_target_entity }}'
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_mode_cc'' }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: '{{ climate_target_entity }}'
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_bedroom_1_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+        data:
+          temperature: '{{ (state_attr(''climate.bedroom_1_heater_bedroom_1_climate_control'',
+            ''temperature'') | float(21) - 0.5) | round(1) }}
+
+            '
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_bedroom_1_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+        data:
+          temperature: '{{ (state_attr(''climate.bedroom_1_heater_bedroom_1_climate_control'',
+            ''temperature'') | float(21) + 0.5) | round(1) }}
+
+            '
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_bedroom_1_mode_off''
+          }}'
+      sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.bedroom_1_heater
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_bedroom_1_mode_cc''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_server_rack_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.server_rack_fan_server_fan
+        data:
+          temperature: '{{ (state_attr(''climate.server_rack_fan_server_fan'', ''temperature'')
+            | float(21) - 0.5) | round(1) }}
+
+            '
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_server_rack_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.server_rack_fan_server_fan
+        data:
+          temperature: '{{ (state_attr(''climate.server_rack_fan_server_fan'', ''temperature'')
+            | float(21) + 0.5) | round(1) }}
+
+            '
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_server_rack_mode_off''
+          }}'
+      sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.server_rack_fan
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.server_rack_fan_server_fan
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_server_rack_mode_fan''
+          }}'
+      sequence:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.server_rack_fan
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.server_rack_fan_server_fan
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          temperature: '{{ (state_attr(''climate.upstairs_bedroom_ac'', ''temperature'')
+            | float(21) - 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.upstairs_bedroom_ac'') %} {{ m if
+            m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          temperature: '{{ (state_attr(''climate.upstairs_bedroom_ac'', ''temperature'')
+            | float(21) + 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.upstairs_bedroom_ac'') %} {{ m if
+            m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_mode_off''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_mode_cc''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_mode_cool''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_upstairs_bedroom_mode_fan''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.upstairs_bedroom_ac
+        data:
+          hvac_mode: fan_only
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_studio_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.studio_ac
+        data:
+          temperature: '{{ (state_attr(''climate.studio_ac'', ''temperature'') | float(21)
+            - 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.studio_ac'') %} {{ m if m not in
+            [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_studio_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.studio_ac
+        data:
+          temperature: '{{ (state_attr(''climate.studio_ac'', ''temperature'') | float(21)
+            + 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.studio_ac'') %} {{ m if m not in
+            [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_studio_mode_off''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.studio_ac
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_studio_mode_cc''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.studio_ac
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_studio_mode_cool''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.studio_ac
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button in [''Normal'', ''Rest Time'',
+          ''Sleep Time''] }}'
+      sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: '{{ room_state_select_entity }}'
+        data:
+          option: '{{ trigger.payload_json.button }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''Front Gate Open'' }}'
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.front_gate_controller_open_gate
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''Front Gate Close'' }}'
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.front_gate_controller_close_gate
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''Front Gate Activate''
+          }}'
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.front_gate_controller_activate_gate
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''study_heater'' }}'
+      sequence:
+      - action: switch.toggle
+        target:
+          entity_id: switch.tasmota_2
+  variables:
+    climate_target_entity: climate.bedroom_3_heater_bedroom_3_climate_control
+    heater_switch_entity: switch.bedroom_3_heater
+    room_state_select_entity: input_select.ollie_room_desired_state
+  mode: parallel
+- id: '1775445866615'
+  alias: ESP HMI - Data - Bedroom 3 Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.bedroom_3_heater_bedroom_3_climate_control
+    - switch.bedroom_3_heater
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/heater_on
+      payload: '{{ ''true'' if is_state(heater_switch, ''on'') else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom3/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.bedroom_3_heater_bedroom_3_climate_control
+    heater_switch: switch.bedroom_3_heater
+  mode: queued
+- id: '1776396741783'
+  alias: 7am Turn off Heating
+  description: ''
+  triggers:
+  - trigger: time
+    at: 07:00:00
+  conditions: []
+  actions:
+  - action: climate.turn_off
+    metadata: {}
+    target:
+      entity_id: climate.bedroom_3_heater_bedroom_3_climate_control
+    data: {}
+  - action: climate.turn_off
+    metadata: {}
+    target:
+      entity_id: climate.bedroom_1_heater_bedroom_1_climate_control
+    data: {}
+  mode: single
+- id: '1777449184978'
+  alias: ESP HMI - Data - Front Gate
+  description: Mirrors front gate controller state to MQTT for the ESP HMI Front Gate
+    screen
+  triggers:
+  - trigger: state
+    entity_id: sensor.front_gate_controller_gate_state
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/front_gate/state
+      payload: '{{ states(''sensor.front_gate_controller_gate_state'') }}'
+      retain: true
+  mode: single
+- id: '1777978180574'
+  alias: ESP HMI - Data - Study Heater
+  description: Mirrors switch.tasmota_2 state to MQTT for the ESP HMI Study screen
+  triggers:
+  - trigger: state
+    entity_id: switch.tasmota_2
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/heater_on
+      payload: '{{ states(''switch.tasmota_2'') }}'
+      retain: true
+  mode: single
+- id: '1778467744541'
+  alias: Penny Awake Button
+  description: ''
+  triggers:
+  - device_id: 9057f7680030703978840a729d87462c
+    domain: zha
+    type: remote_button_short_press
+    subtype: button_1
+    trigger: device
+  conditions: []
+  actions:
+  - action: input_select.select_option
+    metadata: {}
+    target:
+      entity_id: input_select.penny_state
+    data:
+      option: Awake
+  mode: single
+- id: '1778467824225'
+  alias: Penny Asleep Button
+  description: ''
+  triggers:
+  - device_id: 9057f7680030703978840a729d87462c
+    domain: zha
+    type: remote_button_short_press
+    subtype: button_2
+    trigger: device
+  conditions: []
+  actions:
+  - action: input_select.select_option
+    metadata: {}
+    target:
+      entity_id: input_select.penny_state
+    data:
+      option: Asleep
+  mode: single
+- id: '1778470146077'
+  alias: ESP HMI Panels to Front Gate on motion
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: b688c28bac0961588d49e22eaab61911
+    entity_id: 361d8f60c244d33d37fd284d9e09b4ae
+    domain: binary_sensor
+    trigger: device
+  - type: turned_on
+    device_id: b688c28bac0961588d49e22eaab61911
+    entity_id: 4eb11c556e8e1c2636d58e0ff6db0ab9
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - repeat:
+      for_each:
+      - 30eda0e20a9e
+      - 30eda0e20a61
+      - 30eda0e208ef
+      - 30eda0e1f349
+      sequence:
+      - action: esp_hmi.switch_screen
+        data:
+          mac: '{{ repeat.item }}'
+          screen: front_gate
+  mode: single
+- id: '1779618622543'
+  alias: ESP HMI - Data - House Battery SOC
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: sensor.sigen_inverter_battery_state_of_charge
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/house_battery/soc_percent
+      payload: '{{ states(''sensor.sigen_inverter_battery_state_of_charge'') }}'
+      retain: true
+  mode: single
+- id: '1779691689135'
+  alias: ESP HMI - Data - Bedroom 1 Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.bedroom_1_heater_bedroom_1_climate_control
+    - switch.bedroom_1_heater
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/heater_on
+      payload: '{{ ''true'' if is_state(heater_switch, ''on'') else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/bedroom1/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.bedroom_1_heater_bedroom_1_climate_control
+    heater_switch: switch.bedroom_1_heater
+  mode: queued
+- id: '1779691723422'
+  alias: ESP HMI - Data - Server Rack Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.server_rack_fan_server_fan
+    - switch.server_rack_fan
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/heater_on
+      payload: '{{ ''true'' if is_state(heater_switch, ''on'') else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/server_rack/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.server_rack_fan_server_fan
+    heater_switch: switch.server_rack_fan
+  mode: queued
+- id: '1779780076359'
+  alias: ESP HMI - Data - Studio Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.studio_ac
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/heater_on
+      payload: '{{ ''true'' if states(climate_target) not in [''off'', ''unavailable'',
+        ''unknown''] else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/studio/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.studio_ac
+  mode: queued
+- id: '1779780101808'
+  alias: ESP HMI - Data - Upstairs Bedroom Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.upstairs_bedroom_ac
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/heater_on
+      payload: '{{ ''true'' if states(climate_target) not in [''off'', ''unavailable'',
+        ''unknown''] else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/upstairs_bedroom/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.upstairs_bedroom_ac
+  mode: queued
+- id: '1780218633739'
+  alias: Show Dining Room HMI
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.rmm_default_dining_room_controls_occupancy
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: button.press
+    metadata: {}
+    target:
+      entity_id: button.esphmi_dining_room_full_brightness
+    data: {}
+  mode: single
+- id: '1785313222434'
+  alias: Turn on Matt's Bedside Lamp Button
+  description: ''
+  triggers:
+  - device_id: ec5d207825e7b13bbe73b3c377ded9d7
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_on
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.matt_s_bedside_lamp_light
+    data:
+      transition: 3
+      color_temp_kelvin: 2806
+      brightness_pct: 8
+  mode: single
+- id: '1785313259704'
+  alias: Turn off Matt's Bedside Lamp Button
+  description: ''
+  triggers:
+  - device_id: ec5d207825e7b13bbe73b3c377ded9d7
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_off
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    target:
+      entity_id: light.matt_s_bedside_lamp_light
+    data: {}
+  mode: single
+- id: '1785750676594'
+  alias: Turn Front Door Lights On
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.front_door_person
+    from:
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id:
+      - light.wled_front_door_top
+      - light.wled_front_door_bottom
+    data:
+      color_temp_kelvin: 5002
+      brightness_pct: 100
+  mode: single
+- id: '1785750734061'
+  alias: Turn Front Door Lights Off
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.front_door_person
+    from:
+    - 'on'
+    to:
+  conditions: []
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - light.wled_front_door_bottom
+      - light.wled_front_door_top
+    data: {}
+  mode: single
+- id: '1786059345763'
+  alias: Ollie's Bedroom Baby Monitor
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.reolink_ollie_s_room_baby_crying
+    from:
+    to:
+    - 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.ollie_bedroom_motion
+    from:
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: select.select_option
+    metadata: {}
+    target:
+      entity_id: select.esphmi_dining_room_go_to_screen
+    data:
+      option: penny_room
+  - action: select.select_option
+    metadata: {}
+    target:
+      entity_id: select.hmi_study_go_to_screen
+    data:
+      option: penny_room
+  mode: single

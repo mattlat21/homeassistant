@@ -1,0 +1,62 @@
+# Home Assistant secrets and credentials
+secrets.yaml
+*.pem
+*.key
+*.crt
+.storage/
+.cloud/
+.google.token
+.HA_VERSION
+.uuid
+auth
+auth_provider.homeassistant
+
+# Databases
+home-assistant_v2.db
+home-assistant_v2.db-*
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+home-assistant.log
+home-assistant.log.*
+*.log
+
+# Backups
+backups/
+backup/
+*.tar
+*.tar.gz
+*.zip
+
+# Runtime and generated files
+deps/
+tts/
+__pycache__/
+*.pyc
+*.pid
+
+# ESPHome generated and sensitive files
+esphome/.esphome/
+esphome/secrets.yaml
+esphome/.gitignore
+esphome/**/.pioenvs/
+esphome/**/.piolibdeps/
+
+# Camera snapshots and generated media
+www/*snapshot*
+www/*.jpg
+www/*.jpeg
+www/*.png
+www/*.mp4
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor files
+.vscode/
+.idea/
+*.swp

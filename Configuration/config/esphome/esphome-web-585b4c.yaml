@@ -1,0 +1,164 @@
+esphome:
+  name: nfc-console-1
+  friendly_name: NFC Console 1
+  # min_version can stay if you're on 2025.5.0+, otherwise remove it
+  min_version: 2025.5.0
+  name_add_mac_suffix: false
+
+esp8266:
+  board: d1_mini
+
+# Logging / API / OTA
+logger:
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # optional AP fallback:
+  ap:
+    ssid: "NFC Console Fallback"
+    password: !secret wifi_ap_password
+
+captive_portal:
+
+
+# -------------------------------
+# Status Light
+# -------------------------------
+output:
+  - platform: gpio
+    pin: GPIO02
+    id: status_led_output
+
+# light:
+#   - platform: binary
+#     id: status_led_1
+#     name: "Status LED"
+#     output: status_led_output
+#     restore_mode: ALWAYS_OFF
+
+# -------------------------------
+# I²C BUS (PN532 on I2C)
+# D2 = GPIO4 (SDA), D1 = GPIO5 (SCL) on D1 mini
+# Elechouse PN532 V4 default I2C address is 0x24
+# -------------------------------
+i2c:
+  id: i2c_bus
+  sda: GPIO5
+  scl: GPIO4
+  scan: true
+
+# Debounce tracker (like your example)
+globals:
+  - id: last_tag_time
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+
+# Optional buzzer (change the pin or remove this section if not used)
+# On D1 mini, D8 = GPIO15 is common for a little buzzer, but pick any safe pin you wired.
+#output:
+#  - platform: gpio
+#    pin: GPIO15
+#    id: buzzer_output
+
+#button:
+#  - platform: template
+#    name: "NFC Beep"
+#    id: buzzer_button
+#    on_press:
+#      then:
+#        - output.turn_on: buzzer_output
+#        - delay: 100ms
+#        - output.turn_off: buzzer_output
+
+# -------------------------------
+# PN532 over I²C
+# -------------------------------
+pn532_i2c:
+  id: pn532_reader
+  address: 0x24
+  update_interval: 250ms
+
+  on_tag:
+    then:
+      # Remember the last time the card was inserted
+      - lambda: |-
+          id(last_tag_time) = millis();
+
+      # Log Event
+      - logger.log:
+          format: "NFC tag detected: %s"
+          args: ['x.c_str()']
+
+      # Update UUID
+      - text_sensor.template.publish:
+          id: last_uid
+          state: !lambda 'return x;'
+
+      # Update Card Present Flag
+      - binary_sensor.template.publish:
+          id: tag_present
+          state: true
+
+      # Trigger Home Assiustant tag_scanned event
+      - homeassistant.tag_scanned: !lambda 'return x;'
+
+      # Trigger a home assistant event
+      - homeassistant.event:
+          event: esphome.nfc_console_1_card_inserted
+          data:
+            uid: !lambda 'return x;'
+            
+      # Turn LED off
+      - output.turn_on: status_led_output
+
+  on_tag_removed:
+    then:
+      # - delay: 500ms
+      # - lambda: |-
+      #     if (millis() - id(last_tag_time) > 500) {
+      #       ESP_LOGI("pn532", "Tag removed (debounced)");
+      #       id(last_uid).publish_state("");
+      #       id(tag_present).publish_state(false);
+      #     }
+      - homeassistant.event:
+          event: esphome.tag_removed
+          data:
+            tag_id: !lambda 'return x;'
+
+      - binary_sensor.template.publish:
+          id: tag_present
+          state: false
+      # - if:
+      #     condition:
+      #       lambda: 'return millis() - id(last_tag_time) > 500;'
+      #     then:
+      #       - homeassistant.event:
+      #           event: esphome.nfc_card_removed
+      #           data:
+      #             message: "Tag removed"
+      - output.turn_off: status_led_output
+      - logger.log:
+          level: INFO
+          tag: "boot"
+          format: "Tag Removed"
+
+# Expose current tag UID as a text sensor
+text_sensor:
+  - platform: template
+    name: "NFC Tag UID"
+    id: last_uid
+    update_interval: never
+    internal: false
+
+# Expose presence state
+binary_sensor:
+  - platform: template
+    name: "NFC Tag Present"
+    id: tag_present

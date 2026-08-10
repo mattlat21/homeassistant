@@ -1,0 +1,187 @@
+increase_ollie_temp:
+  sequence:
+  - variables:
+      current: '{{ states(''input_number.desired_temperature_in_ollie_s_bedroom'')
+        | float }}'
+  - target:
+      entity_id: input_number.desired_temperature_in_ollie_s_bedroom
+    data:
+      value: '{{ [ current + 1, 25 ] | min }}'
+    action: input_number.set_value
+  alias: increase_ollie_temp
+  description: ''
+decrease_ollie_temp:
+  sequence:
+  - variables:
+      current: '{{ states(''input_number.desired_temperature_in_ollie_s_bedroom'')
+        | float }}'
+  - target:
+      entity_id: input_number.desired_temperature_in_ollie_s_bedroom
+    data:
+      value: '{{ [ current - 1, 16 ] | max }}'
+    action: input_number.set_value
+  alias: decrease_ollie_temp
+  description: ''
+fancy_downstairs_lights:
+  alias: Staggered Lights
+  description: ''
+  fields:
+    colour_temperature:
+      selector:
+        color_temp:
+          unit: kelvin
+      default: 5277
+    colour_rgb:
+      name: Colour RGB
+      default:
+      - 164
+      - 61
+      - 255
+      selector:
+        color_rgb: {}
+      description: Select a Colour RGB value (or you could select a colour temperature)
+    use_colour:
+      name: Use Colour
+      selector:
+        boolean: {}
+      description: 'If True: Use the RGB colour.  If False: Use the colur temperature'
+    turn_on:
+      name: Turn On
+      description: 'If True: Lights Turn On. If False: Lights Turn Off.'
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    light_list:
+      required: true
+      selector:
+        entity:
+          domain: light
+          multiple: true
+      description: Input a selection of lights that this script will control
+    total_duration:
+      default:
+        hours: 0
+        minutes: 0
+        seconds: 5
+      selector:
+        duration: {}
+      description: How long the overall effect will take
+    fade_time:
+      selector:
+        duration: {}
+      default:
+        hours: 0
+        minutes: 0
+        seconds: 3
+      name: Fade Time
+      description: How long each turn on / turn off takes
+  sequence:
+  - variables:
+      light_count: '{{ light_list | default([]) | count }}'
+      total_seconds: "{{\n  (total_duration.hours | default(0) | int * 3600) +\n  (total_duration.minutes
+        | default(0) | int * 60) +\n  (total_duration.seconds | default(0) | int)\n}}\n"
+      delay_seconds: '{{ (total_seconds / ([light_count, 1] | max)) | int }}'
+      delay_time:
+        hours: '{{ delay_seconds // 3600 }}'
+        minutes: '{{ (delay_seconds % 3600) // 60 }}'
+        seconds: '{{ delay_seconds % 60 }}'
+      fade_seconds: "{{\n  (fade_time.hours | default(0) | int * 3600) +\n  (fade_time.minutes
+        | default(0) | int * 60) +\n  (fade_time.seconds | default(0) | int)\n}}\n"
+  - repeat:
+      for_each: '{{ light_list }}'
+      sequence:
+      - if:
+        - condition: template
+          value_template: '{{ turn_on | bool }}'
+        then:
+        - if:
+          - condition: template
+            value_template: '{{ use_colour | bool }}'
+          then:
+          - action: light.turn_on
+            target:
+              entity_id: '{{ repeat.item }}'
+            data:
+              rgb_color: '{{ colour_rgb }}'
+              transition: '{{ fade_seconds }}'
+          else:
+          - action: light.turn_on
+            target:
+              entity_id: '{{ repeat.item }}'
+            data:
+              color_temp_kelvin: '{{ colour_temperature | int }}'
+              transition: '{{ fade_seconds }}'
+        else:
+        - action: light.turn_off
+          target:
+            entity_id: '{{ repeat.item }}'
+          data:
+            transition: '{{ fade_seconds }}'
+      - delay: '{{ delay_time }}'
+stagger_turning_on_downastairs_lights:
+  sequence:
+  - action: script.fancy_downstairs_lights
+    metadata: {}
+    data:
+      colour_temperature: 5543
+      turn_on: true
+      total_duration:
+        hours: 0
+        minutes: 0
+        seconds: 3
+      fade_time:
+        hours: 0
+        minutes: 0
+        seconds: 1
+      use_colour: false
+      light_list:
+      - light.entrance_hallway_1
+      - light.entrance_hallway_2
+      - light.signify_netherlands_b_v_lcg004
+      - light.dining_room_lights_2
+      - light.dining_room_light_4
+      - light.dining_room_light_3
+  alias: Stagger Turning On Downastairs Lights
+  description: ''
+  icon: mdi:lightbulb
+stagger_turning_off_downastairs_lights:
+  sequence:
+  - action: script.fancy_downstairs_lights
+    metadata: {}
+    data:
+      colour_temperature: 5543
+      turn_on: false
+      total_duration:
+        hours: 0
+        minutes: 0
+        seconds: 3
+      fade_time:
+        hours: 0
+        minutes: 0
+        seconds: 1
+      use_colour: false
+      light_list:
+      - light.entrance_hallway_1
+      - light.entrance_hallway_2
+      - light.signify_netherlands_b_v_lcg004
+      - light.dining_room_lights_2
+      - light.dining_room_light_4
+      - light.dining_room_light_3
+  alias: Stagger Turning Off Downastairs Lights
+  description: ''
+  icon: mdi:lightbulb
+shutdown_truenas:
+  sequence:
+  - action: shell_command.truenas_shutdown
+  alias: Shutdown TrueNAS
+  description: ''
+septic_filter_cleaned_today:
+  alias: Septic Filter Cleaned Today
+  sequence:
+  - action: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.septic_filter_last_clean
+    data:
+      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  description: ''

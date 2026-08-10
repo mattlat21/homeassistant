@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Radar Map Manager",
+        "description": "Initialize the RMM edge computing fusion engine. Click Submit to complete the installation."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Radar Map Manager is already configured. Only a single instance is needed."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "presence_target_count": {"name": "Target Count"},
+      "target_1_x": {"name": "Target 1 X"},
+      "target_1_y": {"name": "Target 1 Y"},
+      "target_1_v": {"name": "Target 1 Speed"},
+      "target_2_x": {"name": "Target 2 X"},
+      "target_2_y": {"name": "Target 2 Y"},
+      "target_2_v": {"name": "Target 2 Speed"}
+    },
+    "binary_sensor": {
+      "pir": {"name": "PIR Motion"}
+    }
+  }
+}

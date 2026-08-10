@@ -1,0 +1,817 @@
+"""Number platform for Sigenergy ESS integration."""
+from __future__ import annotations
+
+import logging
+import asyncio
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, Coroutine
+
+from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberEntityDescription, NumberMode
+# from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.config_entries import ConfigEntry  #pylint: disable=no-name-in-module, syntax-error
+from homeassistant.const import (
+    CONF_NAME,
+    EntityCategory,
+    PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfFrequency,
+    UnitOfPower,
+    UnitOfReactivePower,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.exceptions import HomeAssistantError
+
+from .const import (
+    DEVICE_TYPE_AC_CHARGER,
+    DEVICE_TYPE_INVERTER,
+    DEVICE_TYPE_PLANT,
+    DOMAIN,
+)
+from .coordinator import SigenergyDataUpdateCoordinator # Import coordinator
+# from .modbus import SigenergyModbusError
+from .common import(generate_sigen_entity) # Added generate_device_id
+from .sigen_entity import SigenergyEntity # Import the new base class
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class SigenergyNumberEntityDescription(NumberEntityDescription):
+    """Class describing Sigenergy number entities."""
+
+    # Provide default lambdas instead of None to satisfy type checker
+    # The second argument 'identifier' will be device_name for inverters, device_id otherwise
+    value_fn: Callable[[Dict[str, Any], Optional[Any]], float] = lambda data, identifier: 0.0
+    # Make set_value_fn async and update type hint
+    # Make set_value_fn async and update type hint to accept coordinator
+    set_value_fn: Callable[[SigenergyDataUpdateCoordinator, Optional[Any], float], Coroutine[Any, Any, None]] = lambda coordinator, identifier, value: asyncio.sleep(0) # Placeholder async lambda
+    available_fn: Callable[[Dict[str, Any], Optional[Any]], bool] = lambda data, _: True
+    entity_registry_enabled_default: bool = True
+
+
+PLANT_NUMBERS = [
+    SigenergyNumberEntityDescription(
+        key="plant_active_power_fixed_target",
+        name="Active Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_active_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_active_power_fixed_target", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_reactive_power_fixed_target",
+        name="Reactive Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.REACTIVE_POWER,
+        native_unit_of_measurement=UnitOfReactivePower.KILO_VOLT_AMPERE_REACTIVE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_reactive_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_reactive_power_fixed_target", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_active_power_percentage_target",
+        name="Active Power Percentage Adjustment",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_active_power_percentage_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_active_power_percentage_target", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_qs_ratio_target",
+        name="Q/S Adjustment",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-60,
+        native_max_value=60,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_qs_ratio_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_qs_ratio_target", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_power_factor_target",
+        name="Power Factor Adjustment",
+        icon="mdi:sine-wave",
+        native_min_value=-1,
+        native_max_value=1,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_power_factor_target", 0) / 1000,
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_power_factor_target", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_ess_max_charging_limit",
+        name="ESS Max Charging Limit",
+        icon="mdi:battery-charging",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_ess_max_charging_limit", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_ess_max_charging_limit", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_ess_max_discharging_limit",
+        name="ESS Max Discharging Limit",
+        icon="mdi:battery-charging-outline",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_ess_max_discharging_limit", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_ess_max_discharging_limit", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_pv_max_power_limit",
+        name="PV Max Power Limit",
+        icon="mdi:solar-power",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_pv_max_power_limit", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_pv_max_power_limit", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_grid_point_maximum_export_limitation",
+        name="Grid Export Limitation",
+        # 'tower-import' icon means 'energy to grid'
+        icon="mdi:transmission-tower-import",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_grid_point_maximum_export_limitation", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_grid_point_maximum_export_limitation", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_grid_maximum_import_limitation",
+        name="Grid Import Limitation",
+        # 'tower-export' icon means 'energy from grid'
+        icon="mdi:transmission-tower-export",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_grid_maximum_import_limitation", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_grid_maximum_import_limitation", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_pcs_maximum_export_limitation",
+        name="PCS Export Limitation",
+        icon="mdi:transmission-tower-import",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_pcs_maximum_export_limitation", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_pcs_maximum_export_limitation", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_pcs_maximum_import_limitation",
+        name="PCS Import Limitation",
+        icon="mdi:transmission-tower-export",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_pcs_maximum_import_limitation", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_pcs_maximum_import_limitation", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_a_active_power_fixed_target",
+        name="Phase A Active Power Fixed Adjustment",
+        icon="mdi:flash",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_a_active_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_a_active_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_b_active_power_fixed_target",
+        name="Phase B Active Power Fixed Adjustment",
+        icon="mdi:flash",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_b_active_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_b_active_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_c_active_power_fixed_target",
+        name="Phase C Active Power Fixed Adjustment",
+        icon="mdi:flash",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_c_active_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_c_active_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_a_reactive_power_fixed_target",
+        name="Phase A Reactive Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.REACTIVE_POWER,
+        native_unit_of_measurement=UnitOfReactivePower.KILO_VOLT_AMPERE_REACTIVE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_a_reactive_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_a_reactive_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_b_reactive_power_fixed_target",
+        name="Phase B Reactive Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.REACTIVE_POWER,
+        native_unit_of_measurement=UnitOfReactivePower.KILO_VOLT_AMPERE_REACTIVE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_b_reactive_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_b_reactive_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_c_reactive_power_fixed_target",
+        name="Phase C Reactive Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.REACTIVE_POWER,
+        native_unit_of_measurement=UnitOfReactivePower.KILO_VOLT_AMPERE_REACTIVE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_c_reactive_power_fixed_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_c_reactive_power_fixed_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_a_active_power_percentage_target",
+        name="Phase A Active Power Percentage",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_a_active_power_percentage_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_a_active_power_percentage_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_b_active_power_percentage_target",
+        name="Phase B Active Power Percentage",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_b_active_power_percentage_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_b_active_power_percentage_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_c_active_power_percentage_target",
+        name="Phase C Active Power Percentage",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_c_active_power_percentage_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_c_active_power_percentage_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_a_qs_ratio_target",
+        name="Phase A Q/S Ratio",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-60,
+        native_max_value=60,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_a_qs_ratio_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_a_qs_ratio_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_b_qs_ratio_target",
+        name="Phase B Q/S Ratio",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-60,
+        native_max_value=60,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_b_qs_ratio_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_b_qs_ratio_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_phase_c_qs_ratio_target",
+        name="Phase C Q/S Ratio",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-60,
+        native_max_value=60,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_phase_c_qs_ratio_target", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_phase_c_qs_ratio_target", value),
+        available_fn=lambda data, _: data["plant"].get("plant_independent_phase_power_control_enable") == 1,
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    # Additions for Modbus specification v2.7
+        SigenergyNumberEntityDescription(
+        key="plant_backup_soc",
+        name="ESS Backup State of Charge",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_backup_soc", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_backup_soc", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+        SigenergyNumberEntityDescription(
+        key="plant_charge_cut_off_soc",
+        name="ESS Charge Cut-Off State of Charge",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_charge_cut_off_soc", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_charge_cut_off_soc", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+        SigenergyNumberEntityDescription(
+        key="plant_discharge_cut_off_soc",
+        name="ESS Discharge Cut-Off State of Charge",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_discharge_cut_off_soc", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_discharge_cut_off_soc", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    # Modbus v2.8 additions - Grid code parameters
+    SigenergyNumberEntityDescription(
+        key="plant_active_power_regulation_gradient",
+        name="[Grid Code] Active Power Regulation Gradient",
+        icon="mdi:slope-uphill",
+        native_unit_of_measurement="%/s",
+        native_min_value=0,
+        native_max_value=5,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_active_power_regulation_gradient", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_active_power_regulation_gradient", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_lvrt_reactive_power_comp_factor",
+        name="[Grid Code] LVRT Reactive Power Compensation Factor",
+        icon="mdi:chart-line",
+        native_min_value=0,
+        native_max_value=10,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_lvrt_reactive_power_comp_factor", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_lvrt_reactive_power_comp_factor", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_lvrt_neg_seq_reactive_power_comp_factor",
+        name="[Grid Code] LVRT Negative-Sequence Reactive Power Compensation Factor",
+        icon="mdi:chart-line",
+        native_min_value=0,
+        native_max_value=10,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_lvrt_neg_seq_reactive_power_comp_factor", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_lvrt_neg_seq_reactive_power_comp_factor", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_hvrt_reactive_power_comp_factor",
+        name="[Grid Code] HVRT Reactive Power Compensation Factor",
+        icon="mdi:chart-line",
+        native_min_value=0,
+        native_max_value=10,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_hvrt_reactive_power_comp_factor", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_hvrt_reactive_power_comp_factor", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_hvrt_neg_seq_reactive_power_comp_factor",
+        name="[Grid Code] HVRT Negative-Sequence Reactive Power Compensation Factor",
+        icon="mdi:chart-line",
+        native_min_value=0,
+        native_max_value=10,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_hvrt_neg_seq_reactive_power_comp_factor", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_hvrt_neg_seq_reactive_power_comp_factor", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_over_freq_derating_power_ramp_rate",
+        name="[Grid Code] Over-Frequency Derating Power Ramp Rate",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_over_freq_derating_power_ramp_rate", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_over_freq_derating_power_ramp_rate", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_over_freq_derating_trigger_freq",
+        name="[Grid Code] Over-Frequency Derating Trigger Frequency",
+        icon="mdi:sine-wave",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        native_min_value=40,
+        native_max_value=72,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_over_freq_derating_trigger_freq", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_over_freq_derating_trigger_freq", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_over_freq_derating_cutoff_freq",
+        name="[Grid Code] Over-Frequency Derating Cut-Off Frequency",
+        icon="mdi:sine-wave",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        native_min_value=40,
+        native_max_value=72,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_over_freq_derating_cutoff_freq", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_over_freq_derating_cutoff_freq", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_under_freq_power_boost_power_ramp_rate",
+        name="[Grid Code] Under-Frequency Power Boost Power Ramp Rate",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_under_freq_power_boost_power_ramp_rate", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_under_freq_power_boost_power_ramp_rate", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_under_freq_power_boost_trigger_freq",
+        name="[Grid Code] Under-Frequency Power Boost Trigger Frequency",
+        icon="mdi:sine-wave",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        native_min_value=40,
+        native_max_value=72,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_under_freq_power_boost_trigger_freq", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_under_freq_power_boost_trigger_freq", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="plant_under_freq_power_boost_cutoff_freq",
+        name="[Grid Code] Under-Frequency Power Boost Cut-Off Frequency",
+        icon="mdi:sine-wave",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        native_min_value=40,
+        native_max_value=72,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda data, _: data["plant"].get("plant_under_freq_power_boost_cutoff_freq", 0),
+        set_value_fn=lambda coordinator, _, value: coordinator.async_write_parameter("plant", None, "plant_under_freq_power_boost_cutoff_freq", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+
+]
+
+INVERTER_NUMBERS = [
+    SigenergyNumberEntityDescription(
+        key="inverter_active_power_fixed_adjustment",
+        name="Active Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        # Use identifier (device_name for inverters)
+        value_fn=lambda data, identifier: data["inverters"].get(identifier, {}).get("inverter_active_power_fixed_adjustment", 0),
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("inverter", identifier, "inverter_active_power_fixed_adjustment", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="inverter_reactive_power_fixed_adjustment",
+        name="Reactive Power Fixed Adjustment",
+        icon="mdi:flash",
+        device_class=NumberDeviceClass.REACTIVE_POWER,
+        native_unit_of_measurement=UnitOfReactivePower.KILO_VOLT_AMPERE_REACTIVE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        # Use identifier (device_name for inverters)
+        value_fn=lambda data, identifier: data["inverters"].get(identifier, {}).get("inverter_reactive_power_fixed_adjustment", 0),
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("inverter", identifier, "inverter_reactive_power_fixed_adjustment", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="inverter_active_power_percentage_adjustment",
+        name="Active Power Percentage Adjustment",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-100,
+        native_max_value=100,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        # Use identifier (device_name for inverters)
+        value_fn=lambda data, identifier: data["inverters"].get(identifier, {}).get("inverter_active_power_percentage_adjustment", 0),
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("inverter", identifier, "inverter_active_power_percentage_adjustment", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="inverter_reactive_power_qs_adjustment",
+        name="Reactive Power Q/S Adjustment",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-60,
+        native_max_value=60,
+        native_step=0.01,
+        entity_category=EntityCategory.CONFIG,
+        # Use identifier (device_name for inverters)
+        value_fn=lambda data, identifier: data["inverters"].get(identifier, {}).get("inverter_reactive_power_qs_adjustment", 0),
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("inverter", identifier, "inverter_reactive_power_qs_adjustment", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+    SigenergyNumberEntityDescription(
+        key="inverter_power_factor_adjustment",
+        name="Power Factor Adjustment",
+        icon="mdi:sine-wave",
+        native_min_value=-1,
+        native_max_value=1,
+        native_step=0.001,
+        entity_category=EntityCategory.CONFIG,
+        # Use identifier (device_name for inverters)
+        value_fn=lambda data, identifier: data["inverters"].get(identifier, {}).get("inverter_power_factor_adjustment", 0) / 1000,
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("inverter", identifier, "inverter_power_factor_adjustment", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+]
+AC_CHARGER_NUMBERS = [
+    SigenergyNumberEntityDescription(
+        key="ac_charger_output_current",
+        name="Charger Output Current",
+        icon="mdi:current-ac",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        native_min_value=6,
+        native_max_value=32,  # This will be adjusted dynamically based on rated current
+        native_step=1,
+        entity_category=EntityCategory.CONFIG,
+        # identifier here will be ac_charger_name
+        value_fn=lambda data, identifier: data["ac_chargers"].get(identifier, {}).get("ac_charger_output_current", 0),
+        set_value_fn=lambda coordinator, identifier, value: coordinator.async_write_parameter("ac_charger", identifier, "ac_charger_output_current", value),
+        entity_registry_enabled_default=False,
+        mode=NumberMode.BOX,
+    ),
+]
+
+DC_CHARGER_NUMBERS = []
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Sigenergy number platform."""
+    coordinator: SigenergyDataUpdateCoordinator = (
+        hass.data[DOMAIN][config_entry.entry_id]["coordinator"])
+    plant_name = config_entry.data[CONF_NAME]
+
+    # Add plant numbers
+    entities : list[SigenergyNumber] = generate_sigen_entity(plant_name, None, None, coordinator,
+                                                             SigenergyNumber,
+                                                             PLANT_NUMBERS,
+                                                             DEVICE_TYPE_PLANT)
+
+    # Add inverter numbers
+    for device_name, device_conn in coordinator.hub.inverter_connections.items():
+        entities += generate_sigen_entity(plant_name, device_name, device_conn, coordinator,
+                                           SigenergyNumber,
+                                           INVERTER_NUMBERS,
+                                           DEVICE_TYPE_INVERTER)
+
+    # Add AC charger numbers
+    for device_name, device_conn in coordinator.hub.ac_charger_connections.items():
+        entities += generate_sigen_entity(plant_name, device_name, device_conn, coordinator,
+                                           SigenergyNumber,
+                                           AC_CHARGER_NUMBERS,
+                                           DEVICE_TYPE_AC_CHARGER)
+
+    async_add_entities(entities)
+
+
+class SigenergyNumber(SigenergyEntity, NumberEntity): # pylint: disable=abstract-method
+    """Representation of a Sigenergy number."""
+
+    entity_description: SigenergyNumberEntityDescription
+    # Explicitly type coordinator here
+    coordinator: SigenergyDataUpdateCoordinator
+
+    def __init__(
+        self,
+        coordinator: SigenergyDataUpdateCoordinator,
+        description: SigenergyNumberEntityDescription,
+        name: str,
+        device_type: str,
+        device_id: Optional[str] = None, # Changed to Optional[str]
+        device_name: Optional[str] = "",
+        device_info: Optional[DeviceInfo] = None,
+        pv_string_idx: Optional[int] = None,
+    ) -> None:
+        """Initialize the number."""
+        # Call the base class __init__
+        super().__init__(
+            coordinator=coordinator,
+            description=description,
+            name=name,
+            device_type=device_type,
+            device_id=device_id,
+            device_name=device_name or "",
+            device_info=device_info,
+            pv_string_idx=pv_string_idx,
+        )
+        # No number-specific init needed for now
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the value of the number."""
+        if self.coordinator.data is None:
+            return None
+            
+        # Use device_name as the primary identifier passed to the lambda/function
+        identifier = self._device_name
+        try:
+            value = self.entity_description.value_fn(self.coordinator.data, identifier)
+            # Ensure the value is a float
+            return float(value) if value is not None else 0.0
+        except (TypeError, ValueError, KeyError) as e:
+            _LOGGER.error(
+                "Error getting native value for %s (identifier: %s): %s",
+                self.entity_id,
+                identifier,
+                e,
+            )
+            return None
+
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not super().available:
+            return False
+            
+        # Use device_name as the primary identifier passed to the lambda/function
+        identifier = self._device_name
+        return self.entity_description.available_fn(self.coordinator.data, identifier)
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the value of the number."""
+        if self.coordinator.data is None:
+            raise HomeAssistantError(f"Cannot set value for {self.entity_id}: Coordinator data is unavailable")
+
+        # Use device_name as the primary identifier passed to the lambda/function
+        identifier = self._device_name
+        # Exceptions are handled and logged in coordinator.async_write_parameter
+        await self.entity_description.set_value_fn(self.coordinator, identifier, value)

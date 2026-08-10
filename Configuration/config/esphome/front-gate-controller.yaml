@@ -1,0 +1,468 @@
+esphome:
+  name: front-gate-controller
+  friendly_name: Front Gate Controller
+  on_boot:
+    priority: -100
+    then:
+      - switch.turn_on: neopixel_power
+      - switch.turn_off: gate_relay
+      - script.execute:
+          id: set_pixel_mode
+          mode: 3   # start as WiFi/API issue until status says otherwise
+
+esp32:
+  board: adafruit_feather_esp32_v2
+  variant: esp32
+  flash_size: 8MB
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+  baud_rate: 0
+
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+    # password: "skdfufjj$474Da"
+
+wifi:
+  ssid: "not"
+  password: "nointernet4uyacrazylolz"
+  min_auth_mode: WPA2
+  fast_connect: true
+  power_save_mode: none
+  reboot_timeout: 2min
+
+  #ap:
+  #  ssid: "Front Gate Controller Fallback"
+  #  password: "fallback123"
+
+captive_portal:
+
+web_server:
+  port: 80
+
+# --------------------
+# NeoPixel POWER enable (Feather ESP32 V2)
+# Must be HIGH for the onboard NeoPixel to light up.
+# --------------------
+switch:
+  - platform: gpio
+    id: neopixel_power
+    name: "NeoPixel Power"
+    internal: true
+    pin: 2
+    restore_mode: ALWAYS_ON
+
+  # --------------------
+  # Relay (GPIO25 / DAC1) - internal, 500ms pulse
+  # --------------------
+  - platform: gpio
+    id: gate_relay
+    internal: true
+    pin:
+      number: 25
+      inverted: false
+    restore_mode: ALWAYS_OFF
+
+    on_turn_on:
+      - delay: 500ms
+      - switch.turn_off: gate_relay
+
+# --------------------
+# Optional simple onboard red LED (GPIO13)
+# --------------------
+output:
+  - platform: gpio
+    pin:
+      number: 13
+      inverted: false
+    id: led_output
+
+light:
+  - platform: binary
+    name: "Status LED"
+    output: led_output
+
+  # --------------------
+  # Onboard NeoPixel (data on GPIO0)
+  # Colours:
+  #   Green  = Open
+  #   Yellow = Closed
+  #   Blue   = Moving (breathe)
+  #   Red    = WiFi/API issue (breathe)
+  # --------------------
+  - platform: esp32_rmt_led_strip
+    id: feather_pixel
+    name: "Feather NeoPixel"
+    pin: 0
+    num_leds: 1
+    rgb_order: GRB
+    chipset: WS2812
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 400ms
+    effects:
+      - pulse:
+          name: "Breathe Blue"
+          transition_length: 700ms
+          update_interval: 700ms
+      - pulse:
+          name: "Breathe Red"
+          transition_length: 700ms
+          update_interval: 700ms
+
+# --------------------
+# Thresholds + Cooldown (set from Home Assistant, stored on device)
+# Inverted pot direction:
+#   OPEN   when angle < open_threshold  (e.g. 20)
+#   CLOSED when angle > closed_threshold (e.g. 80)
+# --------------------
+number:
+  - platform: template
+    id: open_threshold
+    name: "Gate Open Threshold"
+    icon: "mdi:gate-open"
+    min_value: 0
+    max_value: 100
+    step: 1
+    restore_value: true
+    initial_value: 20
+    optimistic: true
+
+  - platform: template
+    id: closed_threshold
+    name: "Gate Closed Threshold"
+    icon: "mdi:gate"
+    min_value: 0
+    max_value: 100
+    step: 1
+    restore_value: true
+    initial_value: 80
+    optimistic: true
+
+  - platform: template
+    id: relay_cooldown_s
+    name: "Gate Relay Cooldown"
+    icon: "mdi:timer-outline"
+    min_value: 1
+    max_value: 15
+    step: 1
+    restore_value: true
+    initial_value: 2
+    optimistic: true
+    unit_of_measurement: "s"
+    mode: slider
+
+# --------------------
+# Globals
+# --------------------
+globals:
+  - id: last_angle_int
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  - id: last_change_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: last_relay_fire_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # --- publish throttling / heartbeat ---
+  - id: last_publish_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: last_pub_angle_int
+    type: int
+    restore_value: no
+    initial_value: "-999"
+
+  - id: last_pub_state_code
+    type: int
+    restore_value: no
+    initial_value: "-1"
+
+  # --- neopixel mode tracking ---
+  - id: last_pixel_mode
+    type: int
+    restore_value: no
+    initial_value: "-1"
+
+# --------------------
+# Scripts
+# --------------------
+script:
+  # Safely pulse relay with configurable cooldown
+  - id: pulse_gate_relay_if_allowed
+    mode: single
+    then:
+      - lambda: |-
+          int cooldown_s = (int) lroundf(id(relay_cooldown_s).state);
+          if (cooldown_s < 1) cooldown_s = 1;
+          if (cooldown_s > 15) cooldown_s = 15;
+
+          const uint32_t cooldown_ms = (uint32_t) cooldown_s * 1000UL;
+
+          uint32_t now = millis();
+          uint32_t elapsed = now - id(last_relay_fire_ms);
+
+          if (elapsed < cooldown_ms) return;
+
+          id(last_relay_fire_ms) = now;
+          id(gate_relay).turn_on();
+
+  # mode:
+  # 0 = Open (Green)
+  # 1 = Closed (Yellow)
+  # 2 = Moving (Blue breathe)
+  # 3 = WiFi/API issue (Red breathe)
+  - id: set_pixel_mode
+    mode: restart
+    parameters:
+      mode: int
+    then:
+      - switch.turn_on: neopixel_power
+
+      - if:
+          condition:
+            lambda: 'return mode == 0;'
+          then:
+            - light.turn_on:
+                id: feather_pixel
+                red: 0%
+                green: 100%
+                blue: 0%
+                transition_length: 400ms
+
+      - if:
+          condition:
+            lambda: 'return mode == 1;'
+          then:
+            - light.turn_on:
+                id: feather_pixel
+                red: 100%
+                green: 100%
+                blue: 0%
+                transition_length: 400ms
+
+      - if:
+          condition:
+            lambda: 'return mode == 2;'
+          then:
+            - light.turn_on:
+                id: feather_pixel
+                red: 0%
+                green: 0%
+                blue: 100%
+                effect: "Breathe Blue"
+
+      - if:
+          condition:
+            lambda: 'return mode == 3;'
+          then:
+            - light.turn_on:
+                id: feather_pixel
+                red: 100%
+                green: 0%
+                blue: 0%
+                effect: "Breathe Red"
+
+# --------------------
+# Home Assistant-facing entities (MANUAL publish)
+# --------------------
+binary_sensor:
+  - platform: template
+    id: gate_moving
+    name: "Moving"
+    icon: "mdi:motion-sensor"
+
+  - platform: template
+    id: gate_is_open
+    name: "Gate Is Open"
+    icon: "mdi:gate-open"
+
+  - platform: template
+    id: gate_is_closed
+    name: "Gate Is Closed"
+    icon: "mdi:gate"
+
+  # Device online status (API connected). If false, show RED.
+  - platform: status
+    id: device_status
+    name: "Gate Controller Status"
+
+sensor:
+  - platform: template
+    id: gate_angle_pub
+    name: "Gate Angle"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+
+  # Potentiometer on Feather V2: A4 = GPIO36 (ADC1)
+  - platform: adc
+    pin: 36
+    attenuation: 11db
+    id: gate_angle_raw
+    internal: true
+    update_interval: 200ms
+    filters:
+      - multiply: 100.0
+      - clamp:
+          min_value: 0
+          max_value: 100
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+
+    on_value:
+      then:
+        - lambda: |-
+            // ----------------------------
+            // Change detection (internal)
+            // ----------------------------
+            int angle_i = (int) lroundf(x);
+            if (angle_i != id(last_angle_int)) {
+              id(last_angle_int) = angle_i;
+              id(last_change_ms) = millis();
+            }
+
+            // ----------------------------
+            // Thresholds (inverted pot direction)
+            // OPEN when x < open_th
+            // CLOSED when x > closed_th
+            // ----------------------------
+            float open_th   = id(open_threshold).state;
+            float closed_th = id(closed_threshold).state;
+
+            if (open_th < 0) open_th = 0;
+            if (open_th > 100) open_th = 100;
+            if (closed_th < 0) closed_th = 0;
+            if (closed_th > 100) closed_th = 100;
+
+            // Ensure open_th < closed_th (keep at least 1% gap)
+            if (open_th >= closed_th) {
+              closed_th = open_th + 1;
+              if (closed_th > 100) {
+                closed_th = 100;
+                open_th = 99;
+              }
+            }
+
+            bool is_open    = (x < open_th);
+            bool is_closed  = (x > closed_th);
+            bool is_partial = (!is_open && !is_closed);
+
+            // ----------------------------
+            // Moving logic
+            // ----------------------------
+            const uint32_t MOVING_WINDOW_MS = 1200;
+            uint32_t elapsed_since_change = millis() - id(last_change_ms);
+            bool moving = is_partial && (elapsed_since_change <= MOVING_WINDOW_MS);
+
+            // ----------------------------
+            // NeoPixel Mode (only update when mode changes)
+            // Priority: WiFi/API issue > Moving > Open > Closed
+            // If neither open nor closed, keep previous colour (don’t force off)
+            // ----------------------------
+            int desired_mode = -1;
+
+            if (!id(device_status).state) {
+              desired_mode = 3;  // Red breathe
+            } else if (moving) {
+              desired_mode = 2;  // Blue breathe
+            } else if (is_open) {
+              desired_mode = 0;  // Green
+            } else if (is_closed) {
+              desired_mode = 1;  // Yellow
+            } else {
+              // Partially open and not moving: keep last mode (no change)
+              desired_mode = id(last_pixel_mode);
+            }
+
+            if (desired_mode != -1 && desired_mode != id(last_pixel_mode)) {
+              id(last_pixel_mode) = desired_mode;
+              id(set_pixel_mode).execute(desired_mode);
+            }
+
+            // ----------------------------
+            // Publish policy:
+            // - publish immediately if meaningful angle change (>= 2%) OR state changed
+            // - otherwise publish at least every 60 seconds (heartbeat)
+            // ----------------------------
+            const uint32_t HEARTBEAT_MS = 60000;
+            uint32_t now = millis();
+            bool heartbeat_due = (now - id(last_publish_ms)) >= HEARTBEAT_MS;
+
+            // 0 = Open, 1 = Partially Open, 2 = Closed
+            int state_code = is_open ? 0 : (is_closed ? 2 : 1);
+
+            bool angle_changed = (abs(angle_i - id(last_pub_angle_int)) >= 2);
+            bool state_changed = (state_code != id(last_pub_state_code));
+            bool should_publish = heartbeat_due || angle_changed || state_changed;
+
+            if (!should_publish) return;
+
+            id(gate_angle_pub).publish_state((float) angle_i);
+            id(last_pub_angle_int) = angle_i;
+
+            if (state_code == 0) {
+              id(gate_state).publish_state("Open");
+            } else if (state_code == 2) {
+              id(gate_state).publish_state("Closed");
+            } else {
+              id(gate_state).publish_state("Partially Open");
+            }
+            id(last_pub_state_code) = state_code;
+
+            id(gate_is_open).publish_state(is_open);
+            id(gate_is_closed).publish_state(is_closed);
+            id(gate_moving).publish_state(moving);
+
+            id(last_publish_ms) = now;
+
+text_sensor:
+  - platform: template
+    id: gate_state
+    name: "Gate State"
+    icon: "mdi:gate"
+
+# --------------------
+# Home Assistant Buttons
+# --------------------
+button:
+  - platform: template
+    name: "Activate Gate"
+    icon: "mdi:gate"
+    on_press:
+      - script.execute: pulse_gate_relay_if_allowed
+
+  - platform: template
+    name: "Open Gate"
+    icon: "mdi:gate-open"
+    on_press:
+      - if:
+          condition:
+            lambda: |-
+              return id(gate_state).state == "Closed";
+          then:
+            - script.execute: pulse_gate_relay_if_allowed
+
+  - platform: template
+    name: "Close Gate"
+    icon: "mdi:gate"
+    on_press:
+      - if:
+          condition:
+            lambda: |-
+              return id(gate_state).state == "Open";
+          then:
+            - script.execute: pulse_gate_relay_if_allowed

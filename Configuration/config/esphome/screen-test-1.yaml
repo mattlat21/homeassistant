@@ -1,0 +1,132 @@
+substitutions:
+  name: ha-touch-button-panel
+  friendly_name: HA Touch Button Panel
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-p4-evboard
+  variant: esp32p4
+  flash_size: 16MB
+  cpu_frequency: 360MHz
+  framework:
+    type: esp-idf
+
+psram:
+  mode: hex
+  speed: 200MHz
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: "YOUR_OTA_PASSWORD_HERE"
+
+# Required for MIPI DSI display on ESP32-P4
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
+# ESP32-C6 co-processor for Wi-Fi on the P4 board
+esp32_hosted:
+  active_high: true
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+captive_portal:
+
+i2c:
+  id: i2c_bus
+  sda: GPIO7
+  scl: GPIO8
+  frequency: 400kHz
+  scan: true
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+
+button:
+  - platform: template
+    id: ha_touch_button
+    name: "${friendly_name} Button"
+    icon: mdi:gesture-tap-button
+    on_press:
+      - logger.log: "Home Assistant button entity pressed from touchscreen"
+
+display:
+  - platform: mipi_dsi
+    id: main_display
+    model: WAVESHARE-P4-86-PANEL
+    rotation: 0
+    auto_clear_enabled: false
+    update_interval: never
+
+touchscreen:
+  - platform: gt911
+    id: main_touch
+    display: main_display
+    transform:
+      mirror_x: false
+      mirror_y: false
+      swap_xy: false
+
+lvgl:
+  displays:
+    - main_display
+  touchscreens:
+    - main_touch
+  buffer_size: 100%
+  color_depth: 16
+  byte_order: little_endian
+
+  theme:
+    button:
+      bg_color: 0x1565C0
+      bg_grad_color: 0x1565C0
+      bg_opa: COVER
+      border_width: 0
+      radius: 20
+      shadow_width: 0
+      text_color: 0xFFFFFF
+      pressed:
+        bg_color: 0x0D47A1
+        bg_grad_color: 0x0D47A1
+
+  pages:
+    - id: main_page
+      bg_color: 0x000000
+      widgets:
+        - button:
+            id: big_button
+            width: 520
+            height: 180
+            align: CENTER
+            on_click:
+              - logger.log: "Touchscreen button clicked"
+              - button.press: ha_touch_button
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "PRESS"
+                  text_font: montserrat_48
+                  text_color: 0xFFFFFF

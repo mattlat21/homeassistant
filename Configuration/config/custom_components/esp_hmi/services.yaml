@@ -1,0 +1,159 @@
+switch_screen:
+  name: Switch screen
+  description: Switch the panel to a screen immediately (does not change default screen).
+  fields:
+    mac:
+      name: MAC (hex)
+      description: Panel MAC as 12 lowercase hex digits (e.g. 30eda0e20a9e).
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      description: >-
+        One of home, ollie_room, dashboard, front_gate, pipboy, settings, study, about,
+        front_door, kitchen, studio, hvac, house_battery, penny_room.
+      required: true
+      selector:
+        text: {}
+
+switch_screen_temp:
+  name: Switch screen temporarily
+  description: Switch to a screen for a duration, then restore previous screen.
+  fields:
+    mac:
+      name: MAC (hex)
+      description: Panel MAC as 12 lowercase hex digits.
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+    seconds:
+      name: Seconds
+      description: Duration in seconds.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+
+set_default_screen:
+  name: Set default screen
+  description: Persist the default startup screen on the panel (NVS).
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+
+set_idle_timeout:
+  name: Set idle timeout
+  description: Persist idle return behavior on the panel (NVS). seconds=0 disables idle return.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    screen:
+      name: Screen slug
+      required: true
+      selector:
+        text: {}
+    seconds:
+      name: Seconds
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+
+set_display_power:
+  name: Set display power
+  description: >-
+    Persist display brightness and inactivity timeouts on the panel (NVS).
+    Provide one or more fields; omitted fields are unchanged on the device.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+    normal_brightness:
+      name: Normal brightness
+      description: Backlight percent when active (0–100).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    dim_brightness:
+      name: Dim brightness
+      description: Backlight percent after dim timeout (0–100).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    dim_timeout_seconds:
+      name: Dim timeout seconds
+      description: Seconds of inactivity before dim (0 = disabled).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+    screen_off_timeout_seconds:
+      name: Screen off timeout seconds
+      description: Seconds of inactivity before backlight off (0 = disabled).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          mode: box
+    brightness_fade_seconds:
+      name: Brightness fade seconds
+      description: Seconds to fade between brightness levels (0 = instant).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 60
+          mode: box
+
+wake_display:
+  name: Wake display
+  description: Restore normal brightness and reset display inactivity timers (dim/off and idle countdown).
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+
+reboot:
+  name: Reboot panel
+  description: Reboot the panel.
+  fields:
+    mac:
+      name: MAC (hex)
+      required: true
+      selector:
+        text: {}
+

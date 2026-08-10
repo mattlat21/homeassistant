@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "雷达地图中控 (RMM)",
+        "description": "初始化 RMM 边缘计算融合引擎。点击“提交”完成安装。"
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "雷达地图中控 (RMM) 已经配置过了，该集成仅需安装一次即可统管所有雷达。"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "presence_target_count": {"name": "目标总人数"},
+      "target_1_x": {"name": "目标 1 X轴"},
+      "target_1_y": {"name": "目标 1 Y轴"},
+      "target_1_v": {"name": "目标 1 速度"},
+      "target_2_x": {"name": "目标 2 X轴"},
+      "target_2_y": {"name": "目标 2 Y轴"},
+      "target_2_v": {"name": "目标 2 速度"}
+    },
+    "binary_sensor": {
+      "pir": {"name": "红外运动侦测"}
+    }
+  }
+}

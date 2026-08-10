@@ -1,0 +1,82 @@
+esphome:
+  name: front_gate_controller
+  friendly_name: Front Gate Controller
+
+esp8266:
+  board: d1_mini
+
+logger:
+api:
+
+ota:
+- platform: esphome
+
+wifi:
+  ssid: "not"
+  password: "nointernet4uyacrazylolz"
+
+  ap:
+    ssid: "Front Gate Controller Fallback"
+    password: "fallback123"
+
+captive_portal:
+
+# --------------------
+# Built-in LED (GPIO2 / D4) - active LOW
+# --------------------
+output:
+  - platform: gpio
+    pin:
+      number: 2
+      inverted: true
+    id: led_output
+
+light:
+  - platform: binary
+    name: "LED"
+    output: led_output
+
+# --------------------
+# Relay (GPIO5) - internal, 500ms pulse
+# --------------------
+switch:
+  - platform: gpio
+    id: gate_relay
+    internal: true
+    pin:
+      number: 5
+      inverted: false
+    restore_mode: ALWAYS_OFF
+
+    on_turn_on:
+      - delay: 500ms
+      - switch.turn_off: gate_relay
+
+# --------------------
+# Home Assistant Push Button
+# --------------------
+button:
+  - platform: template
+    name: "Activate Gate"
+    icon: "mdi:gate"
+    on_press:
+      - switch.turn_on: gate_relay
+
+# --------------------
+# Potentiometer on ADC0 (A0) -> 0..100
+# --------------------
+sensor:
+  - platform: adc
+    pin: A0
+    name: "Potentiometer"
+    update_interval: 200ms
+    accuracy_decimals: 0
+    filters:
+      # ESPHome ADC outputs 0.0..1.0 by default
+      - multiply: 100.0
+      - clamp:
+          min_value: 0
+          max_value: 100
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1

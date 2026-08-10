@@ -1,0 +1,121 @@
+substitutions:
+  name: waveshare-p4-box
+  friendly_name: Waveshare P4 Smart Box
+  wifi_ssid: "not"
+  wifi_password: "nointernet4uyacrazylolz"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.2.0
+
+esp32:
+  board: esp32-p4-evboard
+  flash_size: 32MB
+  framework:
+    type: esp-idf
+    version: recommended
+    advanced:
+      enable_idf_experimental_features: true
+
+psram:
+  speed: 100MHz
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+esp32_hosted:
+  active_high: true
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+
+captive_portal:
+
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
+output:
+  - platform: ledc
+    pin: GPIO26
+    id: backlight_pwm
+    frequency: 1000Hz
+    inverted: true
+
+light:
+  - platform: monochromatic
+    id: display_backlight
+    output: backlight_pwm
+    restore_mode: ALWAYS_ON
+
+i2c:
+  id: touch_i2c
+  sda: GPIO7
+  scl: GPIO8
+
+touchscreen:
+  - platform: gt911
+    id: my_touch
+    i2c_id: touch_i2c
+
+display:
+  - platform: mipi_dsi
+    id: main_display
+    model: WAVESHARE-P4-86-PANEL
+    color_order: bgr
+    update_interval: never
+    auto_clear_enabled: false
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_big
+    size: 40
+
+image:
+  - file: "assets/bg_gradient_720.png"
+    id: bg_gradient
+    type: RGB565
+    resize: 720x720
+
+lvgl:
+  displays:
+    - main_display
+  touchscreens:
+    - touchscreen_id: my_touch
+
+  widgets:
+    - obj:
+        width: 100%
+        height: 100%
+        bg_color: 0x000000
+        bg_opa: COVER
+        border_width: 0
+        pad_all: 0
+        radius: 0
+        scrollbar_mode: "OFF"
+
+        widgets:
+          - image:
+              x: 0
+              y: 0
+              src: bg_gradient
+
+          - label:
+              align: CENTER
+              text: "Gradient Working"
+              text_font: font_big
+              text_color: 0xFFFFFF

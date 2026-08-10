@@ -30,6 +30,10 @@ backup/
 *.tar.gz
 *.zip
 
+# Home Assistant runtime / integration data
+.aarlo/
+**/.aarlo/
+
 # Runtime and generated files
 deps/
 tts/

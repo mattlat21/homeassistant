@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace_resources",
+  "data": {
+    "items": [
+      {
+        "id": "c0bdd92f24464d4eb9828b46e57121a7",
+        "url": "/hacsfiles/vacuum-card/vacuum-card.js?hacstag=2612912952101",
+        "type": "module"
+      },
+      {
+        "id": "448671c9756c452ca1904c803834d9c6",
+        "url": "/hacsfiles/lovelace-mushroom-better-sliders/mushroom.js?hacstag=586363416302",
+        "type": "module"
+      },
+      {
+        "id": "8ce66d2cd90e420d81ec46be1604f98c",
+        "url": "/hacsfiles/compact-light-card/compact-light-card.js?hacstag=1035084461063",
+        "type": "module"
+      },
+      {
+        "id": "dff96d44fd604915be3446359ac85257",
+        "url": "/climate_scheduler/static/climate-scheduler-card.js?v=1.15.1",
+        "type": "module"
+      }
+    ]
+  }
+}

@@ -4,9 +4,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="${SCRIPT_DIR}/../config/"
 DEST="/Volumes/config/"
 
+LOVELACE_FILES=(
+    lovelace.lovelace
+    lovelace_dashboards
+    lovelace_resources
+)
+
 echo "Uploading Home Assistant configuration..."
 echo "From: $SOURCE"
 echo "To:   $DEST"
+echo
+echo "Includes versioned Lovelace dashboards:"
+for file in "${LOVELACE_FILES[@]}"; do
+    echo "  - .storage/$file"
+done
 echo
 
 if [ ! -d "$SOURCE" ]; then
@@ -22,7 +33,8 @@ if [ ! -d "$DEST" ]; then
 fi
 
 echo "WARNING:"
-echo "This will update the live Home Assistant configuration."
+echo "This will update the live Home Assistant configuration,"
+echo "including Lovelace dashboards."
 echo
 read -p "Continue? [y/N] " CONFIRM
 
@@ -54,6 +66,21 @@ rsync -av \
 
 RESULT=$?
 
+if [ $RESULT -eq 0 ]; then
+    for file in "${LOVELACE_FILES[@]}"; do
+        if [ ! -f "${SOURCE}.storage/$file" ]; then
+            echo "ERROR: Missing local Lovelace file:"
+            echo "${SOURCE}.storage/$file"
+            exit 1
+        fi
+        rsync -av "${SOURCE}.storage/$file" "${DEST}.storage/$file"
+        FILE_RESULT=$?
+        if [ $FILE_RESULT -ne 0 ]; then
+            RESULT=$FILE_RESULT
+        fi
+    done
+fi
+
 echo
 
 if [ $RESULT -eq 0 ]; then
@@ -61,6 +88,7 @@ if [ $RESULT -eq 0 ]; then
     echo
     echo "Home Assistant has NOT been restarted."
     echo "Check the configuration before restarting Home Assistant."
+    echo "Refresh the dashboard if Lovelace changes do not appear."
 else
     echo "ERROR: rsync failed with code $RESULT"
     exit $RESULT

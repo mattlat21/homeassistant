@@ -1,0 +1,3843 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace.lovelace",
+  "data": {
+    "config": {
+      "title": "Home",
+      "views": [
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "Home",
+          "path": "home",
+          "icon": "mdi:star",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Septic System</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center><font color=\"#FF4444\">Last Cleaned</font></center></h2>\n<h1><center><font color=\"#FF4444\">{{states('sensor.septic_filter_days_since_clean_text')}}</font></center></h1>",
+                  "visibility": [
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.septic_filter_days_since_clean",
+                      "above": 20
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:pail",
+                  "name": "Clean Today",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.septic_filter_cleaned_today",
+                    "target": {}
+                  },
+                  "color": "red",
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              },
+              "visibility": [
+                {
+                  "condition": "numeric_state",
+                  "entity": "sensor.septic_filter_days_since_clean",
+                  "above": 20
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Bedroom</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "custom:mushroom-light-card",
+                  "entity": "light.matt_s_bedside_lamp_light",
+                  "show_brightness_control": true,
+                  "show_color_temp_control": true,
+                  "collapsible_controls": false,
+                  "name": "Matt",
+                  "layout": "horizontal",
+                  "use_light_color": true,
+                  "show_color_control": false,
+                  "primary_info": "name",
+                  "fill_container": false
+                },
+                {
+                  "type": "custom:mushroom-light-card",
+                  "entity": "light.cathy_s_bedside_lamp_light",
+                  "name": "Cathy",
+                  "show_brightness_control": true,
+                  "show_color_temp_control": true,
+                  "layout": "horizontal",
+                  "show_color_control": false,
+                  "use_light_color": true
+                },
+                {
+                  "type": "custom:mushroom-light-card",
+                  "entity": "light.bedroom",
+                  "show_brightness_control": true,
+                  "show_color_temp_control": true,
+                  "name": "Main",
+                  "layout": "horizontal",
+                  "use_light_color": true
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.matt_s_electric_blanket",
+                  "icon": "mdi:radiator"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.cathy_s_electric_blanket",
+                  "icon": "mdi:radiator"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_button.start_matt_s_heater",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.tasmota_3",
+                      "state": "off"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_button.start_matt_s_heater",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.tasmota_3",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "More Time…"
+                },
+                {
+                  "type": "tile",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.tasmota_3",
+                      "state": "on"
+                    }
+                  ],
+                  "entity": "switch.tasmota_3",
+                  "name": "Turn Off",
+                  "icon": "mdi:fire-off",
+                  "show_entity_picture": false,
+                  "hide_state": true,
+                  "vertical": false,
+                  "features_position": "bottom"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Bins</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_fogo",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_fogo",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Fogo",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "green"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_recycling",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_recycling",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Recycling",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "amber"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_landfill",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_landfill",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Landfill",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "red"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.bring_bins_in",
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.bring_bins_in",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Bring Bins In",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              },
+              "visibility": [
+                {
+                  "condition": "state",
+                  "entity": "binary_sensor.bins_any_bin_action_required",
+                  "state": "on"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Front Yard</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Open",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Closed",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_close_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "name": "Close Gate",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_open_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Open Gate"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_button.activate_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "button.press",
+                    "target": {
+                      "entity_id": "button.front_gate_controller_activate_gate"
+                    },
+                    "data": {}
+                  },
+                  "name": "Toggle Gate",
+                  "icon": "mdi:gate-alert"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Study</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.tasmota_2",
+                  "icon": "mdi:fire",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Battery</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                  "needle": false,
+                  "severity": {
+                    "green": 70,
+                    "yellow": 40,
+                    "red": 0
+                  },
+                  "name": " "
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Septic System</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>Last Cleaned</center></h2>\n<h1><center><font color=\"#FFAA00\">{{states('sensor.septic_filter_days_since_clean_text')}}</font></center></h1>",
+                  "visibility": [
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.septic_filter_days_since_clean",
+                      "below": 21
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:pail",
+                  "name": "Clean Today",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.septic_filter_cleaned_today",
+                    "target": {}
+                  },
+                  "color": "primary",
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              },
+              "visibility": [
+                {
+                  "condition": "numeric_state",
+                  "entity": "sensor.septic_filter_days_since_clean",
+                  "above": 13
+                }
+              ]
+            }
+          ],
+          "cards": [],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ],
+          "background": {
+            "opacity": 20,
+            "alignment": "center",
+            "size": "cover",
+            "repeat": "repeat",
+            "attachment": "fixed"
+          }
+        },
+        {
+          "cards": [
+            {
+              "type": "gauge",
+              "entity": "sensor.entrance_hallway_sensor_battery",
+              "name": "Entrance Hallway Sensor Battery",
+              "visibility": [
+                {
+                  "condition": "numeric_state",
+                  "entity": "sensor.entrance_hallway_sensor_battery",
+                  "below": 15
+                }
+              ],
+              "severity": {
+                "green": 25,
+                "yellow": 10,
+                "red": 0
+              }
+            },
+            {
+              "square": false,
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "light.downstairs_study_light"
+                    }
+                  ],
+                  "show_header_toggle": false,
+                  "state_color": false,
+                  "title": "Downstairs Study"
+                }
+              ],
+              "columns": 1
+            }
+          ],
+          "type": "sections",
+          "icon": "mdi:home",
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            },
+            {
+              "user": "cb493b6390da4e48989a89040445d163"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            }
+          ],
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Front Yard</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Open",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Closed",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_close_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "name": "Close Gate",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_open_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Open Gate"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_button.activate_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "button.press",
+                    "target": {
+                      "entity_id": "button.front_gate_controller_activate_gate"
+                    },
+                    "data": {}
+                  },
+                  "name": "Toggle Gate",
+                  "icon": "mdi:gate-alert"
+                },
+                {
+                  "square": false,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "switch.driveway_lights_1"
+                        },
+                        {
+                          "entity": "switch.driveway_lights_2"
+                        }
+                      ],
+                      "show_header_toggle": false,
+                      "state_color": false,
+                      "title": "Lights"
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Back Yard</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "square": false,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "switch.fountain"
+                        },
+                        {
+                          "entity": "switch.tasmota_4"
+                        },
+                        {
+                          "entity": "switch.tasmota_8"
+                        }
+                      ],
+                      "show_header_toggle": false,
+                      "state_color": false,
+                      "title": "Back Yard"
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Study</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.tasmota_2",
+                  "icon": "mdi:fire",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Bins</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_fogo",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_fogo",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Fogo",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "green"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_recycling",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_recycling",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Recycling",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "amber"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.take_out_bin_landfill",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.take_out_bin_landfill",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Take Out Landfill",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty",
+                  "color": "red"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_boolean.bring_bins_in",
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_boolean.bring_bins_in",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Bring Bins In",
+                  "show_state": false,
+                  "icon": "mdi:delete-empty"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              },
+              "visibility": [
+                {
+                  "condition": "state",
+                  "entity": "binary_sensor.bins_any_bin_action_required",
+                  "state": "on"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Septic System</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>Last Cleaned</center></h2>\n<h1><center>{{states('sensor.septic_filter_days_since_clean_text')}}</center></h1>",
+                  "visibility": [
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.septic_filter_days_since_clean",
+                      "below": 21
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center><font color=\"#FF4444\">Last Cleaned</font></center></h2>\n<h1><center><font color=\"#FF4444\">{{states('sensor.septic_filter_days_since_clean_text')}}</font></center></h1>",
+                  "visibility": [
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.septic_filter_days_since_clean",
+                      "above": 20
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:pail",
+                  "name": "Clean Today",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.septic_filter_cleaned_today",
+                    "target": {}
+                  },
+                  "color": "none",
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              },
+              "visibility": [
+                {
+                  "condition": "numeric_state",
+                  "entity": "sensor.septic_filter_days_since_clean",
+                  "above": 13
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Entrace / Lounge</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "square": false,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "light.entrance_hallway_lights"
+                        },
+                        {
+                          "entity": "light.entrance_hallway_1"
+                        },
+                        {
+                          "entity": "light.entrance_hallway_2"
+                        }
+                      ],
+                      "show_header_toggle": false,
+                      "state_color": false,
+                      "title": "Entrace"
+                    }
+                  ],
+                  "columns": 1
+                },
+                {
+                  "square": false,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "light.dining_room_lights"
+                        },
+                        {
+                          "entity": "light.signify_netherlands_b_v_lcg004"
+                        },
+                        {
+                          "entity": "light.dining_room_lights_2"
+                        },
+                        {
+                          "entity": "light.dining_room_light_3"
+                        },
+                        {
+                          "entity": "light.dining_room_light_4"
+                        }
+                      ],
+                      "show_header_toggle": false,
+                      "state_color": false,
+                      "title": "Lounge"
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Ollie's Room</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center><i>More...</i></center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "tap_action": {
+                    "action": "navigate",
+                    "navigation_path": "/lovelace/kids-room-monitoring"
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Kitchen</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "square": false,
+                  "type": "grid",
+                  "columns": 1,
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "binary_sensor.flood001_moisture",
+                          "name": "Sink Leak Detection"
+                        },
+                        {
+                          "entity": "remote.living_room_photo_tv",
+                          "name": "Photo Frame"
+                        }
+                      ],
+                      "show_header_toggle": false
+                    }
+                  ]
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Battery</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                  "needle": false,
+                  "severity": {
+                    "green": 70,
+                    "yellow": 40,
+                    "red": 0
+                  },
+                  "name": " "
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigen_inverter_battery_power",
+                  "needle": true,
+                  "max": 13,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 3
+                  },
+                  "severity": {
+                    "green": 1,
+                    "yellow": 0.00001,
+                    "red": 0
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_charging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ],
+                  "name": " "
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>Charging</h2>",
+                  "grid_options": {
+                    "rows": "auto",
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_charging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>{% set h = states('sensor.sigenstore_estimated_battery_charge_duration') | float(0) %}{% set hours = h | int %}{% set mins = ((h - hours) * 60) | round(0) | int %}{{ \"%d:%02d\" | format(hours, mins) }}</center></h2>",
+                  "grid_options": {
+                    "rows": 1,
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_charging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>{{ as_local(as_datetime(states('sensor.sigenstore_estimated_battery_fully_charged_time'))).strftime('%-I:%M %p') }}</center></h2>\n",
+                  "grid_options": {
+                    "rows": 1,
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_charging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigenstore_battery_power_inverted",
+                  "needle": true,
+                  "max": 13,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 3
+                  },
+                  "name": " ",
+                  "severity": {
+                    "green": 0,
+                    "yellow": 0,
+                    "red": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_discharging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>Discharging<center></h2>\n",
+                  "grid_options": {
+                    "rows": "auto",
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_discharging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>{% set h = states('sensor.sigenstore_estimated_battery_discharge_duration') | float(0) %}{% set hours = h | int %}{% set mins = ((h - hours) * 60) | round(0) | int %}{{ \"%d:%02d\" | format(hours, mins) }}</center></h2>\n",
+                  "grid_options": {
+                    "rows": "auto",
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_discharging",
+                      "state": "on"
+                    },
+                    {
+                      "condition": "numeric_state",
+                      "entity": "sensor.sigen_inverter_battery_state_of_charge",
+                      "below": 99
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><center>{{ as_local(as_datetime(states('sensor.sigenstore_estimated_battery_discharged_time'))).strftime('%-I:%M %p') }}</center></h2>\n",
+                  "grid_options": {
+                    "rows": "auto",
+                    "columns": 6
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.sigenstore_battery_discharging",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Consumption</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigenstore_consumed_power",
+                  "needle": true,
+                  "max": 11,
+                  "name": " "
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Free Power!</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "time",
+                      "after": "11:00:00",
+                      "before": "14:00:00"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Solar</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sigenstore_pv_power",
+                  "needle": true,
+                  "max": 11,
+                  "name": " "
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>RoboVac</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "custom:vacuum-card",
+                  "entity": "vacuum.rosie_robovac"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:baby-carriage",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:baby-bottle-outline",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state": "Settling"
+                    }
+                  ],
+                  "color": "none",
+                  "grid_options": {
+                    "columns": "full"
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:bed-outline",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state": "Asleep"
+                    }
+                  ],
+                  "color": "none",
+                  "grid_options": {
+                    "columns": "full"
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:baby",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state": "Awake"
+                    }
+                  ],
+                  "color": "none",
+                  "grid_options": {
+                    "columns": "full"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "  <h1><center>{{states('input_select.penny_state')}}</center></h1>\n"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:baby-bottle-outline",
+                  "name": "Settle Penny",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "input_select.select_option",
+                    "target": {
+                      "entity_id": "input_select.penny_state"
+                    },
+                    "data": {
+                      "option": "Settling"
+                    }
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state_not": "Settling"
+                    }
+                  ],
+                  "color": "primary"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:bed-outline",
+                  "name": "Penny's Asleep",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "input_select.select_option",
+                    "target": {
+                      "entity_id": "input_select.penny_state"
+                    },
+                    "data": {
+                      "option": "Asleep"
+                    }
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state_not": "Asleep"
+                    }
+                  ],
+                  "color": "primary"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:baby",
+                  "name": "Penny's Awake",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "input_select.select_option",
+                    "target": {
+                      "entity_id": "input_select.penny_state"
+                    },
+                    "data": {
+                      "option": "Awake"
+                    }
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.penny_state",
+                      "state_not": "Awake"
+                    }
+                  ],
+                  "color": "primary"
+                },
+                {
+                  "type": "history-graph",
+                  "entities": [
+                    {
+                      "entity": "input_select.penny_state"
+                    }
+                  ],
+                  "hours_to_show": 1,
+                  "logarithmic_scale": false,
+                  "grid_options": {
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "history-graph",
+                  "entities": [
+                    {
+                      "entity": "input_select.penny_state"
+                    }
+                  ]
+                },
+                {
+                  "type": "history-graph",
+                  "entities": [
+                    {
+                      "entity": "input_select.penny_state"
+                    }
+                  ],
+                  "hours_to_show": 72
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:snowflake",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "square": false,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entity",
+                      "entity": "sensor.fakin_main_inlet",
+                      "state_color": false,
+                      "name": "Current Temperature"
+                    },
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.fakin_main_mqtt_hvac",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "title": "Downstairs",
+                  "columns": 1
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.faikin_study_mqtt_hvac",
+                      "features": [
+                        {
+                          "style": "icons",
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry"
+                          ]
+                        }
+                      ],
+                      "name": " ",
+                      "show_current_as_primary": false
+                    }
+                  ],
+                  "title": "Study",
+                  "columns": 1,
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.studio_ac",
+                      "features": [
+                        {
+                          "style": "icons",
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry"
+                          ]
+                        }
+                      ],
+                      "name": " ",
+                      "show_current_as_primary": false
+                    }
+                  ],
+                  "title": "Studio",
+                  "columns": 1,
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.upstairs_bedroom_ac",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "title": "Upstairs",
+                  "columns": 1,
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.bedroom_1_heater_bedroom_1_climate_control",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "title": "Our Bedroom",
+                  "columns": 1
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.bedroom_3_heater_bedroom_3_climate_control",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "title": "Ollie's Bedroom",
+                  "columns": 1
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.server_rack_fan_server_fan",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "title": "Server Rack",
+                  "columns": 1
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "show_name": true,
+                      "show_icon": true,
+                      "type": "button",
+                      "name": "Aircon Off",
+                      "icon": "mdi:snowflake-off",
+                      "tap_action": {
+                        "action": "call-service",
+                        "service": "remote.send_command",
+                        "target": {
+                          "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                        },
+                        "data": {
+                          "device": "playroom_lg",
+                          "command": "off"
+                        }
+                      },
+                      "show_state": false
+                    },
+                    {
+                      "show_name": true,
+                      "show_icon": true,
+                      "type": "button",
+                      "name": "Aircon 21deg",
+                      "icon": "mdi:snowflake",
+                      "tap_action": {
+                        "action": "call-service",
+                        "service": "remote.send_command",
+                        "target": {
+                          "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                        },
+                        "data": {
+                          "device": "playroom_lg",
+                          "command": "21deg"
+                        }
+                      }
+                    },
+                    {
+                      "show_name": true,
+                      "show_icon": true,
+                      "type": "button",
+                      "name": "Aircon Jet",
+                      "icon": "mdi:snowflake-variant",
+                      "tap_action": {
+                        "action": "call-service",
+                        "service": "remote.send_command",
+                        "target": {
+                          "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                        },
+                        "data": {
+                          "device": "playroom_lg",
+                          "command": "jet"
+                        }
+                      }
+                    }
+                  ],
+                  "title": "Lounge",
+                  "columns": 3,
+                  "grid_options": {
+                    "rows": 3,
+                    "columns": 12
+                  }
+                }
+              ],
+              "column_span": 4
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.blow_heater_1",
+                  "icon": "mdi:fire"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.bedroom_1_heater",
+                  "icon": "mdi:fire"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "switch.tasmota_2",
+                  "icon": "mdi:fire",
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 4
+            }
+          ],
+          "cards": [],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            },
+            {
+              "user": "cb493b6390da4e48989a89040445d163"
+            }
+          ],
+          "background": {
+            "opacity": 0,
+            "alignment": "center",
+            "size": "cover",
+            "repeat": "repeat",
+            "attachment": "fixed"
+          }
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:teddy-bear",
+          "path": "kids-room-monitoring",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "camera_view": "live",
+                  "fit_mode": "cover",
+                  "type": "picture-glance",
+                  "entities": [],
+                  "camera_image": "camera.ollie_bedroom_fluent",
+                  "grid_options": {
+                    "columns": 24,
+                    "rows": "auto"
+                  },
+                  "title": "Ollie's Room"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Daytime",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "input_select.select_option",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Normal"
+                    }
+                  },
+                  "icon": "mdi:white-balance-sunny",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state_not": "Normal"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Daytime",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "input_select.select_option",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Normal"
+                    }
+                  },
+                  "icon": "mdi:white-balance-sunny",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "color": "primary",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state": "Normal"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Rest Time",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Rest Time"
+                    },
+                    "perform_action": "input_select.select_option"
+                  },
+                  "icon": "mdi:music-rest-quarter",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state_not": "Rest Time"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Rest Time",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Rest Time"
+                    },
+                    "perform_action": "input_select.select_option"
+                  },
+                  "icon": "mdi:music-rest-quarter",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state": "Rest Time"
+                    }
+                  ],
+                  "color": "primary"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Sleep Time",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Sleep Time"
+                    },
+                    "perform_action": "input_select.select_option"
+                  },
+                  "icon": "mdi:sleep",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state_not": "Sleep Time"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "name": "Sleep Time",
+                  "type": "button",
+                  "entity": "input_select.ollie_room_desired_state",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "target": {
+                      "entity_id": "input_select.ollie_room_desired_state"
+                    },
+                    "data": {
+                      "option": "Sleep Time"
+                    },
+                    "perform_action": "input_select.select_option"
+                  },
+                  "icon": "mdi:sleep",
+                  "grid_options": {
+                    "columns": 4,
+                    "rows": 2
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "input_select.ollie_room_desired_state",
+                      "state": "Sleep Time"
+                    }
+                  ],
+                  "color": "primary"
+                },
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "climate.bedroom_3_heater_bedroom_3_climate_control",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes",
+                          "hvac_modes": [
+                            "off",
+                            "auto",
+                            "cool",
+                            "heat",
+                            "dry",
+                            "fan_only"
+                          ]
+                        }
+                      ],
+                      "name": " "
+                    }
+                  ],
+                  "columns": 1
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp0001_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Actual Temperature",
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 2
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "binary_sensor.ollie_bedroom_baby_crying",
+                  "features_position": "bottom",
+                  "vertical": true,
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 2
+                  },
+                  "name": "Ollie Crying",
+                  "hide_state": false,
+                  "show_entity_picture": false,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.ollie_bedroom_baby_crying",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "Off",
+                  "icon": "mdi:fan-off",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "remote.send_command",
+                    "target": {
+                      "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                    },
+                    "data": {
+                      "device": "rf_fan",
+                      "command": "fan_off"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "Low",
+                  "icon": "mdi:fan-speed-1",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "remote.send_command",
+                    "target": {
+                      "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                    },
+                    "data": {
+                      "device": "rf_fan",
+                      "command": "fan_low"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "Medium",
+                  "icon": "mdi:fan-speed-2",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "remote.send_command",
+                    "target": {
+                      "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                    },
+                    "data": {
+                      "device": "rf_fan",
+                      "command": "fan_medium"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "High",
+                  "icon": "mdi:fan-speed-3",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "remote.send_command",
+                    "target": {
+                      "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                    },
+                    "data": {
+                      "device": "rf_fan",
+                      "command": "fan_high"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": 3,
+                    "rows": 2
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:globe-light-outline",
+                  "tap_action": {
+                    "action": "call-service",
+                    "service": "remote.send_command",
+                    "target": {
+                      "device_id": "6cfa37efcfa4f2c8163cf2981fdf239e"
+                    },
+                    "data": {
+                      "device": "rf_fan",
+                      "command": "light_toggle"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 2
+                  },
+                  "name": "Toggle Light"
+                }
+              ],
+              "column_span": 1
+            }
+          ],
+          "cards": [],
+          "title": "Kid's Room Monitoring",
+          "header": {},
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            }
+          ]
+        },
+        {
+          "icon": "mdi:camera",
+          "badges": [],
+          "cards": [
+            {
+              "camera_view": "live",
+              "fit_mode": "cover",
+              "type": "picture-glance",
+              "title": "Front Gate",
+              "entities": [],
+              "camera_image": "camera.front_gate_fluent"
+            },
+            {
+              "camera_view": "live",
+              "fit_mode": "cover",
+              "type": "picture-glance",
+              "title": "Front Door",
+              "entities": [],
+              "camera_image": "camera.front_door_fluent"
+            },
+            {
+              "camera_view": "live",
+              "fit_mode": "cover",
+              "type": "picture-glance",
+              "title": "Front Yard",
+              "entities": [],
+              "camera_image": "camera.test_camera_1_fluent"
+            },
+            {
+              "camera_view": "live",
+              "fit_mode": "cover",
+              "type": "picture-glance",
+              "title": "Ollie's Room",
+              "entities": [],
+              "camera_image": "camera.ollie_bedroom_fluent"
+            },
+            {
+              "type": "picture-entity",
+              "entity": "camera.camera_1_fluent"
+            },
+            {
+              "camera_view": "live",
+              "fit_mode": "cover",
+              "type": "picture-glance",
+              "title": "Penny's Room",
+              "entities": [],
+              "camera_image": "camera.b2_room_fluent"
+            }
+          ],
+          "visible": [
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:thermometer",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "show_current": true,
+                  "show_forecast": false,
+                  "type": "weather-forecast",
+                  "entity": "weather.forecast_home",
+                  "forecast_type": "daily",
+                  "forecast_slots": 7,
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp002_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Bedroom Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp0001_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Ollie's Bedroom Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.tasmota_sht4x_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Upstairs Study Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp_upstairs_bedroom_sht4x_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Upstairs Bedroom Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp_penny_s_bedroom_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Penny's Room Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp_studio_sht4x_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Studio Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp_server_rack_sht4x_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Server Rack Temperature",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                },
+                {
+                  "graph": "line",
+                  "type": "sensor",
+                  "entity": "sensor.temp_heater_unit_temperature",
+                  "detail": 2,
+                  "hours_to_show": 12,
+                  "name": "Heater Unit",
+                  "grid_options": {
+                    "columns": 9,
+                    "rows": 2
+                  }
+                }
+              ],
+              "column_span": 4
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "chart_type": "line",
+                  "period": "5minute",
+                  "type": "statistics-graph",
+                  "entities": [
+                    {
+                      "entity": "sensor.temp0001_temperature",
+                      "name": "Ollie's Room"
+                    },
+                    {
+                      "entity": "sensor.temp002_temperature",
+                      "name": "Bedroom"
+                    },
+                    {
+                      "entity": "sensor.tasmota_sht4x_temperature",
+                      "name": "Upstairs Study"
+                    },
+                    {
+                      "entity": "sensor.temp_heater_unit_temperature",
+                      "name": "Heater Thermostat"
+                    },
+                    {
+                      "entity": "sensor.temp_penny_s_bedroom_temperature",
+                      "name": "Penny's Room"
+                    },
+                    {
+                      "entity": "sensor.temp_upstairs_bedroom_sht4x_temperature",
+                      "name": "Upstairs Bedroom"
+                    },
+                    {
+                      "entity": "sensor.temp_studio_sht4x_temperature",
+                      "name": "Studio"
+                    },
+                    {
+                      "entity": "sensor.temp_server_rack_sht4x_temperature",
+                      "name": "Server Rack"
+                    }
+                  ],
+                  "stat_types": [
+                    "mean",
+                    "max",
+                    "min"
+                  ],
+                  "hide_legend": false,
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 5
+                  },
+                  "logarithmic_scale": false,
+                  "days_to_show": 1
+                }
+              ],
+              "column_span": 4
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "history-graph",
+                  "entities": [
+                    {
+                      "entity": "input_boolean.ollies_room_climate_control",
+                      "name": "CC"
+                    },
+                    {
+                      "entity": "switch.outlet001_switch",
+                      "name": "Heat"
+                    },
+                    {
+                      "entity": "input_number.desired_temperature_in_ollie_s_bedroom",
+                      "name": "Set Temp"
+                    },
+                    {
+                      "entity": "sensor.temp0001_temperature",
+                      "name": "Temp"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 18,
+                    "rows": "auto"
+                  },
+                  "hours_to_show": 12
+                }
+              ],
+              "column_span": 4
+            }
+          ],
+          "header": {
+            "card": {
+              "type": "markdown",
+              "content": "# Temperature",
+              "text_only": true
+            }
+          },
+          "cards": [],
+          "title": "Temperature",
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            },
+            {
+              "user": "cb493b6390da4e48989a89040445d163"
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 6,
+          "icon": "mdi:power-socket-au",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "# Dryer Running",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.dryer_running",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Fridge Running",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.fridge_running",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Dishwasher Running",
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.dishwasher_running",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Washing Machine Running",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.washing_machine_running",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Server Fan Running",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.server_rack_fan",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Ollie Heater On",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.bedroom_3_heater",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Our Bedroom Heater On",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.bedroom_1_heater",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Matt's Heater On",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "switch.tasmota_3",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": "auto"
+                  }
+                }
+              ],
+              "column_span": 6
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "New section"
+                },
+                {
+                  "chart_type": "line",
+                  "period": "5minute",
+                  "type": "statistics-graph",
+                  "stat_types": [
+                    "mean"
+                  ],
+                  "days_to_show": 2,
+                  "entities": [
+                    {
+                      "entity": "sensor.tasmota_energy_power_3",
+                      "name": "Lights"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power_5",
+                      "name": "Dryer"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power_7",
+                      "name": "Dishwasher"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power_4",
+                      "name": "Fridge"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power_2",
+                      "name": "Matt's Heater"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power_6",
+                      "name": "Washing Machine"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_power",
+                      "name": "Study Heater"
+                    },
+                    {
+                      "entity": "sensor.shelly_pro_4pm_c8f09e8467d4_shelly_pro_4pm_ch1_power",
+                      "name": "Hot Water"
+                    },
+                    {
+                      "entity": "sensor.server_rack_fan_energy_power",
+                      "name": "Server Rack Fan"
+                    },
+                    {
+                      "entity": "sensor.server_rack_energy_power",
+                      "name": "Server Rack"
+                    },
+                    {
+                      "entity": "sensor.fountain_energy_power",
+                      "name": "Fountain"
+                    },
+                    {
+                      "entity": "sensor.driveway_lights_1_energy_power",
+                      "name": "Driveway Lights 1"
+                    },
+                    {
+                      "entity": "sensor.driveway_lights_2_energy_power",
+                      "name": "Driveway Lights 2"
+                    },
+                    {
+                      "entity": "sensor.bedroom_1_heater_energy_power",
+                      "name": "Our Bedroom Heater"
+                    },
+                    {
+                      "entity": "sensor.bedroom_3_heater_energy_power",
+                      "name": "Ollie's Bedroom Heater"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "title": "Power"
+                },
+                {
+                  "chart_type": "line",
+                  "period": "5minute",
+                  "type": "statistics-graph",
+                  "entities": [
+                    {
+                      "entity": "sensor.tasmota_energy_today_3",
+                      "name": "Lights"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_7",
+                      "name": "Dishwasher"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_4",
+                      "name": "Fridge"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_2",
+                      "name": "Matt's Heater"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_6",
+                      "name": "Washing Machine"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today",
+                      "name": "Study Heater"
+                    },
+                    {
+                      "entity": "sensor.hot_water_daily_energy",
+                      "name": "Hot Water"
+                    },
+                    {
+                      "entity": "sensor.bedroom_1_heater_energy_today",
+                      "name": "Our Bedroom Heater"
+                    },
+                    {
+                      "entity": "sensor.bedroom_3_heater_energy_today",
+                      "name": "Ollie's Heater"
+                    },
+                    {
+                      "entity": "sensor.server_rack_fan_energy_today",
+                      "name": "Server Rack Fan"
+                    },
+                    {
+                      "entity": "sensor.server_rack_energy_today",
+                      "name": "Server Rack"
+                    },
+                    {
+                      "entity": "sensor.fountain_energy_today",
+                      "name": "Fountain"
+                    },
+                    {
+                      "entity": "sensor.driveway_lights_1_energy_today",
+                      "name": "Driveway Lights 1"
+                    },
+                    {
+                      "entity": "sensor.driveway_lights_2_energy_today",
+                      "name": "Driveway Lights 2"
+                    }
+                  ],
+                  "stat_types": [
+                    "state"
+                  ],
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "days_to_show": 2,
+                  "title": "Daily Energy Usage"
+                },
+                {
+                  "chart_type": "bar",
+                  "period": "day",
+                  "type": "statistics-graph",
+                  "entities": [
+                    {
+                      "entity": "sensor.tasmota_energy_today_3",
+                      "name": "Lights"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_5",
+                      "name": "Dryer"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_7",
+                      "name": "Dishwasher"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_4",
+                      "name": "Fridge"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_2",
+                      "name": "Bedroom Heater"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today_6",
+                      "name": "Washing Machine"
+                    },
+                    {
+                      "entity": "sensor.tasmota_energy_today",
+                      "name": "Study Heater"
+                    },
+                    {
+                      "entity": "sensor.hot_water_daily_energy",
+                      "name": "Hot Water"
+                    },
+                    {
+                      "entity": "sensor.ollie_heater_energy_today",
+                      "name": "Ollie's Heater"
+                    },
+                    {
+                      "entity": "sensor.server_rack_fan_energy_today",
+                      "name": "Server Rack Fan"
+                    },
+                    {
+                      "entity": "sensor.server_rack_energy_today",
+                      "name": "Server Rack"
+                    }
+                  ],
+                  "stat_types": [
+                    "state"
+                  ],
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "days_to_show": 7,
+                  "title": "Daily Energy Usage"
+                }
+              ],
+              "column_span": 6
+            }
+          ],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            },
+            {
+              "user": "cb493b6390da4e48989a89040445d163"
+            }
+          ],
+          "cards": []
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:battery-charging",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "sensor.temp002_battery",
+                      "secondary_info": "last-updated",
+                      "name": "Bedroom"
+                    },
+                    {
+                      "entity": "sensor.temp_heater_unit_battery",
+                      "secondary_info": "last-updated",
+                      "name": "Heater Unit"
+                    },
+                    {
+                      "entity": "sensor.temp_penny_s_bedroom_battery",
+                      "name": "Study",
+                      "secondary_info": "last-updated"
+                    },
+                    {
+                      "entity": "sensor.temp0001_battery",
+                      "secondary_info": "last-updated",
+                      "name": "Ollie's Room"
+                    }
+                  ],
+                  "title": "Temperature Sensors",
+                  "state_color": true
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "sensor.entrance_hallway_sensor_battery",
+                      "name": "Entrace Hallway",
+                      "secondary_info": "last-updated"
+                    }
+                  ],
+                  "title": "Motion Sensors",
+                  "state_color": true
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "sensor.sw01_battery",
+                      "secondary_info": "last-updated",
+                      "name": "Matt's Light"
+                    },
+                    {
+                      "entity": "sensor.sw02_battery",
+                      "secondary_info": "last-updated"
+                    },
+                    {
+                      "entity": "sensor.sw04_battery",
+                      "secondary_info": "last-updated",
+                      "name": "Ollie's Climate Control"
+                    },
+                    {
+                      "entity": "sensor.sw03_battery",
+                      "secondary_info": "last-updated"
+                    },
+                    {
+                      "entity": "sensor.sw05_battery",
+                      "secondary_info": "last-updated"
+                    }
+                  ],
+                  "title": "Buttons",
+                  "state_color": true
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "sensor.matt_iphone12_battery_level",
+                      "secondary_info": "last-updated",
+                      "name": "Matt’s Phone"
+                    },
+                    {
+                      "entity": "sensor.matt_iphone12_battery_state",
+                      "name": "Matt's Phone",
+                      "secondary_info": "last-updated"
+                    },
+                    {
+                      "entity": "sensor.pixel_4a_battery_level",
+                      "name": "Cathy's Phone"
+                    },
+                    {
+                      "entity": "sensor.pixel_4a_battery_state",
+                      "name": "Cathy's Phone"
+                    }
+                  ],
+                  "title": "Devices",
+                  "show_header_toggle": false,
+                  "state_color": true
+                }
+              ]
+            }
+          ],
+          "header": {
+            "card": {
+              "type": "markdown",
+              "content": "# Battery Levels",
+              "text_only": true
+            }
+          },
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ],
+          "cards": []
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:map-marker-radius-outline",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "square": true,
+                  "type": "grid",
+                  "columns": 4,
+                  "cards": [
+                    {
+                      "type": "picture-entity",
+                      "entity": "person.matt",
+                      "show_state": true,
+                      "show_name": false,
+                      "camera_view": "auto",
+                      "fit_mode": "cover",
+                      "aspect_ratio": "1"
+                    },
+                    {
+                      "type": "picture-entity",
+                      "entity": "person.cathy",
+                      "show_state": true,
+                      "show_name": false,
+                      "camera_view": "auto",
+                      "fit_mode": "cover",
+                      "aspect_ratio": "1"
+                    },
+                    {
+                      "type": "picture-entity",
+                      "entity": "person.linda",
+                      "show_state": true,
+                      "show_name": false,
+                      "camera_view": "auto",
+                      "fit_mode": "cover",
+                      "aspect_ratio": "1"
+                    },
+                    {
+                      "type": "picture-entity",
+                      "entity": "person.edith",
+                      "show_state": true,
+                      "show_name": false,
+                      "camera_view": "auto",
+                      "fit_mode": "cover",
+                      "aspect_ratio": "1"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": 15,
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "type": "map",
+                  "entities": [
+                    {
+                      "entity": "device_tracker.matt_iphone12"
+                    },
+                    {
+                      "entity": "device_tracker.matt_s_iphone_12"
+                    },
+                    {
+                      "entity": "device_tracker.pixel_4a"
+                    },
+                    {
+                      "entity": "zone.home"
+                    },
+                    {
+                      "entity": "zone.work"
+                    },
+                    {
+                      "entity": "person.cathy"
+                    },
+                    {
+                      "entity": "person.edith"
+                    }
+                  ],
+                  "theme_mode": "auto",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 6
+                  }
+                }
+              ],
+              "column_span": 4
+            }
+          ],
+          "header": {
+            "card": {
+              "type": "markdown",
+              "text_only": true,
+              "content": "# Location"
+            }
+          },
+          "visible": [
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ],
+          "cards": []
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:wrench",
+          "path": "",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "input_boolean.take_out_bin_fogo"
+                    },
+                    {
+                      "entity": "input_boolean.take_out_bin_landfill"
+                    },
+                    {
+                      "entity": "input_boolean.take_out_bin_recycling"
+                    }
+                  ],
+                  "title": "Bins"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "square": true,
+                  "type": "grid",
+                  "cards": [
+                    {
+                      "type": "entities",
+                      "entities": [
+                        {
+                          "entity": "binary_sensor.entrance_hallway_sensor",
+                          "secondary_info": "last-changed",
+                          "name": "Motion"
+                        },
+                        {
+                          "entity": "light.entrance_hallway_lights",
+                          "name": "Lights"
+                        },
+                        {
+                          "entity": "light.entrance_hallway_1",
+                          "name": "Light 1"
+                        },
+                        {
+                          "entity": "light.entrance_hallway_2",
+                          "name": "Light 2"
+                        }
+                      ],
+                      "title": "Entrance",
+                      "show_header_toggle": false
+                    }
+                  ],
+                  "columns": 1
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>TrueNAS is <font color=\"red\">Off</font></center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state_not": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>TrueNAS is <font color=\"#00FF00\">On</font></center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:power",
+                  "color": "green",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "wake_on_lan.send_magic_packet",
+                    "data": {
+                      "broadcast_port": 9,
+                      "mac": "34:5a:60:a3:95:7a",
+                      "broadcast_address": "255.255.255.255"
+                    }
+                  },
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 2
+                  },
+                  "name": "Turn On",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state_not": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:power",
+                  "color": "red",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "shell_command.truenas_shutdown",
+                    "target": {}
+                  },
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "name": "Turn Off",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state": "on"
+                    }
+                  ]
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Aorus is <font color=\"red\">Off</font></center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.aorus_server_online",
+                      "state_not": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Aorus is <font color=\"#00FF00\">On</font></center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.aorus_server_online",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:power",
+                  "color": "green",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "wake_on_lan.send_magic_packet",
+                    "data": {
+                      "broadcast_port": 9,
+                      "mac": "b4:2e:99:e9:1e:d8",
+                      "broadcast_address": "255.255.255.255"
+                    },
+                    "target": {}
+                  },
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": 2
+                  },
+                  "name": "Turn On",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.aorus_server_online",
+                      "state_not": "on"
+                    }
+                  ]
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "# Network...",
+                  "tap_action": {
+                    "action": "navigate",
+                    "navigation_path": "/lovelace/network"
+                  }
+                }
+              ],
+              "column_span": 1
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "tile",
+                  "grid_options": {
+                    "columns": 12,
+                    "rows": 1
+                  },
+                  "entity": "switch.downstairs_poe_switch",
+                  "show_entity_picture": false,
+                  "vertical": false,
+                  "features_position": "bottom"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Septic System</center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "<h2><b>Last Cleaned:</b> {{as_timestamp(states('input_datetime.septic_filter_last_clean'))|timestamp_custom('%d %b %Y')\n  }} ({{states('sensor.septic_filter_days_since_clean_text')}})</h2>"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "icon": "mdi:pail",
+                  "name": "Filter Cleaned Today",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.septic_filter_cleaned_today",
+                    "target": {}
+                  }
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "<h1><center>Bedroom</center></h1>",
+                  "grid_options": {
+                    "columns": 30,
+                    "rows": "auto"
+                  },
+                  "text_only": true,
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.truenas_server_online",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "input_datetime.matt_s_bedtime",
+                      "name": "Matt's Bedtime"
+                    },
+                    {
+                      "entity": "input_datetime.cathy_s_bedtime",
+                      "name": "Cathy's Bedtime"
+                    }
+                  ],
+                  "show_header_toggle": false
+                },
+                {
+                  "type": "custom:mushroom-number-card",
+                  "entity": "input_number.electric_blanket_prewarm_duration",
+                  "name": "Electric Blanket Duration"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            }
+          ],
+          "cards": [],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ]
+        },
+        {
+          "title": "network",
+          "path": "network",
+          "icon": "mdi:ip-network",
+          "type": "sidebar",
+          "badges": [],
+          "cards": [
+            {
+              "type": "entities",
+              "entities": [
+                {
+                  "entity": "sensor.speedtest_download",
+                  "name": "Download"
+                },
+                {
+                  "entity": "sensor.speedtest_ping",
+                  "name": "Ping"
+                },
+                {
+                  "entity": "sensor.speedtest_upload",
+                  "name": "Upload"
+                }
+              ],
+              "title": "SpeedTest"
+            },
+            {
+              "chart_type": "line",
+              "period": "hour",
+              "type": "statistics-graph",
+              "entities": [
+                "sensor.speedtest_download"
+              ],
+              "stat_types": [
+                "mean",
+                "min",
+                "max"
+              ],
+              "title": "Download Speed",
+              "days_to_show": 1,
+              "hide_legend": true
+            },
+            {
+              "chart_type": "line",
+              "period": "hour",
+              "type": "statistics-graph",
+              "entities": [
+                "sensor.speedtest_upload"
+              ],
+              "stat_types": [
+                "mean",
+                "min",
+                "max"
+              ],
+              "title": "Upload Speed",
+              "days_to_show": 1,
+              "hide_legend": true
+            },
+            {
+              "chart_type": "line",
+              "period": "hour",
+              "type": "statistics-graph",
+              "entities": [
+                "sensor.speedtest_ping"
+              ],
+              "stat_types": [
+                "mean",
+                "min",
+                "max"
+              ],
+              "title": "Ping",
+              "days_to_show": 1,
+              "hide_legend": true,
+              "view_layout": {
+                "position": "main"
+              }
+            }
+          ],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ],
+          "subview": true
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "icon": "mdi:alert",
+          "path": "",
+          "sections": [],
+          "header": {
+            "card": {
+              "type": "markdown",
+              "text_only": true,
+              "content": "# Warnings"
+            }
+          }
+        },
+        {
+          "type": "sections",
+          "icon": "mdi:weather-cloudy",
+          "path": "weather",
+          "title": "Weather",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "show_current": true,
+                  "show_forecast": false,
+                  "type": "weather-forecast",
+                  "entity": "weather.forecast_home",
+                  "forecast_type": "daily",
+                  "secondary_info_attribute": "humidity"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "title": "Sun times",
+                  "entities": [
+                    {
+                      "type": "attribute",
+                      "entity": "sun.sun",
+                      "attribute": "next_rising",
+                      "name": "Sunrise"
+                    },
+                    {
+                      "type": "attribute",
+                      "entity": "sun.sun",
+                      "attribute": "next_setting",
+                      "name": "Sunset"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "cards": [],
+          "visible": [
+            {
+              "user": "e2be39d1a4e348fe9a8d858a22fee569"
+            },
+            {
+              "user": "8378133791bd4d40a3ff8968457cd607"
+            },
+            {
+              "user": "cb493b6390da4e48989a89040445d163"
+            },
+            {
+              "user": "84a53350793e491e9ebb9a7ef3aaf9c6"
+            },
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            },
+            {
+              "user": "2b7de3ece6c94834858cda14b57a0b8d"
+            }
+          ]
+        },
+        {
+          "type": "sections",
+          "max_columns": 4,
+          "title": "Experimental",
+          "path": "experimental",
+          "icon": "mdi:test-tube",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "New section"
+                },
+                {
+                  "type": "tile",
+                  "entity": "input_boolean.main_room_party_mode"
+                },
+                {
+                  "type": "tile",
+                  "entity": "input_boolean.main_room_sexy_mode"
+                },
+                {
+                  "type": "tile",
+                  "entity": "input_boolean.bedroom_sexy_mode"
+                },
+                {
+                  "type": "tile",
+                  "entity": "input_boolean.bedroom_party_mode"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "Sensor",
+                  "heading_style": "title"
+                },
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "entity": "binary_sensor.dining_room_presence_sensor_pir_sensor"
+                    },
+                    {
+                      "entity": "binary_sensor.dining_room_presence_sensor_presence"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full"
+                  }
+                },
+                {
+                  "type": "custom:radar-map-card",
+                  "bg_image": "/local/floorplan/house.png",
+                  "grid_options": {
+                    "columns": "full"
+                  }
+                }
+              ],
+              "column_span": 4
+            }
+          ],
+          "visible": [
+            {
+              "user": "bfc164019a514a718843cf6e303b460b"
+            }
+          ],
+          "cards": []
+        }
+      ]
+    }
+  }
+}

@@ -3,7 +3,11 @@ secrets.yaml
 *.pem
 *.key
 *.crt
-.storage/
+# Ignore .storage contents except Lovelace dashboards
+config/.storage/*
+!config/.storage/lovelace.lovelace
+!config/.storage/lovelace_dashboards
+!config/.storage/lovelace_resources
 .cloud/
 .google.token
 .HA_VERSION

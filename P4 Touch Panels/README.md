@@ -69,7 +69,7 @@ For **idle timeout** defaults over the same heartbeat, see [`home_assistant/ha_a
 | `climate_mode_off` | `switch.turn_off` `switch.bedroom_3_heater`; `climate.set_hvac_mode` → `off` on `climate.bedroom_3_heater_bedroom_3_climate_control` |
 | `climate_mode_on` | `switch.turn_on` `switch.bedroom_3_heater`; `climate.set_hvac_mode` → `off` on that climate entity |
 | `climate_mode_cc` | `climate.set_hvac_mode` → `heat` on that climate entity |
-| `study_heater` | `switch.toggle` → `switch.tasmota_2` |
+| `study_heater` | toggles `climate.faikin_study_mqtt_hvac` (`climate.set_hvac_mode` → `heat` when off, else `climate.turn_off`) |
 
 **Automation — light, fan, climate** (same `status/button_press` topic as room; exclude room option strings so the room automation handles them). Copy-ready YAML: [`home_assistant/ha_automation_button_press.yaml`](home_assistant/ha_automation_button_press.yaml).
 
@@ -81,7 +81,7 @@ For any automation whose **MQTT trigger `topic:`** is a template that includes t
 
 Climate **+/−** in [`home_assistant/ha_automation_button_press.yaml`](home_assistant/ha_automation_button_press.yaml) sets **`hvac_mode: heat`** with each `climate.set_temperature` call (matches the [climate docs](https://www.home-assistant.io/integrations/climate/#action-set-temperature) example). Remove those two `hvac_mode` lines if your thermostat should stay in another mode.
 
-Study heater state for the Study page is mirrored from Home Assistant over retained MQTT topic **`esp_hmi/data/study/heater_on`** using [`home_assistant/ha_automation_data_study_heater.yaml`](home_assistant/ha_automation_data_study_heater.yaml). Payload is `switch.tasmota_2` state (`on`/`off`), and firmware accepts bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`).
+Study heater state for the Study page is mirrored from Home Assistant over retained MQTT topic **`esp_hmi/data/study/heater_on`** using [`home_assistant/ha_automation_data_study_heater.yaml`](home_assistant/ha_automation_data_study_heater.yaml). Payload is `true` whenever `climate.faikin_study_mqtt_hvac` is not `off`/`unavailable`/`unknown`, and firmware accepts bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`).
 
 House Battery SOC for the House Battery screen is mirrored over retained MQTT topic **`esp_hmi/data/house_battery/soc_percent`** using [`home_assistant_automations/ha_automation_data_house_battery_soc.yaml`](home_assistant_automations/ha_automation_data_house_battery_soc.yaml). Payload is plain float **0–100** from **`sensor.sigen_inverter_battery_state_of_charge`**.
 

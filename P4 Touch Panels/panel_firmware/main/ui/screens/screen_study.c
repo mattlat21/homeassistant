@@ -4,7 +4,6 @@
 #include "ui/components/ui_box_1.h"
 #include "ui/components/ui_button_1.h"
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/ui_brand_gradient.h"
 #include "ui/ui_screen_template.h"
 #include "ui/ui_visual_tokens.h"
 
@@ -63,19 +62,24 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
     params.pad_left = 24;
     params.row_gap = 16;
     params.col_gap = 16;
+    params.bg_color = lv_color_black();
+    params.bg_opa = LV_OPA_COVER;
 
     ui_screen_template_result_t layout;
     if (!ui_screen_template_create(disp, &params, &layout)) {
         return NULL;
     }
 
-    ui_brand_gradient_apply(layout.screen);
-
     lv_color_t fg = lv_color_white();
     const lv_color_t *fg_p = &fg;
 
     s_btn_heater = ui_button_1_create(layout.grid, 1, 1, 1, 1, UI_HA_ICON_FIRE, "Heater", fg_p, fg_p,
                                       study_heater_publish, NULL);
+
+    /* ui_button_1 lays out icon then name; enlarge the name label only on this screen. */
+    if (s_btn_heater != NULL && lv_obj_get_child_cnt(s_btn_heater) >= 2) {
+        lv_obj_set_style_text_font(lv_obj_get_child(s_btn_heater, 1), &lv_font_montserrat_32, LV_PART_MAIN);
+    }
 
     study_apply_heater_state(false);
     ha_mqtt_set_study_heater_state_callback(study_heater_state_cb, NULL);

@@ -358,11 +358,23 @@ actions:
           - condition: template
             value_template: "{{ trigger.payload_json.button == 'study_heater' }}"
         sequence:
-          - action: switch.toggle
-            target:
-              entity_id: switch.tasmota_2
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(study_heater_entity) == 'off' }}"
+                sequence:
+                  - action: climate.set_hvac_mode
+                    target:
+                      entity_id: "{{ study_heater_entity }}"
+                    data:
+                      hvac_mode: heat
+            default:
+              - action: climate.turn_off
+                target:
+                  entity_id: "{{ study_heater_entity }}"
 variables:
   climate_target_entity: climate.bedroom_3_heater_bedroom_3_climate_control
   heater_switch_entity: switch.bedroom_3_heater
   room_state_select_entity: input_select.ollie_room_desired_state
+  study_heater_entity: climate.faikin_study_mqtt_hvac
 mode: parallel

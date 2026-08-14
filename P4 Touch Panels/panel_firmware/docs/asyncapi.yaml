@@ -37,8 +37,8 @@ info:
     **control** = HA `climate` entity state (e.g. `heat`/`off`) or legacy bool scalars. Device subscribes QoS 1; publish
     **retained** from HA so reconnect restores the UI after all four values have been seen at least once.
 
-    **Study heater state (HA → panels):** Retained scalar bool topic `esp_hmi/data/study/heater_on` mirrors `switch.tasmota_2`
-    so the Study page can render heater on/off after reconnect.
+    **Study heater state (HA → panels):** Retained scalar bool topic `esp_hmi/data/study/heater_on` mirrors
+    `climate.faikin_study_mqtt_hvac` (true when not `off`) so the Study page can render heater on/off after reconnect.
 
     **House Battery SOC (HA → panels):** Retained plain float 0–100 on `esp_hmi/data/house_battery/soc_percent` mirrors
     `sensor.sigen_inverter_battery_state_of_charge` for the House Battery gauge.
@@ -290,7 +290,7 @@ channels:
 
   esp_hmi/data/study/heater_on:
     description: |
-      Retained Study heater state mirror from Home Assistant `switch.tasmota_2`. Device **subscribes** QoS 1.
+      Retained Study heater state mirror from Home Assistant `climate.faikin_study_mqtt_hvac`. Device **subscribes** QoS 1.
       Accepted payloads are bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`).
     subscribe:
       operationId: subscribeStudyHeaterState

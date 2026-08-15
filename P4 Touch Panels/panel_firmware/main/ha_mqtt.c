@@ -62,6 +62,8 @@ static char s_switch_screen_temp_topic[88];
 static char s_set_idle_timeout_topic[88];
 /** JSON display power fields (partial update OK). */
 static char s_set_display_power_topic[88];
+/** Light power/brightness commands JSON: <s_node_id>/status/light_set */
+static char s_light_set_topic[88];
 /** Any payload wakes display (normal brightness + reset inactivity timers). */
 static char s_wake_display_topic[88];
 /** Any payload triggers delayed reboot after a short FreeRTOS deferral. */
@@ -140,6 +142,25 @@ typedef struct {
 } hvac_extra_zone_t;
 
 static hvac_extra_zone_t s_hvac_zones[HA_MQTT_HVAC_EXTRA_ZONE_MAX];
+
+#define LIGHT_SEEN_STATE (1u << 0)
+#define LIGHT_SEEN_BRIGHTNESS (1u << 1)
+
+typedef struct {
+    char topic_state[HA_MQTT_CLIMATE_TOPIC_MAX];
+    char topic_brightness[HA_MQTT_CLIMATE_TOPIC_MAX];
+    bool configured;
+    /** Fields that must arrive before the first dispatch (brightness only when that topic is configured). */
+    uint8_t need_mask;
+    uint8_t seen_mask;
+    bool cache_on;
+    uint8_t cache_brightness;
+    ha_mqtt_light_state_cb_t cb;
+    void *user_data;
+} light_slot_t;
+
+static light_slot_t s_lights[HA_MQTT_LIGHT_MAX];
+
 static ha_mqtt_front_gate_state_cb_t s_front_gate_state_cb;
 static void *s_front_gate_state_cb_ud;
 static ha_mqtt_study_heater_state_cb_t s_study_heater_state_cb;
@@ -168,6 +189,12 @@ typedef struct {
 typedef struct {
     float soc_percent;
 } house_battery_soc_async_msg_t;
+
+typedef struct {
+    uint8_t light_id;
+    bool on;
+    uint8_t brightness_pct;
+} light_state_async_msg_t;
 
 typedef enum {
     MQTT_NAV_ASYNC_SWITCH = 1,
@@ -265,6 +292,8 @@ static void build_ids_from_mac(const uint8_t mac[6])
     strncpy(s_house_battery_soc_topic, CONFIG_ESP_HMI_MQTT_HOUSE_BATTERY_SOC_TOPIC,
             sizeof(s_house_battery_soc_topic) - 1);
     s_house_battery_soc_topic[sizeof(s_house_battery_soc_topic) - 1] = '\0';
+
+    snprintf(s_light_set_topic, sizeof(s_light_set_topic), "%s/status/light_set", s_node_id);
 
     snprintf(s_set_default_screen_topic, sizeof(s_set_default_screen_topic), "%s/cmd/set_default_screen", s_node_id);
     snprintf(s_switch_screen_topic, sizeof(s_switch_screen_topic), "%s/cmd/switch_screen", s_node_id);
@@ -692,6 +721,34 @@ static void subscribe_climate_state_topics(void)
     }
 }
 
+static void subscribe_light_topic(const char *topic)
+{
+    if (s_client == NULL || topic == NULL || topic[0] == '\0') {
+        return;
+    }
+    int mid = esp_mqtt_client_subscribe(s_client, topic, 1);
+    if (mid < 0) {
+        ESP_LOGE(TAG, "subscribe light topic failed: %s", topic);
+    } else {
+        ESP_LOGI(TAG, "subscribed light: %s", topic);
+    }
+}
+
+static void subscribe_light_state_topics(void)
+{
+    if (s_client == NULL) {
+        return;
+    }
+    for (size_t i = 0; i < HA_MQTT_LIGHT_MAX; i++) {
+        const light_slot_t *slot = &s_lights[i];
+        if (!slot->configured) {
+            continue;
+        }
+        subscribe_light_topic(slot->topic_state);
+        subscribe_light_topic(slot->topic_brightness);
+    }
+}
+
 static void subscribe_front_gate_state_topic(void)
 {
     if (s_client == NULL || s_front_gate_state_topic[0] == '\0') {
@@ -959,6 +1016,93 @@ static void house_battery_soc_async_fn(void *user_data)
         s_house_battery_soc_cb(m->soc_percent, s_house_battery_soc_cb_ud);
     }
     lv_free(m);
+}
+
+static void light_state_async_fn(void *user_data)
+{
+    light_state_async_msg_t *m = (light_state_async_msg_t *)user_data;
+    if (m == NULL) {
+        return;
+    }
+    if (m->light_id < HA_MQTT_LIGHT_MAX) {
+        const light_slot_t *slot = &s_lights[m->light_id];
+        if (slot->cb != NULL) {
+            slot->cb(m->on, m->brightness_pct, slot->user_data);
+        }
+    }
+    lv_free(m);
+}
+
+static void try_dispatch_light_from_cache(uint8_t light_id)
+{
+    if (light_id >= HA_MQTT_LIGHT_MAX) {
+        return;
+    }
+    const light_slot_t *slot = &s_lights[light_id];
+    if (!slot->configured || (slot->seen_mask & slot->need_mask) != slot->need_mask) {
+        return;
+    }
+    light_state_async_msg_t *msg = (light_state_async_msg_t *)lv_malloc(sizeof(light_state_async_msg_t));
+    if (msg == NULL) {
+        ESP_LOGE(TAG, "light state async alloc failed");
+        return;
+    }
+    msg->light_id = light_id;
+    msg->on = slot->cache_on;
+    msg->brightness_pct = slot->cache_brightness;
+    if (lv_async_call(light_state_async_fn, msg) != LV_RESULT_OK) {
+        lv_free(msg);
+        ESP_LOGW(TAG, "lv_async_call(light_state) failed");
+    }
+}
+
+/** @return true when @a topic belongs to this light slot (payload consumed, valid or not). */
+static bool handle_light_state_mqtt(uint8_t light_id, const char *topic, const char *data, int data_len)
+{
+    if (light_id >= HA_MQTT_LIGHT_MAX) {
+        return false;
+    }
+    light_slot_t *slot = &s_lights[light_id];
+    if (!slot->configured) {
+        return false;
+    }
+    const bool is_state = (slot->topic_state[0] != '\0' && strcmp(topic, slot->topic_state) == 0);
+    const bool is_brightness = (slot->topic_brightness[0] != '\0' && strcmp(topic, slot->topic_brightness) == 0);
+    if (!is_state && !is_brightness) {
+        return false;
+    }
+    if (data_len <= 0 || data_len >= HA_MQTT_SCALAR_PAYLOAD_MAX) {
+        ESP_LOGW(TAG, "light %u payload bad len (%d)", (unsigned)light_id, data_len);
+        return true;
+    }
+    char payload[HA_MQTT_SCALAR_PAYLOAD_MAX];
+    memcpy(payload, data, (size_t)data_len);
+    payload[data_len] = '\0';
+
+    if (is_state) {
+        bool b = false;
+        if (!parse_bool_scalar(payload, &b)) {
+            ESP_LOGW(TAG, "light %u state parse failed", (unsigned)light_id);
+            return true;
+        }
+        slot->cache_on = b;
+        slot->seen_mask |= LIGHT_SEEN_STATE;
+    } else {
+        float v = 0.0f;
+        if (!parse_float_scalar(payload, &v)) {
+            ESP_LOGW(TAG, "light %u brightness parse failed", (unsigned)light_id);
+            return true;
+        }
+        if (v < 0.0f) {
+            v = 0.0f;
+        } else if (v > 100.0f) {
+            v = 100.0f;
+        }
+        slot->cache_brightness = (uint8_t)(v + 0.5f);
+        slot->seen_mask |= LIGHT_SEEN_BRIGHTNESS;
+    }
+    try_dispatch_light_from_cache(light_id);
+    return true;
 }
 
 static void try_dispatch_climate_from_cache(void)
@@ -1375,6 +1519,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_front_gate_state_topic();
         subscribe_study_heater_state_topic();
         subscribe_house_battery_soc_topic();
+        subscribe_light_state_topics();
         subscribe_set_default_screen_topic();
         subscribe_remote_screen_topics();
 #if CONFIG_ESP_HMI_OTA_ENABLE
@@ -1524,6 +1669,18 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 }
             }
             if (hvac_handled) {
+                break;
+            }
+        }
+        {
+            bool light_handled = false;
+            for (uint8_t li = 0; li < HA_MQTT_LIGHT_MAX; li++) {
+                if (handle_light_state_mqtt(li, tbuf, ev->data, ev->data_len)) {
+                    light_handled = true;
+                    break;
+                }
+            }
+            if (light_handled) {
                 break;
             }
         }
@@ -2015,6 +2172,78 @@ void ha_mqtt_set_house_battery_soc_callback(ha_mqtt_house_battery_soc_cb_t cb, v
 {
     s_house_battery_soc_cb = cb;
     s_house_battery_soc_cb_ud = user_data;
+}
+
+void ha_mqtt_configure_light(uint8_t light_id, const char *topic_state, const char *topic_brightness)
+{
+    if (light_id >= HA_MQTT_LIGHT_MAX) {
+        return;
+    }
+    light_slot_t *slot = &s_lights[light_id];
+    memset(slot, 0, sizeof(*slot));
+    if (topic_state != NULL) {
+        strncpy(slot->topic_state, topic_state, sizeof(slot->topic_state) - 1);
+    }
+    if (topic_brightness != NULL) {
+        strncpy(slot->topic_brightness, topic_brightness, sizeof(slot->topic_brightness) - 1);
+    }
+    slot->configured = slot->topic_state[0] != '\0';
+    slot->need_mask = LIGHT_SEEN_STATE | (slot->topic_brightness[0] != '\0' ? LIGHT_SEEN_BRIGHTNESS : 0u);
+    if (slot->configured && s_mqtt_connected && s_client != NULL) {
+        subscribe_light_topic(slot->topic_state);
+        subscribe_light_topic(slot->topic_brightness);
+    }
+}
+
+void ha_mqtt_set_light_state_callback(uint8_t light_id, ha_mqtt_light_state_cb_t cb, void *user_data)
+{
+    if (light_id >= HA_MQTT_LIGHT_MAX) {
+        return;
+    }
+    light_slot_t *slot = &s_lights[light_id];
+    slot->cb = cb;
+    slot->user_data = user_data;
+    if (cb != NULL && slot->configured && (slot->seen_mask & slot->need_mask) == slot->need_mask) {
+        cb(slot->cache_on, slot->cache_brightness, user_data);
+    }
+}
+
+static bool publish_light_set_json(const char *body, int len)
+{
+    if (len <= 0 || !s_mqtt_connected || s_client == NULL || s_light_set_topic[0] == '\0') {
+        return false;
+    }
+    return esp_mqtt_client_publish(s_client, s_light_set_topic, body, len, 0, 0) >= 0;
+}
+
+bool ha_mqtt_publish_light_power(const char *light_slug, bool on)
+{
+    if (light_slug == NULL || light_slug[0] == '\0') {
+        return false;
+    }
+    char body[HA_MQTT_PRESS_JSON_MAX];
+    int n = snprintf(body, sizeof(body), "{\"light\": \"%s\", \"power\": \"%s\"}", light_slug, on ? "on" : "off");
+    if (n <= 0 || (size_t)n >= sizeof(body)) {
+        return false;
+    }
+    return publish_light_set_json(body, n);
+}
+
+bool ha_mqtt_publish_light_brightness(const char *light_slug, uint8_t brightness_pct)
+{
+    if (light_slug == NULL || light_slug[0] == '\0') {
+        return false;
+    }
+    if (brightness_pct > 100) {
+        brightness_pct = 100;
+    }
+    char body[HA_MQTT_PRESS_JSON_MAX];
+    int n = snprintf(body, sizeof(body), "{\"light\": \"%s\", \"brightness\": %u}", light_slug,
+                     (unsigned)brightness_pct);
+    if (n <= 0 || (size_t)n >= sizeof(body)) {
+        return false;
+    }
+    return publish_light_set_json(body, n);
 }
 
 bool ha_mqtt_publish_ollie_room_option(const char *option)

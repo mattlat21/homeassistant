@@ -155,12 +155,9 @@ static void nav_gesture_cb(lv_event_t *e)
         return;
     }
     lv_dir_t dir = lv_indev_get_gesture_dir(indev);
+    /* Swipe left/right between apps disabled — navigate via launcher / taskbar only. */
     if (dir == LV_DIR_TOP) {
         nav_go_home();
-    } else if (dir == LV_DIR_LEFT) {
-        nav_next();
-    } else if (dir == LV_DIR_RIGHT) {
-        nav_prev();
     }
 }
 

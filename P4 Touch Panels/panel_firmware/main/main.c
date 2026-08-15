@@ -11,7 +11,7 @@ static const char *TAG = "esp_hmi";
 static void ui_shell_boot_async(void *user_data)
 {
     ui_shell_init((lv_display_t *)user_data);
-    ESP_LOGI(TAG, "UI shell started (loading → default app from NVS; swipe L/R between apps, swipe up for home)");
+    ESP_LOGI(TAG, "UI shell started (loading → default app from NVS; swipe up for home)");
 }
 
 /** Same as BSP `bsp_display_start()` but larger LVGL task stack for ThorVG/Lottie (default 7 KiB overflows in tvgSwRle). */

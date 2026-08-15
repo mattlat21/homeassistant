@@ -17,6 +17,7 @@ static void launcher_cb(app_id_t app, void *user_ctx)
 #define HOME_GRID_N 4u
 #define HOME_MIN_GAP_PX 8
 
+
 lv_obj_t *screen_home_create(lv_display_t *disp)
 {
     (void)disp;
@@ -51,17 +52,14 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         app_id_t app;
         const lv_font_t *icon_font; /* NULL → Home Assistant subset font */
     } const tiles[] = {
-        { UI_HA_ICON_TEDDY_BEAR, "Ollie's Room", APP_OLLIE_ROOM, NULL },
-        { UI_HA_ICON_BED, "Penny's Room", APP_PENNY_ROOM, NULL },
+        { UI_HA_ICON_BED, "Ollie's Room Legacy", APP_OLLIE_ROOM, NULL },
+        { UI_HA_ICON_TEDDY_BEAR, "Ollie's Room", APP_PENNY_ROOM, NULL },
         { UI_HA_ICON_GATE, "Front Gate", APP_FRONT_GATE, NULL },
         { UI_HA_ICON_DESK, "Study", APP_STUDY, NULL },
         { LV_SYMBOL_HOME, "Front Door", APP_FRONT_DOOR, &lv_font_montserrat_48 },
-        { LV_SYMBOL_IMAGE, "Kitchen", APP_KITCHEN, &lv_font_montserrat_48 },
-        { LV_SYMBOL_AUDIO, "Studio", APP_STUDIO, &lv_font_montserrat_48 },
         { UI_HA_ICON_THERMOMETER, "HVAC", APP_HVAC, NULL },
         { LV_SYMBOL_BATTERY_FULL, "House Battery", APP_HOUSE_BATTERY, &lv_font_montserrat_48 },
         { UI_HA_ICON_LIGHTBULB, "PipBoy", APP_PIPBOY, NULL },
-        { UI_HA_ICON_GAUGE, "Car Sim", APP_DASHBOARD, NULL },
         { LV_SYMBOL_LIST, "About", APP_ABOUT, &lv_font_montserrat_48 },
         { LV_SYMBOL_SETTINGS, "Settings", APP_SETTINGS, &lv_font_montserrat_48 },
     };

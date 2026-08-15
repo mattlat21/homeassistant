@@ -1,0 +1,41 @@
+# Home Assistant -> panels: Front Door screen light state as retained MQTT.
+# The Front Door screen subscribes to esp_hmi/data/<slug>/light/state (bool-like) and
+# esp_hmi/data/<slug>/light/brightness (0-100) and only shows a light once both have arrived.
+
+alias: ESP HMI - Data - Front Door Lights
+description: Mirrors the Outside, Lounge and Hallway lights to MQTT for the ESP HMI Front Door screen
+variables:
+  # Keep in sync with ha_automation_light_set.yaml and the trigger entity list below
+  # (templates cannot be used in entity_id).
+  panel_lights:
+    outside: light.front_door_lights
+    lounge: light.lounge_room_lights
+    hallway: light.entrance_hallway_lights
+triggers:
+  - trigger: state
+    entity_id:
+      - light.front_door_lights
+      - light.lounge_room_lights
+      - light.entrance_hallway_lights
+  - trigger: homeassistant
+    event: start
+actions:
+  - repeat:
+      for_each: "{{ panel_lights | dictsort }}"
+      sequence:
+        - variables:
+            slug: "{{ repeat.item[0] }}"
+            entity: "{{ repeat.item[1] }}"
+        - action: mqtt.publish
+          data:
+            topic: "esp_hmi/data/{{ slug }}/light/state"
+            payload: "{{ 'true' if states(entity) == 'on' else 'false' }}"
+            retain: true
+        - action: mqtt.publish
+          data:
+            topic: "esp_hmi/data/{{ slug }}/light/brightness"
+            payload: >-
+              {{ ((state_attr(entity, 'brightness') | float(0)) / 255 * 100) | round(0) | int }}
+            retain: true
+mode: queued
+max: 10

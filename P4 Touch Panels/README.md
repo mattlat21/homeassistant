@@ -8,7 +8,7 @@ ESP-IDF + LVGL multi-screen demo for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B
 2. **Home**: iOS-style **launcher** on a **3×3** cell grid with **six** tiles (Ollie’s Room, Dashboard, Front Gate, PipBoy, **Settings**, **Study**). Unused grid cells are background only. Tap a tile to open that app.
 3. **Settings**: Read-only summary of **firmware version** (from build-time `FW_VER_*` ints), **Wi-Fi SSID** when associated, and the **default startup screen** (friendly name + slug).
 4. **Ollie’s Room**: Grid with a **room-mode** selector (**Normal**, **Rest Time**, **Sleep Time**) synced to Home Assistant via MQTT (see below), **`ui_climate_control_1`** synced via **four shared retained MQTT topics** under `esp_hmi/data/bedroom3/climate/` (setpoint, current, heater, control) plus climate button payloads (see [Ollie climate](#home-assistant-ollie-climate--mqtt)), a **light** button, and a **fan** button that opens a modal to choose **Fan off / Low / Medium / High** (JSON `button` values `fan_off`, `fan_1` … `fan_3`). **All** panel outputs (buttons + room) publish on **`esp_hmi/device/<MAC>/status/button_press`** as **`{"button": "…"}`** (e.g. `light`, `Normal`, `climate_temp_dn`). Use MQTT discovery and the automations in [Ollie MQTT button_press](#home-assistant-ollie-mqtt-button_press) below.
-5. **Gestures** (on app screens, not on loading): **swipe left/right** cycles apps in order Home → Ollie’s Room → Dashboard → Front Gate → PipBoy → Settings → Study → Home. **Swipe up** returns to **Home**.
+5. **Gestures** (on app screens, not on loading): **swipe up** returns to **Home**. Left/right swipe between apps is disabled (use the launcher or taskbar).
 
 `app_main` does not call `ui_shell_init()` directly: it uses **`lv_async_call()`** so the first Lottie/ThorVG work runs on **`taskLVGL`** (32 KiB stack) instead of the **main** task. Other code paths should still use `bsp_display_lock()` / `bsp_display_unlock()` when touching LVGL from non-LVGL tasks.
 
@@ -85,6 +85,16 @@ Study heater state for the Study page is mirrored from Home Assistant over retai
 
 House Battery SOC for the House Battery screen is mirrored over retained MQTT topic **`esp_hmi/data/house_battery/soc_percent`** using [`home_assistant_automations/ha_automation_data_house_battery_soc.yaml`](home_assistant_automations/ha_automation_data_house_battery_soc.yaml). Payload is plain float **0–100** from **`sensor.sigen_inverter_battery_state_of_charge`**.
 
+## Home Assistant: Front Door lights
+
+The Front Door screen shows three [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) rows — **Outside**, **Lounge**, **Hallway** — each a power toggle plus a brightness slider. Slugs (`outside`, `lounge`, `hallway`) tie the firmware, the command payloads, and the retained topics together.
+
+**Panels → HA**: taps publish JSON on **`esp_hmi/device/<MAC>/status/light_set`** (QoS 0, not retained) — **`{"light": "lounge", "power": "on"}`** on a toggle, **`{"light": "lounge", "brightness": 45}`** on **slider release** (one publish per drag, and only when the value changed). Copy-ready YAML: [`home_assistant_automations/ha_automation_light_set.yaml`](home_assistant_automations/ha_automation_light_set.yaml) — a `brightness` of **0** turns the light off, anything higher calls `light.turn_on` with `brightness_pct`.
+
+**HA → panels**: retained **`esp_hmi/data/<slug>/light/state`** (bool-like) and **`esp_hmi/data/<slug>/light/brightness`** (0–100). A row updates once **both** have delivered a parseable value. Copy-ready YAML: [`home_assistant_automations/ha_automation_data_lights.yaml`](home_assistant_automations/ha_automation_data_lights.yaml) (brightness is converted from the HA `brightness` attribute, 0–255, to a percentage).
+
+Both automations map panel slugs to **`light.front_door_lights`** (Outside), **`light.lounge_room_lights`** (Lounge), and **`light.entrance_hallway_lights`** (Hallway).
+
 ## Firmware version
 
 The three-part version is the source of truth in the firmware root [`panel_firmware/CMakeLists.txt`](panel_firmware/CMakeLists.txt): **`FW_VER_MAJOR`**, **`FW_VER_MINOR`**, **`FW_VER_PATCH`** (integers). They are passed into the `main` component as compile definitions; the UI formats them (e.g. `1.0.0`). **`PROJECT_VER`** is derived from the same triple for `esp_app_desc` / OTA alignment. Bump those three variables when you release.
@@ -101,7 +111,7 @@ On MQTT connect the device **subscribes** (QoS **1**) to:
 
 where `<aabbccddeeff>` is the station MAC as **12 lowercase hex digits** (same token as in `esp_hmi/device/<mac>/status/button_press`). Payload is **plain text**, trimmed of whitespace, one of:
 
-`home` · `ollie_room` · `dashboard` · `front_gate` · `pipboy` · `settings` · `study` · `about` · `front_door` · `kitchen` · `studio` · `hvac` · `house_battery` · `penny_room`
+`home` · `ollie_room` · `front_gate` · `pipboy` · `settings` · `study` · `about` · `front_door` · `hvac` · `house_battery` · `penny_room`
 
 Publishing a **retained** message is supported so panels pick up the default after reconnect.
 
@@ -243,3 +253,7 @@ If Wi‑Fi never associates after the host changes (no `got IP`, transport error
 ## UI layout (source tree)
 
 Screens and widgets are **one `.c` / `.h` pair per module** under `panel_firmware/main/ui/` (`ui_shell`, `nav`, `screens/*`, `components/*`). Shared layout helpers: include [`panel_firmware/main/ui/ui_layout.h`](panel_firmware/main/ui/ui_layout.h) from any screen or component (currently re-exports **square grid** math in [`ui_layout_grid.c`](panel_firmware/main/ui/ui_layout_grid.c) / [`ui_layout_grid.h`](panel_firmware/main/ui/ui_layout_grid.h): gap, stride, cell → x/y). Entry point: `ui_shell_init()` from [`panel_firmware/main/main.c`](panel_firmware/main/main.c).
+
+**Screen chrome**: [`ui_status_bar`](panel_firmware/main/ui/components/ui_status_bar.h) along the top and [`ui_taskbar`](panel_firmware/main/ui/components/ui_taskbar.h) — an iPhone-style dock — along the bottom. `ui_taskbar_create(parent, items, count)` takes up to **6** `ui_taskbar_item_t` icons (Home Assistant glyph or `LV_SYMBOL_*` with a Montserrat font, optional colour, click callback + user data) and is created on the **screen**, not on a laid-out container. Screens reserve `UI_TASKBAR_HEIGHT` of bottom padding so content clears the dock (currently [`screen_study.c`](panel_firmware/main/ui/screens/screen_study.c) and [`screen_front_door.c`](panel_firmware/main/ui/screens/screen_front_door.c)).
+
+**Light rows**: [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) is a grid-cell card with a lightbulb power toggle, name, live percentage and brightness slider. `ui_light_card_1_set_state()` applies Home Assistant state without firing the callbacks, so retained MQTT echoes do not loop back out as commands.

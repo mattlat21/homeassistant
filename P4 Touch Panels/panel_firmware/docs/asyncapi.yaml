@@ -311,6 +311,107 @@ channels:
             - "1"
             - "0"
 
+  esp_hmi/device/{mac}/status/light_set:
+    description: |
+      Front Door screen light controls. Device **publishes** QoS 0 (not retained): a power tap sends
+      `power`, a brightness slider release sends `brightness` (0–100). `light` is the panel slug
+      (`outside`, `lounge`, `hallway`).
+    parameters:
+      mac:
+        description: Station MAC, 12 lowercase hex digits
+        schema:
+          type: string
+          pattern: '^[0-9a-f]{12}$'
+    publish:
+      operationId: publishLightSet
+      summary: Device sends a light power or brightness command
+      bindings:
+        mqtt:
+          qos: 0
+      message:
+        name: LightSet
+        title: Light power / brightness command
+        payload:
+          type: object
+          required:
+            - light
+          properties:
+            light:
+              type: string
+              enum:
+                - outside
+                - lounge
+                - hallway
+            power:
+              type: string
+              enum:
+                - "on"
+                - "off"
+            brightness:
+              type: integer
+              minimum: 0
+              maximum: 100
+
+  esp_hmi/data/{light}/light/state:
+    description: |
+      Retained light on/off mirror from Home Assistant for the Front Door screen. Device **subscribes** QoS 1.
+      Accepted payloads are bool-like scalars (`true`/`false`/`on`/`off`/`1`/`0`). The screen shows a light only
+      once both this topic and the matching `brightness` topic have delivered a parseable value.
+    parameters:
+      light:
+        description: Panel light slug
+        schema:
+          type: string
+          enum:
+            - outside
+            - lounge
+            - hallway
+    subscribe:
+      operationId: subscribeLightState
+      summary: Device receives light on/off state
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: LightState
+        title: Light boolean
+        payload:
+          type: string
+          enum:
+            - "true"
+            - "false"
+            - "on"
+            - "off"
+            - "1"
+            - "0"
+
+  esp_hmi/data/{light}/light/brightness:
+    description: |
+      Retained light brightness (0–100 %), plain text number, for the Front Door screen. Device **subscribes** QoS 1.
+      Values outside the range are clamped.
+    parameters:
+      light:
+        description: Panel light slug
+        schema:
+          type: string
+          enum:
+            - outside
+            - lounge
+            - hallway
+    subscribe:
+      operationId: subscribeLightBrightness
+      summary: Device receives light brightness percent
+      bindings:
+        mqtt:
+          qos: 1
+      message:
+        name: LightBrightness
+        title: Light brightness 0–100
+        payload:
+          type: number
+          minimum: 0
+          maximum: 100
+
   esp_hmi/data/house_battery/soc_percent:
     description: |
       Retained battery state of charge (0–100 %), plain text float. Kconfig `ESP_HMI_MQTT_HOUSE_BATTERY_SOC_TOPIC`.

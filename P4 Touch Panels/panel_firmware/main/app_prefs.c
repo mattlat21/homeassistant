@@ -189,10 +189,6 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_OLLIE_ROOM;
         return true;
     }
-    if (strcasecmp(slug, "dashboard") == 0) {
-        *out = APP_DASHBOARD;
-        return true;
-    }
     if (strcasecmp(slug, "front_gate") == 0) {
         *out = APP_FRONT_GATE;
         return true;
@@ -215,14 +211,6 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
     }
     if (strcasecmp(slug, "front_door") == 0) {
         *out = APP_FRONT_DOOR;
-        return true;
-    }
-    if (strcasecmp(slug, "kitchen") == 0) {
-        *out = APP_KITCHEN;
-        return true;
-    }
-    if (strcasecmp(slug, "studio") == 0) {
-        *out = APP_STUDIO;
         return true;
     }
     if (strcasecmp(slug, "hvac") == 0) {
@@ -262,9 +250,6 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_OLLIE_ROOM:
         slug = "ollie_room";
         break;
-    case APP_DASHBOARD:
-        slug = "dashboard";
-        break;
     case APP_FRONT_GATE:
         slug = "front_gate";
         break;
@@ -282,12 +267,6 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
         break;
     case APP_FRONT_DOOR:
         slug = "front_door";
-        break;
-    case APP_KITCHEN:
-        slug = "kitchen";
-        break;
-    case APP_STUDIO:
-        slug = "studio";
         break;
     case APP_HVAC:
         slug = "hvac";
@@ -311,9 +290,7 @@ const char *app_prefs_display_name_for_app(app_id_t id)
     case APP_HOME:
         return "Home";
     case APP_OLLIE_ROOM:
-        return "Ollie's Room";
-    case APP_DASHBOARD:
-        return "Car Sim";
+        return "Ollie's Room Legacy";
     case APP_FRONT_GATE:
         return "Front Gate";
     case APP_PIPBOY:
@@ -326,16 +303,12 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "About";
     case APP_FRONT_DOOR:
         return "Front Door";
-    case APP_KITCHEN:
-        return "Kitchen";
-    case APP_STUDIO:
-        return "Studio";
     case APP_HVAC:
         return "HVAC";
     case APP_HOUSE_BATTERY:
         return "House Battery";
     case APP_PENNY_ROOM:
-        return "Penny's Room";
+        return "Ollie's Room";
     default:
         return "?";
     }

@@ -1,9 +1,13 @@
 #include "ui/screens/screen_study.h"
 
+#include <stdint.h>
+
 #include "ha_mqtt.h"
 #include "ui/components/ui_box_1.h"
 #include "ui/components/ui_button_1.h"
+#include "ui/components/ui_taskbar.h"
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
+#include "ui/nav.h"
 #include "ui/ui_screen_template.h"
 #include "ui/ui_visual_tokens.h"
 
@@ -49,6 +53,11 @@ static void study_heater_publish(void *user_data)
     (void)ha_mqtt_publish_ollie_button("study_heater");
 }
 
+static void study_taskbar_nav(void *user_data)
+{
+    nav_go_to((app_id_t)(uintptr_t)user_data);
+}
+
 lv_obj_t *screen_study_create(lv_display_t *disp)
 {
     ui_screen_template_params_t params;
@@ -58,7 +67,8 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
     params.grid_rows = 3;
     params.pad_top = 24;
     params.pad_right = 24;
-    params.pad_bottom = 24;
+    /* Keep grid content clear of the dock. */
+    params.pad_bottom = 24 + UI_TASKBAR_HEIGHT;
     params.pad_left = 24;
     params.row_gap = 16;
     params.col_gap = 16;
@@ -80,6 +90,17 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
     if (s_btn_heater != NULL && lv_obj_get_child_cnt(s_btn_heater) >= 2) {
         lv_obj_set_style_text_font(lv_obj_get_child(s_btn_heater, 1), &lv_font_montserrat_32, LV_PART_MAIN);
     }
+
+    const ui_taskbar_item_t taskbar_items[] = {
+        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_HOME },
+        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
+        { UI_HA_ICON_GATE, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
+        { UI_HA_ICON_THERMOMETER, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
+        { UI_HA_ICON_GAUGE, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+    };
+    (void)ui_taskbar_create(layout.screen, taskbar_items,
+                            (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
 
     study_apply_heater_state(false);
     ha_mqtt_set_study_heater_state_callback(study_heater_state_cb, NULL);

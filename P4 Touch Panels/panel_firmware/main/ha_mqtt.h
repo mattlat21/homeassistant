@@ -105,6 +105,35 @@ typedef void (*ha_mqtt_study_heater_state_cb_t)(bool heater_on, void *user_data)
 /** Register handler for Study heater retained state topic (safe to call before MQTT connects). */
 void ha_mqtt_set_study_heater_state_callback(ha_mqtt_study_heater_state_cb_t cb, void *user_data);
 
+/** Light slots for retained state topics (see @ref ha_mqtt_configure_light). */
+#define HA_MQTT_LIGHT_OUTSIDE 0
+#define HA_MQTT_LIGHT_LOUNGE 1
+#define HA_MQTT_LIGHT_HALLWAY 2
+#define HA_MQTT_LIGHT_MAX 4
+
+/** Called on the LVGL thread with retained light state; @a brightness_pct is 0–100. */
+typedef void (*ha_mqtt_light_state_cb_t)(bool on, uint8_t brightness_pct, void *user_data);
+
+/**
+ * Register the retained topic pair for a light slot (`…/light/state` bool, `…/light/brightness` 0–100).
+ * Safe before MQTT connect; subscribes on next connect. Pass NULL @a topic_brightness for a non-dimmable light
+ * (the listener then fires on state alone). Clears any callback previously set for the slot.
+ */
+void ha_mqtt_configure_light(uint8_t light_id, const char *topic_state, const char *topic_brightness);
+
+/** Single LVGL-thread listener per light slot (replaces prior callback); fires immediately if state is cached. */
+void ha_mqtt_set_light_state_callback(uint8_t light_id, ha_mqtt_light_state_cb_t cb, void *user_data);
+
+/**
+ * Publish JSON `{"light": "<slug>", "power": "on"|"off"}` on `esp_hmi/device/<MAC>/status/light_set`
+ * (QoS 0, not retained).
+ * @return false if MQTT is not connected or publish failed to enqueue.
+ */
+bool ha_mqtt_publish_light_power(const char *light_slug, bool on);
+
+/** As @ref ha_mqtt_publish_light_power, with JSON `{"light": "<slug>", "brightness": <0–100>}`. */
+bool ha_mqtt_publish_light_brightness(const char *light_slug, uint8_t brightness_pct);
+
 /** Called on the LVGL thread with battery state of charge 0–100 (percent). */
 typedef void (*ha_mqtt_house_battery_soc_cb_t)(float soc_percent, void *user_data);
 

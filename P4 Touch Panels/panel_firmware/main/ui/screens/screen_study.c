@@ -24,16 +24,16 @@ static void study_heater_set_label_colors(lv_color_t color)
     }
 }
 
-/** Idle: same semi-transparent white tile as Ollie light/fan. Active: selected-segment look (brighter white + yellow). */
+/** Idle: same semi-transparent white tile as Ollie light/fan. Active: solid accent fill with dark text. */
 static void study_apply_heater_state(bool on)
 {
     if (s_btn_heater == NULL) {
         return;
     }
     if (on) {
-        lv_obj_set_style_bg_color(s_btn_heater, UI_BOX_1_BG_COLOR, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(s_btn_heater, (lv_opa_t)(255 * 70 / 100), LV_PART_MAIN);
-        study_heater_set_label_colors(UI_SINGLE_SELECTOR_TEXT_COLOR_SELECTED);
+        lv_obj_set_style_bg_color(s_btn_heater, UI_ACCENT_COLOR, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(s_btn_heater, LV_OPA_COVER, LV_PART_MAIN);
+        study_heater_set_label_colors(UI_ACCENT_TEXT_COLOR);
     } else {
         ui_box_1_style_apply(s_btn_heater);
         study_heater_set_label_colors(UI_SINGLE_SELECTOR_TEXT_COLOR_IDLE);

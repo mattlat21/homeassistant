@@ -19,13 +19,14 @@ typedef struct {
     lv_obj_t *card;
 } front_door_light_t;
 
+/** Array order is the on-screen top-to-bottom order. */
 static front_door_light_t s_lights[] = {
-    { "Outside", "outside", "esp_hmi/data/outside/light/state", "esp_hmi/data/outside/light/brightness",
-      HA_MQTT_LIGHT_OUTSIDE, NULL },
     { "Lounge", "lounge", "esp_hmi/data/lounge/light/state", "esp_hmi/data/lounge/light/brightness",
       HA_MQTT_LIGHT_LOUNGE, NULL },
     { "Hallway", "hallway", "esp_hmi/data/hallway/light/state", "esp_hmi/data/hallway/light/brightness",
       HA_MQTT_LIGHT_HALLWAY, NULL },
+    { "Outside", "outside", "esp_hmi/data/outside/light/state", "esp_hmi/data/outside/light/brightness",
+      HA_MQTT_LIGHT_OUTSIDE, NULL },
 };
 
 #define FRONT_DOOR_LIGHT_COUNT (sizeof(s_lights) / sizeof(s_lights[0]))
@@ -61,10 +62,11 @@ lv_obj_t *screen_front_door_create(lv_display_t *disp)
     params.grid_cols = 1;
     params.grid_rows = (uint8_t)FRONT_DOOR_LIGHT_COUNT;
     params.pad_top = 24;
-    params.pad_right = 24;
+    /* Side padding matches the dock inset so the cards line up with the taskbar edges. */
+    params.pad_right = UI_TASKBAR_SIDE_MARGIN;
     /* Keep grid content clear of the dock. */
     params.pad_bottom = 24 + UI_TASKBAR_HEIGHT;
-    params.pad_left = 24;
+    params.pad_left = UI_TASKBAR_SIDE_MARGIN;
     params.row_gap = 16;
     params.col_gap = 16;
     params.bg_color = lv_color_black();

@@ -87,7 +87,7 @@ House Battery SOC for the House Battery screen is mirrored over retained MQTT to
 
 ## Home Assistant: Front Door lights
 
-The Front Door screen shows three [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) rows — **Outside**, **Lounge**, **Hallway** — each a power toggle plus a brightness slider. Slugs (`outside`, `lounge`, `hallway`) tie the firmware, the command payloads, and the retained topics together.
+The Front Door screen shows three [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) rows — **Lounge**, **Hallway**, **Outside** — each a power toggle plus a brightness slider. Slugs (`outside`, `lounge`, `hallway`) tie the firmware, the command payloads, and the retained topics together.
 
 **Panels → HA**: taps publish JSON on **`esp_hmi/device/<MAC>/status/light_set`** (QoS 0, not retained) — **`{"light": "lounge", "power": "on"}`** on a toggle, **`{"light": "lounge", "brightness": 45}`** on **slider release** (one publish per drag, and only when the value changed). Copy-ready YAML: [`home_assistant_automations/ha_automation_light_set.yaml`](home_assistant_automations/ha_automation_light_set.yaml) — a `brightness` of **0** turns the light off, anything higher calls `light.turn_on` with `brightness_pct`.
 
@@ -256,4 +256,4 @@ Screens and widgets are **one `.c` / `.h` pair per module** under `panel_firmwar
 
 **Screen chrome**: [`ui_status_bar`](panel_firmware/main/ui/components/ui_status_bar.h) along the top and [`ui_taskbar`](panel_firmware/main/ui/components/ui_taskbar.h) — an iPhone-style dock — along the bottom. `ui_taskbar_create(parent, items, count)` takes up to **6** `ui_taskbar_item_t` icons (Home Assistant glyph or `LV_SYMBOL_*` with a Montserrat font, optional colour, click callback + user data) and is created on the **screen**, not on a laid-out container. Screens reserve `UI_TASKBAR_HEIGHT` of bottom padding so content clears the dock (currently [`screen_study.c`](panel_firmware/main/ui/screens/screen_study.c) and [`screen_front_door.c`](panel_firmware/main/ui/screens/screen_front_door.c)).
 
-**Light rows**: [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) is a grid-cell card with a lightbulb power toggle, name, live percentage and brightness slider. `ui_light_card_1_set_state()` applies Home Assistant state without firing the callbacks, so retained MQTT echoes do not loop back out as commands.
+**Light rows**: [`ui_light_card_1`](panel_firmware/main/ui/components/ui_light_card_1.h) is a grid-cell card with a lightbulb power toggle, name, live percentage and brightness slider. The toggle is a square sized to the card's content height on each layout pass, so the grid track decides how large it is. `ui_light_card_1_set_state()` applies Home Assistant state without firing the callbacks, so retained MQTT echoes do not loop back out as commands.

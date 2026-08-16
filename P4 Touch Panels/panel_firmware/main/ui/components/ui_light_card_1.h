@@ -10,6 +10,7 @@ typedef void (*ui_light_card_1_brightness_cb_t)(uint8_t brightness_pct, void *us
 
 /**
  * Light row on a grid: lightbulb power toggle, name, live percentage and a brightness slider.
+ * The toggle is a square sized to the card height, so the parent grid track controls how big it is.
  * @a power_cb fires on each toggle tap; @a brightness_cb fires on slider release (not while dragging)
  * and only when the value changed, so a drag produces one publish.
  */

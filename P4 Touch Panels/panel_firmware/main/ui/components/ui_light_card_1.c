@@ -4,8 +4,18 @@
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
 #include "ui/ui_visual_tokens.h"
 
-#define LIGHT_CARD_TOGGLE_SIZE 84
-#define LIGHT_CARD_SLIDER_HEIGHT 18
+/** Inset around the on/off button (card top/left/bottom); the toggle spans the card height minus twice this. */
+#define LIGHT_CARD_PAD_TOGGLE 10
+/** Card right inset, keeping the name and slider clear of the rounded edge. */
+#define LIGHT_CARD_PAD_RIGHT 20
+/** Gap between the on/off button and the name + slider column. */
+#define LIGHT_CARD_GAP 20
+/** Placeholder square used until the first layout pass reports the real card height. */
+#define LIGHT_CARD_TOGGLE_SIZE_INITIAL 84
+#define LIGHT_CARD_SLIDER_HEIGHT 60
+#define LIGHT_CARD_SLIDER_RADIUS 10
+/** Grab margin around the track, so a drag that strays off the bar keeps working. */
+#define LIGHT_CARD_SLIDER_EXT_CLICK 12
 
 typedef struct {
     lv_obj_t *toggle;
@@ -18,6 +28,8 @@ typedef struct {
     bool on;
     /** Last value handed to @ref brightness_cb; suppresses repeat publishes on release without a drag. */
     uint8_t last_sent_pct;
+    /** Current square toggle edge; latches the size-changed handler against relayout loops. */
+    int32_t toggle_size;
 } light_card_meta_t;
 
 static void light_card_meta_free(lv_event_t *e)
@@ -37,6 +49,21 @@ static void light_card_apply_visuals(light_card_meta_t *meta)
     lv_obj_set_style_text_color(meta->icon, meta->on ? accent : idle, LV_PART_MAIN);
     lv_obj_set_style_bg_color(meta->slider, meta->on ? accent : lv_color_white(), LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(meta->slider, meta->on ? LV_OPA_COVER : (lv_opa_t)(255 * 45 / 100), LV_PART_INDICATOR);
+}
+
+/** Grid tracks size the card, so the square toggle can only be sized once the card has been laid out. */
+static void light_card_on_size_changed(lv_event_t *e)
+{
+    light_card_meta_t *meta = lv_event_get_user_data(e);
+    if (meta == NULL || meta->toggle == NULL) {
+        return;
+    }
+    const int32_t edge = lv_obj_get_content_height(lv_event_get_target(e));
+    if (edge <= 0 || edge == meta->toggle_size) {
+        return;
+    }
+    meta->toggle_size = edge;
+    lv_obj_set_size(meta->toggle, edge, edge);
 }
 
 static void light_card_update_percent_label(light_card_meta_t *meta, int32_t pct)
@@ -119,18 +146,22 @@ lv_obj_t *ui_light_card_1_create(lv_obj_t *parent, uint8_t row, uint8_t col, uin
     ui_box_1_style_apply(card);
     lv_obj_set_grid_cell(card, LV_GRID_ALIGN_STRETCH, col, col_span, LV_GRID_ALIGN_STRETCH, row, row_span);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_pad_all(card, 20, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(card, LIGHT_CARD_PAD_TOGGLE, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(card, LIGHT_CARD_PAD_TOGGLE, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(card, LIGHT_CARD_PAD_TOGGLE, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(card, LIGHT_CARD_PAD_RIGHT, LV_PART_MAIN);
     lv_obj_set_layout(card, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(card, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(card, 20, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(card, LIGHT_CARD_GAP, LV_PART_MAIN);
     lv_obj_set_user_data(card, meta);
     lv_obj_add_event_cb(card, light_card_meta_free, LV_EVENT_DELETE, meta);
+    lv_obj_add_event_cb(card, light_card_on_size_changed, LV_EVENT_SIZE_CHANGED, meta);
 
     meta->toggle = lv_button_create(card);
     lv_obj_remove_style_all(meta->toggle);
     ui_box_1_style_apply(meta->toggle);
-    lv_obj_set_size(meta->toggle, LIGHT_CARD_TOGGLE_SIZE, LIGHT_CARD_TOGGLE_SIZE);
+    lv_obj_set_size(meta->toggle, LIGHT_CARD_TOGGLE_SIZE_INITIAL, LIGHT_CARD_TOGGLE_SIZE_INITIAL);
     lv_obj_clear_flag(meta->toggle, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(meta->toggle, light_card_toggle_clicked, LV_EVENT_CLICKED, meta);
 
@@ -159,11 +190,11 @@ lv_obj_t *ui_light_card_1_create(lv_obj_t *parent, uint8_t row, uint8_t col, uin
 
     lv_obj_t *name_label = lv_label_create(header);
     lv_label_set_text(name_label, name != NULL ? name : "");
-    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_32, LV_PART_MAIN);
     lv_obj_set_style_text_color(name_label, lv_color_white(), LV_PART_MAIN);
 
     meta->percent_label = lv_label_create(header);
-    lv_obj_set_style_text_font(meta->percent_label, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(meta->percent_label, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(meta->percent_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_opa(meta->percent_label, (lv_opa_t)(255 * 70 / 100), LV_PART_MAIN);
 
@@ -174,12 +205,12 @@ lv_obj_t *ui_light_card_1_create(lv_obj_t *parent, uint8_t row, uint8_t col, uin
     lv_slider_set_range(meta->slider, 0, 100);
     lv_obj_set_style_bg_color(meta->slider, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(meta->slider, (lv_opa_t)(255 * 25 / 100), LV_PART_MAIN);
-    lv_obj_set_style_radius(meta->slider, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_radius(meta->slider, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(meta->slider, lv_color_white(), LV_PART_KNOB);
-    lv_obj_set_style_bg_opa(meta->slider, LV_OPA_COVER, LV_PART_KNOB);
-    lv_obj_set_style_radius(meta->slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
-    lv_obj_set_style_pad_all(meta->slider, 8, LV_PART_KNOB);
+    lv_obj_set_style_radius(meta->slider, LIGHT_CARD_SLIDER_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_radius(meta->slider, LIGHT_CARD_SLIDER_RADIUS, LV_PART_INDICATOR);
+    /* Track-only look: the knob still drives the drag, it just paints nothing. */
+    lv_obj_set_style_bg_opa(meta->slider, LV_OPA_TRANSP, LV_PART_KNOB);
+    lv_obj_set_style_pad_all(meta->slider, 0, LV_PART_KNOB);
+    lv_obj_set_ext_click_area(meta->slider, LIGHT_CARD_SLIDER_EXT_CLICK);
     lv_obj_add_event_cb(meta->slider, light_card_slider_changed, LV_EVENT_VALUE_CHANGED, meta);
     lv_obj_add_event_cb(meta->slider, light_card_slider_released, LV_EVENT_RELEASED, meta);
 

@@ -33,6 +33,8 @@ idf_component_register(
         "ui/components/ui_box_1.c"
         "ui/components/ui_button_1.c"
         "ui/components/ui_gate_action.c"
+        "ui/components/ui_confirm_dialog.c"
+        "ui/components/ui_ollie_fan_modal.c"
         "ui/components/ui_single_selector_tab_1.c"
         "ui/components/ui_climate_control_1.c"
         "ui/fonts/ui_font_home_assistant_icons_56.c"

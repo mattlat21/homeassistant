@@ -96,7 +96,8 @@ lv_obj_t *screen_study_create(lv_display_t *disp)
         { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
         { UI_HA_ICON_GATE, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
         { UI_HA_ICON_THERMOMETER, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { UI_HA_ICON_GAUGE, NULL, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, study_taskbar_nav,
+          (void *)(uintptr_t)APP_HOUSE_BATTERY },
         { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, study_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
     };
     (void)ui_taskbar_create(layout.screen, taskbar_items,

@@ -3,15 +3,30 @@
 #include "reolink_preview.h"
 #include "sdkconfig.h"
 #include "ui/components/ui_gate_action.h"
-#include "ui/ui_brand_gradient.h"
+#include "ui/components/ui_taskbar.h"
+#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
+#include "ui/nav.h"
 #include "bsp/display.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "lvgl.h"
+#include <stdint.h>
 #include <string.h>
 
 #define FRONT_GATE_CORNER_RADIUS 20
 #define FRONT_GATE_STATUS_LABEL_TEXT_OPA LV_OPA_90
+/** Gap between the camera preview and the top/left/right screen edges. */
+#define FRONT_GATE_VIDEO_MARGIN 3
+/** Vertical gap separating the action button from the preview above and the dock below. */
+#define FRONT_GATE_ACTION_MARGIN 12
+#define FRONT_GATE_ACTION_WIDTH 635
+/** Apparent corner radius of the camera preview. */
+#define FRONT_GATE_VIDEO_RADIUS 20
+/**
+ * Outer radius of a corner wedge. Must exceed FRONT_GATE_VIDEO_RADIUS * sqrt(2) so the wedge reaches
+ * the square corner of the canvas; the overhang past the video box is clipped away.
+ */
+#define FRONT_GATE_CORNER_WEDGE_OUTER (FRONT_GATE_VIDEO_RADIUS * 2)
 
 static lv_obj_t *s_gate_state_pill;
 static lv_obj_t *s_gate_state_label;
@@ -26,25 +41,53 @@ static void front_gate_action_clicked(lv_event_t *e)
     ui_gate_action_on_click();
 }
 
+static void front_gate_taskbar_nav(void *user_data)
+{
+    nav_go_to((app_id_t)(uintptr_t)user_data);
+}
+
+/**
+ * A canvas cannot clip itself to a rounded parent, so each corner is covered by a black
+ * quarter-annulus: opaque from @ref FRONT_GATE_VIDEO_RADIUS out past the square corner, leaving the
+ * rounded region showing. Reads as a rounded corner because the screen behind is also black.
+ */
+static void front_gate_add_corner_wedge(lv_obj_t *parent, lv_align_t align, int32_t x_ofs, int32_t y_ofs,
+                                        int32_t start_angle)
+{
+    lv_obj_t *wedge = lv_arc_create(parent);
+    lv_obj_remove_style_all(wedge);
+    lv_obj_remove_flag(wedge, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(wedge, FRONT_GATE_CORNER_WEDGE_OUTER * 2, FRONT_GATE_CORNER_WEDGE_OUTER * 2);
+    lv_obj_align(wedge, align, x_ofs, y_ofs);
+    lv_arc_set_bg_angles(wedge, start_angle, start_angle + 90);
+    lv_obj_set_style_arc_color(wedge, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_arc_opa(wedge, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(wedge, FRONT_GATE_CORNER_WEDGE_OUTER - FRONT_GATE_VIDEO_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_arc_rounded(wedge, false, LV_PART_MAIN);
+    lv_obj_set_style_arc_opa(wedge, LV_OPA_TRANSP, LV_PART_INDICATOR);
+}
+
 lv_obj_t *screen_front_gate_create(lv_display_t *disp)
 {
     (void)disp;
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
-    ui_brand_gradient_apply(scr);
+    lv_obj_set_style_bg_color(scr, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
 
-    const int32_t box_w = 720;
-    const int32_t box_h = 480;
+    /* The canvas is a fixed-size buffer, so the margins come from a smaller box cropping it. */
+    const int32_t box_w = REOLINK_PREVIEW_W - (FRONT_GATE_VIDEO_MARGIN * 2);
+    const int32_t box_h = REOLINK_PREVIEW_H;
 
     lv_obj_t *box = lv_obj_create(scr);
     lv_obj_remove_style_all(box);
     lv_obj_set_size(box, box_w, box_h);
-    lv_obj_align(box, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_align(box, LV_ALIGN_TOP_MID, 0, FRONT_GATE_VIDEO_MARGIN);
     lv_obj_set_style_bg_opa(box, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(box, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(box, lv_color_hex(0x8E8E93), LV_PART_MAIN);
-    lv_obj_set_style_radius(box, 40, LV_PART_MAIN);
+    lv_obj_set_style_radius(box, FRONT_GATE_VIDEO_RADIUS, LV_PART_MAIN);
     lv_obj_set_style_pad_all(box, 0, LV_PART_MAIN);
 
     lv_obj_t *canvas = NULL;
@@ -80,6 +123,13 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
         lv_obj_center(preview_lbl);
     }
 
+    /* Created after the canvas so the wedges paint over it. */
+    const int32_t wedge_ofs = FRONT_GATE_CORNER_WEDGE_OUTER - FRONT_GATE_VIDEO_RADIUS;
+    front_gate_add_corner_wedge(box, LV_ALIGN_TOP_LEFT, -wedge_ofs, -wedge_ofs, 180);
+    front_gate_add_corner_wedge(box, LV_ALIGN_TOP_RIGHT, wedge_ofs, -wedge_ofs, 270);
+    front_gate_add_corner_wedge(box, LV_ALIGN_BOTTOM_RIGHT, wedge_ofs, wedge_ofs, 0);
+    front_gate_add_corner_wedge(box, LV_ALIGN_BOTTOM_LEFT, -wedge_ofs, wedge_ofs, 90);
+
     s_gate_state_pill = lv_obj_create(box);
     lv_obj_remove_style_all(s_gate_state_pill);
     lv_obj_set_size(s_gate_state_pill, 320, 72);
@@ -96,10 +146,13 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
     lv_obj_set_style_text_color(s_gate_state_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_center(s_gate_state_label);
 
+    /* Fill whatever is left between the preview and the dock. */
+    const int32_t action_y = FRONT_GATE_VIDEO_MARGIN + box_h + FRONT_GATE_ACTION_MARGIN;
+    const int32_t action_h = BSP_LCD_V_RES - UI_TASKBAR_HEIGHT - FRONT_GATE_ACTION_MARGIN - action_y;
     s_gate_action_btn = lv_button_create(scr);
     lv_obj_remove_style_all(s_gate_action_btn);
-    lv_obj_set_size(s_gate_action_btn, 635, 185);
-    lv_obj_align_to(s_gate_action_btn, box, LV_ALIGN_OUT_BOTTOM_MID, 0, 28);
+    lv_obj_set_size(s_gate_action_btn, FRONT_GATE_ACTION_WIDTH, action_h);
+    lv_obj_align(s_gate_action_btn, LV_ALIGN_TOP_MID, 0, action_y);
     lv_obj_set_style_radius(s_gate_action_btn, FRONT_GATE_CORNER_RADIUS, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s_gate_action_btn, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s_gate_action_btn, LV_OPA_20, LV_PART_MAIN);
@@ -133,6 +186,17 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
         .channel = CONFIG_ESP_HMI_REOLINK_CHANNEL,
     };
     reolink_preview_bind(scr, canvas, &cam);
+
+    const ui_taskbar_item_t taskbar_items[] = {
+        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_HOME },
+        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
+        { UI_HA_ICON_GATE, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
+        { UI_HA_ICON_THERMOMETER, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
+        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav,
+          (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+    };
+    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
 
     return scr;
 }

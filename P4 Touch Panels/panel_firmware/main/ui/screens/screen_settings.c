@@ -1,12 +1,15 @@
 #include "ui/screens/screen_settings.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "app_prefs.h"
 #include "bsp/display.h"
 #include "ui/ui_brand_gradient.h"
-#include "ui/components/ui_status_bar.h"
+#include "ui/components/ui_taskbar.h"
+#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
+#include "ui/nav.h"
 
 static lv_obj_t *s_lbl_wifi;
 static lv_obj_t *s_lbl_default;
@@ -38,6 +41,11 @@ static void settings_screen_loaded(lv_event_t *e)
     settings_refresh_labels();
 }
 
+static void settings_taskbar_nav(void *user_data)
+{
+    nav_go_to((app_id_t)(uintptr_t)user_data);
+}
+
 lv_obj_t *screen_settings_create(lv_display_t *disp)
 {
     (void)disp;
@@ -51,7 +59,7 @@ lv_obj_t *screen_settings_create(lv_display_t *disp)
     lv_obj_remove_style_all(panel);
     lv_obj_set_width(panel, lv_pct(92));
     lv_obj_set_height(panel, LV_SIZE_CONTENT);
-    lv_obj_align(panel, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(panel, LV_ALIGN_CENTER, 0, -(UI_TASKBAR_HEIGHT / 2));
     lv_obj_set_style_pad_all(panel, 28, LV_PART_MAIN);
     lv_obj_set_style_pad_row(panel, 20, LV_PART_MAIN);
     lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
@@ -75,6 +83,17 @@ lv_obj_t *screen_settings_create(lv_display_t *disp)
     lv_obj_set_width(s_lbl_default, lv_pct(100));
 
     settings_refresh_labels();
-    (void)ui_status_bar_create(scr);
+
+    const ui_taskbar_item_t taskbar_items[] = {
+        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, settings_taskbar_nav, (void *)(uintptr_t)APP_HOME },
+        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, settings_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
+        { UI_HA_ICON_GATE, NULL, NULL, settings_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
+        { UI_HA_ICON_THERMOMETER, NULL, NULL, settings_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
+        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, settings_taskbar_nav,
+          (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, settings_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+    };
+    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+
     return scr;
 }

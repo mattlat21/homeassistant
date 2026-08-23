@@ -19,7 +19,8 @@
 #define FRONT_GATE_VIDEO_MARGIN 3
 /** Vertical gap separating the action button from the preview above and the dock below. */
 #define FRONT_GATE_ACTION_MARGIN 12
-#define FRONT_GATE_ACTION_WIDTH 635
+/** Match taskbar dock width (side margins from @ref UI_TASKBAR_SIDE_MARGIN). */
+#define FRONT_GATE_ACTION_WIDTH (BSP_LCD_H_RES - (2 * UI_TASKBAR_SIDE_MARGIN))
 /** Apparent corner radius of the camera preview. */
 #define FRONT_GATE_VIDEO_RADIUS 20
 /**

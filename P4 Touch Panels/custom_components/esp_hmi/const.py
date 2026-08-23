@@ -26,6 +26,7 @@ DISPLAY_BRIGHTNESS_MAX = 100
 SCREEN_OPTIONS: tuple[str, ...] = (
     "home",
     "ollie_room",
+    "ollie_room_legacy",
     "front_gate",
     "pipboy",
     "settings",
@@ -34,7 +35,6 @@ SCREEN_OPTIONS: tuple[str, ...] = (
     "front_door",
     "hvac",
     "house_battery",
-    "penny_room",
 )
 
 # Service names

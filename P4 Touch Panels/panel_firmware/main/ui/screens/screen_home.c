@@ -2,7 +2,7 @@
 #include "ui/ui_brand_gradient.h"
 #include "ui/ui_layout.h"
 #include "ui/components/ui_app_launcher_tile.h"
-#include "ui/components/ui_status_bar.h"
+#include "ui/components/ui_taskbar.h"
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
 #include "ui/nav.h"
 #include "bsp/display.h"
@@ -11,6 +11,11 @@ static void launcher_cb(app_id_t app, void *user_ctx)
 {
     (void)user_ctx;
     nav_go_to(app);
+}
+
+static void home_taskbar_nav(void *user_data)
+{
+    nav_go_to((app_id_t)(uintptr_t)user_data);
 }
 
 /** Launcher: 4×4 cell grid; 10 apps in row-major order (first two rows full, third row two tiles). */
@@ -26,7 +31,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
     ui_brand_gradient_apply(scr);
 
-    const int32_t launcher_h = BSP_LCD_V_RES - UI_STATUS_BAR_HEIGHT;
+    const int32_t launcher_h = BSP_LCD_V_RES - UI_TASKBAR_HEIGHT;
     int32_t cell_px = 0;
     int32_t gap = 0;
     int32_t pad_l = 0, pad_r = 0, pad_t = 0, pad_b = 0;
@@ -44,7 +49,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
     lv_obj_set_style_pad_top(mainGrid, pad_t, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(mainGrid, pad_b, LV_PART_MAIN);
     lv_obj_set_size(mainGrid, BSP_LCD_H_RES, launcher_h);
-    lv_obj_align(mainGrid, LV_ALIGN_TOP_MID, 0, UI_STATUS_BAR_HEIGHT);
+    lv_obj_align(mainGrid, LV_ALIGN_TOP_MID, 0, 0);
 
     struct {
         const char *icon;
@@ -80,7 +85,16 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         }
     }
 
-    (void)ui_status_bar_create(scr);
+    const ui_taskbar_item_t taskbar_items[] = {
+        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_HOME },
+        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
+        { UI_HA_ICON_GATE, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
+        { UI_HA_ICON_THERMOMETER, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
+        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, home_taskbar_nav,
+          (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+    };
+    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
 
     return scr;
 }

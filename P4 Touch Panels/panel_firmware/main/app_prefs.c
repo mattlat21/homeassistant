@@ -185,8 +185,12 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_HOME;
         return true;
     }
-    if (strcasecmp(slug, "ollie_room") == 0) {
+    if (strcasecmp(slug, "ollie_room_legacy") == 0) {
         *out = APP_OLLIE_ROOM;
+        return true;
+    }
+    if (strcasecmp(slug, "ollie_room") == 0) {
+        *out = APP_PENNY_ROOM;
         return true;
     }
     if (strcasecmp(slug, "front_gate") == 0) {
@@ -248,7 +252,7 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
         slug = "home";
         break;
     case APP_OLLIE_ROOM:
-        slug = "ollie_room";
+        slug = "ollie_room_legacy";
         break;
     case APP_FRONT_GATE:
         slug = "front_gate";
@@ -275,7 +279,7 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
         slug = "house_battery";
         break;
     case APP_PENNY_ROOM:
-        slug = "penny_room";
+        slug = "ollie_room";
         break;
     default:
         return false;

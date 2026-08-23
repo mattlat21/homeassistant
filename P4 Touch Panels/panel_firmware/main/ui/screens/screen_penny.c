@@ -16,7 +16,6 @@
 #include "ui/components/ui_ollie_fan_modal.h"
 #include "ui/components/ui_taskbar.h"
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/nav.h"
 
 /** Gap between the camera preview and the top/left/right screen edges. */
 #define PENNY_VIDEO_MARGIN 3
@@ -51,11 +50,6 @@ static void penny_add_corner_wedge(lv_obj_t *parent, lv_align_t align, int32_t x
     lv_obj_set_style_arc_width(wedge, PENNY_CORNER_WEDGE_OUTER - PENNY_VIDEO_RADIUS, LV_PART_MAIN);
     lv_obj_set_style_arc_rounded(wedge, false, LV_PART_MAIN);
     lv_obj_set_style_arc_opa(wedge, LV_OPA_TRANSP, LV_PART_INDICATOR);
-}
-
-static void penny_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
 }
 
 static void penny_light_confirmed(void *user_data)
@@ -210,16 +204,7 @@ lv_obj_t *screen_penny_create(lv_display_t *disp)
         penny_create_action_row(scr, box_w, action_y, action_h);
     }
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, penny_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, penny_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, penny_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, penny_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, penny_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, penny_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(scr);
 
     lv_obj_add_event_cb(scr, penny_screen_event, LV_EVENT_SCREEN_LOADED, NULL);
     lv_obj_add_event_cb(scr, penny_screen_event, LV_EVENT_SCREEN_UNLOADED, NULL);

@@ -1,14 +1,11 @@
 #include "ui/screens/screen_house_battery.h"
 
-#include <stdint.h>
 #include <stdio.h>
 
 #include "bsp/display.h"
 #include "ha_mqtt.h"
 #include "ui/components/ui_gauge_1.h"
 #include "ui/components/ui_taskbar.h"
-#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/nav.h"
 
 /** Gap between the screen top and the title label (px). */
 #define HOUSE_BATTERY_TITLE_TOP 24
@@ -38,11 +35,6 @@ static void house_battery_soc_cb(float soc_percent, void *user_data)
 {
     (void)user_data;
     house_battery_apply_soc(soc_percent);
-}
-
-static void house_battery_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
 }
 
 lv_obj_t *screen_house_battery_create(lv_display_t *disp)
@@ -76,17 +68,7 @@ lv_obj_t *screen_house_battery_create(lv_display_t *disp)
         lv_obj_align(s_soc_gauge, LV_ALIGN_CENTER, 0, (top_reserved - UI_TASKBAR_HEIGHT) / 2);
     }
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, house_battery_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, house_battery_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, house_battery_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, house_battery_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, house_battery_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, house_battery_taskbar_nav,
-          (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(scr);
 
     ha_mqtt_set_house_battery_soc_callback(house_battery_soc_cb, NULL);
 

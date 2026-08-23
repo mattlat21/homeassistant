@@ -1,12 +1,8 @@
 #include "ui/screens/screen_front_door.h"
 
-#include <stdint.h>
-
 #include "ha_mqtt.h"
 #include "ui/components/ui_light_card_1.h"
 #include "ui/components/ui_taskbar.h"
-#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/nav.h"
 #include "ui/ui_screen_template.h"
 
 typedef struct {
@@ -49,11 +45,6 @@ static void front_door_light_state(bool on, uint8_t brightness_pct, void *user_d
     ui_light_card_1_set_state(light->card, on, brightness_pct);
 }
 
-static void front_door_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
-}
-
 lv_obj_t *screen_front_door_create(lv_display_t *disp)
 {
     ui_screen_template_params_t params;
@@ -85,17 +76,7 @@ lv_obj_t *screen_front_door_create(lv_display_t *disp)
         ha_mqtt_set_light_state_callback(light->mqtt_light_id, front_door_light_state, light);
     }
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, front_door_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, front_door_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, front_door_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, front_door_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, front_door_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, front_door_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(layout.screen, taskbar_items,
-                            (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(layout.screen);
 
     return layout.screen;
 }

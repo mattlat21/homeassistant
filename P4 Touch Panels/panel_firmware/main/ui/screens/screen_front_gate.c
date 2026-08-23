@@ -4,8 +4,6 @@
 #include "sdkconfig.h"
 #include "ui/components/ui_gate_action.h"
 #include "ui/components/ui_taskbar.h"
-#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/nav.h"
 #include "bsp/display.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -40,11 +38,6 @@ static void front_gate_action_clicked(lv_event_t *e)
         return;
     }
     ui_gate_action_on_click();
-}
-
-static void front_gate_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
 }
 
 /**
@@ -188,16 +181,7 @@ lv_obj_t *screen_front_gate_create(lv_display_t *disp)
     };
     reolink_preview_bind(scr, canvas, &cam);
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, front_gate_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(scr);
 
     return scr;
 }

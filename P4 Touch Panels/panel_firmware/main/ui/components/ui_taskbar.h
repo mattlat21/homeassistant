@@ -48,6 +48,12 @@ typedef struct {
  */
 lv_obj_t *ui_taskbar_create(lv_obj_t *parent, const ui_taskbar_item_t *items, uint8_t count);
 
+/**
+ * Create the standard dock on @a parent: Home, Ollie's Room, Front Gate, HVAC, House Battery, Settings.
+ * @return The taskbar object, or NULL if @a parent is NULL.
+ */
+lv_obj_t *ui_taskbar_attach_standard(lv_obj_t *parent);
+
 /** Set dock pill background colour and opacity (e.g. dark translucent over light screens). */
 void ui_taskbar_set_bg(lv_obj_t *bar, lv_color_t color, lv_opa_t opa);
 

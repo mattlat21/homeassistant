@@ -13,11 +13,6 @@ static void launcher_cb(app_id_t app, void *user_ctx)
     nav_go_to(app);
 }
 
-static void home_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
-}
-
 /** Launcher: 4×4 cell grid; 10 apps in row-major order (first two rows full, third row two tiles). */
 #define HOME_GRID_N 4u
 #define HOME_MIN_GAP_PX 8
@@ -85,16 +80,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         }
     }
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, home_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, home_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(scr);
 
     return scr;
 }

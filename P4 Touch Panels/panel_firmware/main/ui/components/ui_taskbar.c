@@ -1,6 +1,9 @@
 #include "ui/components/ui_taskbar.h"
 
+#include <stdint.h>
+
 #include "ui/fonts/ui_home_assistant_icon_glyphs.h"
+#include "ui/nav.h"
 
 typedef struct {
     ui_taskbar_item_cb_t click_cb;
@@ -133,4 +136,23 @@ lv_obj_t *ui_taskbar_create(lv_obj_t *parent, const ui_taskbar_item_t *items, ui
 
     ui_taskbar_raise(bar);
     return bar;
+}
+
+static void standard_taskbar_nav(void *user_data)
+{
+    nav_go_to((app_id_t)(uintptr_t)user_data);
+}
+
+lv_obj_t *ui_taskbar_attach_standard(lv_obj_t *parent)
+{
+    static const ui_taskbar_item_t items[] = {
+        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_HOME },
+        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
+        { UI_HA_ICON_GATE, NULL, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
+        { UI_HA_ICON_THERMOMETER, NULL, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
+        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, standard_taskbar_nav,
+          (void *)(uintptr_t)APP_HOUSE_BATTERY },
+        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+    };
+    return ui_taskbar_create(parent, items, (uint8_t)(sizeof(items) / sizeof(items[0])));
 }

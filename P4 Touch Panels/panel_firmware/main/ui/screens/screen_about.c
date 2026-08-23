@@ -1,14 +1,11 @@
 #include "ui/screens/screen_about.h"
 
-#include <stdint.h>
 #include <stdio.h>
 
 #include "app_prefs.h"
 #include "bsp/display.h"
 #include "ui/ui_brand_gradient.h"
 #include "ui/components/ui_taskbar.h"
-#include "ui/fonts/ui_home_assistant_icon_glyphs.h"
-#include "ui/nav.h"
 
 #ifndef FW_VER_MAJOR
 #define FW_VER_MAJOR 0
@@ -44,11 +41,6 @@ static void about_screen_loaded(lv_event_t *e)
         return;
     }
     about_refresh_labels();
-}
-
-static void about_taskbar_nav(void *user_data)
-{
-    nav_go_to((app_id_t)(uintptr_t)user_data);
 }
 
 lv_obj_t *screen_about_create(lv_display_t *disp)
@@ -114,16 +106,7 @@ lv_obj_t *screen_about_create(lv_display_t *disp)
 
     about_refresh_labels();
 
-    const ui_taskbar_item_t taskbar_items[] = {
-        { LV_SYMBOL_HOME, &lv_font_montserrat_48, NULL, about_taskbar_nav, (void *)(uintptr_t)APP_HOME },
-        { UI_HA_ICON_TEDDY_BEAR, NULL, NULL, about_taskbar_nav, (void *)(uintptr_t)APP_PENNY_ROOM },
-        { UI_HA_ICON_GATE, NULL, NULL, about_taskbar_nav, (void *)(uintptr_t)APP_FRONT_GATE },
-        { UI_HA_ICON_THERMOMETER, NULL, NULL, about_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
-        { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, about_taskbar_nav,
-          (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, about_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
-    };
-    (void)ui_taskbar_create(scr, taskbar_items, (uint8_t)(sizeof(taskbar_items) / sizeof(taskbar_items[0])));
+    (void)ui_taskbar_attach_standard(scr);
 
     return scr;
 }

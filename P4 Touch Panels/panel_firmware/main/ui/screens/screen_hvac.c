@@ -86,6 +86,9 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_STUDIO, "esp_hmi/data/studio/climate/setpoint",
                                 "esp_hmi/data/studio/climate/current", "esp_hmi/data/studio/climate/heater_on",
                                 "esp_hmi/data/studio/climate/control");
+    ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_STUDY, "esp_hmi/data/study/climate/setpoint",
+                                "esp_hmi/data/study/climate/current", "esp_hmi/data/study/climate/heater_on",
+                                "esp_hmi/data/study/climate/control");
 
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
@@ -129,6 +132,7 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM, hvac_climate_apply_zone,
                                            (void *)(uintptr_t)8);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_climate_apply_zone, (void *)(uintptr_t)10);
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDY, hvac_climate_apply_zone, (void *)(uintptr_t)9);
 
     (void)ui_taskbar_attach_standard(scr);
 

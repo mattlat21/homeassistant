@@ -1,0 +1,38 @@
+# Home Assistant: Study Faikin → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/study/climate/* for the HVAC "Study" card.
+# Leaves esp_hmi/data/study/heater_on (Study page) alone — see ha_automation_data_study_heater.yaml.
+# No separate run-state feedback: heater_on is true whenever the climate entity is not off.
+
+alias: "ESP HMI - Data - Study Climate"
+description: ""
+variables:
+  climate_target: climate.faikin_study_mqtt_hvac
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.faikin_study_mqtt_hvac
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/heater_on
+      payload: >-
+        {{ 'true' if states(climate_target) not in ['off', 'unavailable', 'unknown']
+        else 'false' }}
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

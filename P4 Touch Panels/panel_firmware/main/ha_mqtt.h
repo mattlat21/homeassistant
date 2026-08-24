@@ -78,7 +78,8 @@ void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t c
 #define HA_MQTT_HVAC_ZONE_SERVER_RACK 1
 #define HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM 2
 #define HA_MQTT_HVAC_ZONE_STUDIO 3
-#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 4
+#define HA_MQTT_HVAC_ZONE_STUDY 4
+#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 5
 
 /**
  * Register retained climate topic quartet for an extra HVAC zone (bedroom1, server rack, …).

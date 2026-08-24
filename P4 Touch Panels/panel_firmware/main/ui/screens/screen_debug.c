@@ -95,7 +95,7 @@ lv_obj_t *screen_debug_create(lv_display_t *disp)
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
-    ui_brand_gradient_apply(scr);
+    (void)ui_brand_framed_panel_create(scr);
     lv_obj_add_event_cb(scr, debug_screen_event, LV_EVENT_ALL, NULL);
 
     lv_obj_t *panel = lv_obj_create(scr);

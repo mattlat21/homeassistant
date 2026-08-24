@@ -24,25 +24,20 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
-    lv_obj_set_style_bg_color(scr, lv_color_black(), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
 
-    /* Rounded brand panel over black so corner arcs match the taskbar dock. */
-    lv_obj_t *bg = lv_obj_create(scr);
-    lv_obj_remove_style_all(bg);
-    lv_obj_set_size(bg, BSP_LCD_H_RES, BSP_LCD_V_RES);
-    lv_obj_align(bg, LV_ALIGN_TOP_LEFT, 0, 0);
-    ui_brand_gradient_apply(bg);
-    lv_obj_set_style_radius(bg, UI_TASKBAR_DOCK_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_clip_corner(bg, true, LV_PART_MAIN);
-    lv_obj_clear_flag(bg, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t *bg = ui_brand_framed_panel_create(scr);
+    if (bg == NULL) {
+        return NULL;
+    }
 
-    const int32_t launcher_h = BSP_LCD_V_RES - UI_TASKBAR_HEIGHT;
+    /* Keep tiles clear of the taskbar strip (measured from the screen bottom). */
+    const int32_t bg_w = BSP_LCD_H_RES - (2 * UI_BRAND_FRAME_MARGIN_PX);
+    const int32_t launcher_h = BSP_LCD_V_RES - UI_TASKBAR_HEIGHT - UI_BRAND_FRAME_MARGIN_PX;
     int32_t cell_px = 0;
     int32_t gap = 0;
     int32_t pad_l = 0, pad_r = 0, pad_t = 0, pad_b = 0;
-    if (!ui_layout_grid_uniform_gap_square(BSP_LCD_H_RES, launcher_h, HOME_GRID_N, HOME_MIN_GAP_PX, &cell_px, &gap,
-                                           &pad_l, &pad_r, &pad_t, &pad_b)) {
+    if (!ui_layout_grid_uniform_gap_square(bg_w, launcher_h, HOME_GRID_N, HOME_MIN_GAP_PX, &cell_px, &gap, &pad_l,
+                                           &pad_r, &pad_t, &pad_b)) {
         cell_px = 100;
         gap = 8;
         pad_l = pad_r = pad_t = pad_b = gap;
@@ -54,7 +49,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
     lv_obj_set_style_pad_right(mainGrid, pad_r, LV_PART_MAIN);
     lv_obj_set_style_pad_top(mainGrid, pad_t, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(mainGrid, pad_b, LV_PART_MAIN);
-    lv_obj_set_size(mainGrid, BSP_LCD_H_RES, launcher_h);
+    lv_obj_set_size(mainGrid, bg_w, launcher_h);
     lv_obj_align(mainGrid, LV_ALIGN_TOP_MID, 0, 0);
 
     struct {

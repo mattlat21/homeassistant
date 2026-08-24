@@ -49,7 +49,7 @@ lv_obj_t *screen_about_create(lv_display_t *disp)
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
     lv_obj_set_size(scr, BSP_LCD_H_RES, BSP_LCD_V_RES);
-    ui_brand_gradient_apply(scr);
+    (void)ui_brand_framed_panel_create(scr);
     lv_obj_add_event_cb(scr, about_screen_loaded, LV_EVENT_SCREEN_LOADED, NULL);
 
     lv_obj_t *column = lv_obj_create(scr);

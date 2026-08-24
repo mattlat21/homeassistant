@@ -43,7 +43,8 @@ idf_component_register(
         "ui/components/ui_taskbar.c"
         "ui/components/ui_light_card_1.c"
         "ui/components/ui_gauge_1.c"
-        "ui/components/ui_heater_card_1.c"
+        "ui/components/ui_legacy_heater_card_1.c"
+        "ui/components/ui_hvac_card_1.c"
     INCLUDE_DIRS
         "."
     EMBED_FILES

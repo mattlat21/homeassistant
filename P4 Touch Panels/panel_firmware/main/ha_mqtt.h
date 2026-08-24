@@ -87,8 +87,11 @@ void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t c
 void ha_mqtt_configure_hvac_zone(uint8_t zone_id, const char *topic_setpoint, const char *topic_current,
                                const char *topic_heater_on, const char *topic_control);
 
-/** Single LVGL-thread listener for one extra HVAC zone (replaces prior callback for that zone). */
+/** Single LVGL-thread listener for one extra HVAC zone (replaces prior listeners for that zone). */
 void ha_mqtt_set_hvac_zone_climate_callback(uint8_t zone_id, ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
+
+/** Add another LVGL-thread listener for one extra HVAC zone (does not remove existing listeners). */
+void ha_mqtt_add_hvac_zone_climate_callback(uint8_t zone_id, ha_mqtt_ollie_climate_apply_cb_t cb, void *user_data);
 
 /**
  * Called on the LVGL thread with a null-terminated Front Gate state string from MQTT

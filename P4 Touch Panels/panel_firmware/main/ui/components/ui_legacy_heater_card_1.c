@@ -1,4 +1,4 @@
-#include "ui/components/ui_heater_card_1.h"
+#include "ui/components/ui_legacy_heater_card_1.h"
 
 #include "ha_mqtt.h"
 
@@ -30,7 +30,7 @@ typedef enum {
 typedef struct heater_card_meta heater_card_meta_t;
 
 typedef struct {
-    ui_heater_card_1_event_t event;
+    ui_legacy_heater_card_1_event_t event;
     heater_card_meta_t *meta;
 } heater_mode_click_t;
 
@@ -58,8 +58,8 @@ struct heater_card_meta {
     bool climate_control_on;
     int8_t hvac_mode;
     bool mode_picker_open;
-    ui_heater_card_1_profile_t profile;
-    ui_heater_card_1_cb_t cb;
+    ui_legacy_heater_card_1_profile_t profile;
+    ui_legacy_heater_card_1_cb_t cb;
     void *user_data;
     heater_mode_click_t mode_clicks[HEATER_CARD_MODE_OPTION_COUNT];
 };
@@ -166,7 +166,7 @@ static void refresh_step_buttons(heater_card_meta_t *m)
     if (m == NULL || m->btn_minus == NULL || m->btn_plus == NULL || m->mode_picker_open) {
         return;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         set_layout_slot_visible(m->btn_minus, false);
         set_layout_slot_visible(m->btn_plus, false);
         lv_obj_remove_flag(m->btn_minus, LV_OBJ_FLAG_CLICKABLE);
@@ -190,7 +190,7 @@ static void refresh_setpoint_slot(heater_card_meta_t *m)
     if (m == NULL || m->mode_picker_open) {
         return;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         set_layout_slot_visible(m->setpoint_col, false);
         set_layout_slot_visible(m->metrics_divider, false);
         return;
@@ -208,7 +208,7 @@ static void refresh_status_icon(heater_card_meta_t *m)
     if (m == NULL || m->lbl_icon == NULL || m->icon_btn == NULL) {
         return;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         lv_label_set_text(m->lbl_icon, LV_SYMBOL_DUMMY);
         lv_obj_set_style_text_font(m->lbl_icon, &lv_font_montserrat_32, LV_PART_MAIN);
         lv_obj_set_style_text_color(m->lbl_icon, HEATER_CARD_MUTED, LV_PART_MAIN);
@@ -222,7 +222,7 @@ static void refresh_status_icon(heater_card_meta_t *m)
         lv_obj_set_style_border_color(m->icon_btn, HEATER_CARD_MUTED, LV_PART_MAIN);
         return;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_FAN) {
         lv_label_set_text(m->lbl_icon, UI_HA_ICON_FAN);
         lv_obj_set_style_text_font(m->lbl_icon, &ui_font_home_assistant_icons_56, LV_PART_MAIN);
         const lv_color_t col = m->heater_on ? HEATER_CARD_MODE_COLOR_FAN : HEATER_CARD_MUTED;
@@ -282,7 +282,7 @@ static void refresh_status(heater_card_meta_t *m)
 static bool profile_uses_hvac_mode(const heater_card_meta_t *m)
 {
     return m != NULL &&
-           (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN || m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL);
+           (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL_FAN || m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL);
 }
 
 static heater_mode_ui_t heater_mode_from_hvac(int8_t hvac_mode)
@@ -307,7 +307,7 @@ static heater_mode_ui_t active_mode_from_state(const heater_card_meta_t *m)
     if (profile_uses_hvac_mode(m) && m->hvac_mode != HA_MQTT_CLIMATE_HVAC_UNKNOWN) {
         return heater_mode_from_hvac(m->hvac_mode);
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_FAN) {
         return HEATER_MODE_UI_FAN;
     }
     return HEATER_MODE_UI_HEATING;
@@ -344,7 +344,7 @@ static void style_step_button_accent(lv_obj_t *btn, lv_color_t accent)
 
 static void refresh_control_accent(heater_card_meta_t *m)
 {
-    if (m == NULL || m->profile == UI_HEATER_CARD_PROFILE_BLANK || !m->climate_control_on) {
+    if (m == NULL || m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK || !m->climate_control_on) {
         return;
     }
     const lv_color_t accent = accent_color_for_mode(active_mode_from_state(m));
@@ -355,40 +355,40 @@ static void refresh_control_accent(heater_card_meta_t *m)
     style_step_button_accent(m->btn_plus, accent);
 }
 
-static bool mode_option_is_actionable(const heater_card_meta_t *m, ui_heater_card_1_event_t event)
+static bool mode_option_is_actionable(const heater_card_meta_t *m, ui_legacy_heater_card_1_event_t event)
 {
-    if (m == NULL || m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m == NULL || m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         return false;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
-        return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_FAN;
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_FAN) {
+        return event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_FAN;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
-        return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING ||
-               event == UI_HEATER_CARD_1_EVENT_MODE_COOLING || event == UI_HEATER_CARD_1_EVENT_MODE_FAN;
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
+        return event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_HEATING ||
+               event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_COOLING || event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_FAN;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL) {
-        return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING ||
-               event == UI_HEATER_CARD_1_EVENT_MODE_COOLING;
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL) {
+        return event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_HEATING ||
+               event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_COOLING;
     }
-    return event == UI_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_HEATER_CARD_1_EVENT_MODE_HEATING;
+    return event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF || event == UI_LEGACY_HEATER_CARD_1_EVENT_MODE_HEATING;
 }
 
 static bool mode_option_visible(const heater_card_meta_t *m, heater_mode_ui_t mode)
 {
-    if (m == NULL || m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m == NULL || m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         return false;
     }
     if (mode == HEATER_MODE_UI_OFF) {
         return true;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_FAN) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_FAN) {
         return mode == HEATER_MODE_UI_FAN;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL_FAN) {
         return mode == HEATER_MODE_UI_HEATING || mode == HEATER_MODE_UI_COOLING || mode == HEATER_MODE_UI_FAN;
     }
-    if (m->profile == UI_HEATER_CARD_PROFILE_HEAT_COOL) {
+    if (m->profile == UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL) {
         return mode == HEATER_MODE_UI_HEATING || mode == HEATER_MODE_UI_COOLING;
     }
     return mode == HEATER_MODE_UI_HEATING;
@@ -411,7 +411,7 @@ static void refresh_mode_highlights(heater_card_meta_t *m)
     }
 }
 
-static void emit_cb(heater_card_meta_t *m, ui_heater_card_1_event_t ev)
+static void emit_cb(heater_card_meta_t *m, ui_legacy_heater_card_1_event_t ev)
 {
     if (m != NULL && m->cb != NULL) {
         m->cb(ev, m->user_data);
@@ -445,19 +445,19 @@ static void set_mode_picker_open(heater_card_meta_t *m, bool open)
 static void on_minus(lv_event_t *e)
 {
     heater_card_meta_t *m = lv_event_get_user_data(e);
-    emit_cb(m, UI_HEATER_CARD_1_EVENT_SETPOINT_DEC);
+    emit_cb(m, UI_LEGACY_HEATER_CARD_1_EVENT_SETPOINT_DEC);
 }
 
 static void on_plus(lv_event_t *e)
 {
     heater_card_meta_t *m = lv_event_get_user_data(e);
-    emit_cb(m, UI_HEATER_CARD_1_EVENT_SETPOINT_INC);
+    emit_cb(m, UI_LEGACY_HEATER_CARD_1_EVENT_SETPOINT_INC);
 }
 
 static void on_icon_open_mode(lv_event_t *e)
 {
     heater_card_meta_t *m = lv_event_get_user_data(e);
-    if (m == NULL || m->profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (m == NULL || m->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         return;
     }
     set_mode_picker_open(m, true);
@@ -548,7 +548,7 @@ static lv_obj_t *make_step_btn(lv_obj_t *parent, lv_coord_t size, const char *sy
 
 static lv_obj_t *make_mode_option(lv_obj_t *parent, lv_coord_t circle_sz, const char *icon_glyph,
                                   const lv_font_t *icon_font, const char *label, lv_color_t color,
-                                  heater_card_meta_t *m, ui_heater_card_1_event_t event, heater_mode_click_t *click_ud,
+                                  heater_card_meta_t *m, ui_legacy_heater_card_1_event_t event, heater_mode_click_t *click_ud,
                                   lv_obj_t **out_btn)
 {
     lv_obj_t *col = lv_obj_create(parent);
@@ -615,9 +615,9 @@ static lv_obj_t *make_metric_col(lv_obj_t *parent, bool value_accent, lv_obj_t *
     return col;
 }
 
-lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char *room_name,
-                                  ui_heater_card_1_profile_t profile, float current_temp_c, float setpoint_c,
-                                  bool heater_on, bool climate_control_on, ui_heater_card_1_cb_t cb, void *user_data,
+lv_obj_t *ui_legacy_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char *room_name,
+                                  ui_legacy_heater_card_1_profile_t profile, float current_temp_c, float setpoint_c,
+                                  bool heater_on, bool climate_control_on, ui_legacy_heater_card_1_cb_t cb, void *user_data,
                                   lv_coord_t min_height_px, lv_coord_t circle_margin_px, lv_coord_t button_gap_px)
 {
     if (parent == NULL || width <= 0) {
@@ -661,7 +661,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
         m->mode_btns[i] = NULL;
         m->mode_divider_before[i] = NULL;
         m->mode_clicks[i].meta = m;
-        m->mode_clicks[i].event = UI_HEATER_CARD_1_EVENT_MODE_OFF;
+        m->mode_clicks[i].event = UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF;
     }
 
     lv_obj_t *card = lv_obj_create(parent);
@@ -687,7 +687,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     m->lbl_icon = lv_label_create(m->icon_btn);
     lv_obj_set_style_text_font(m->lbl_icon, &ui_font_home_assistant_icons_56, LV_PART_MAIN);
     lv_obj_center(m->lbl_icon);
-    if (profile != UI_HEATER_CARD_PROFILE_BLANK) {
+    if (profile != UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         lv_obj_add_event_cb(m->icon_btn, on_icon_open_mode, LV_EVENT_CLICKED, m);
     } else {
         lv_obj_remove_flag(m->icon_btn, LV_OBJ_FLAG_CLICKABLE);
@@ -763,22 +763,22 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
 
     m->mode_divider_before[HEATER_MODE_UI_OFF] = NULL;
     (void)make_mode_option(m->mode_layer, mode_circle_sz, LV_SYMBOL_POWER, &lv_font_montserrat_32, "OFF",
-                           HEATER_CARD_MUTED, m, UI_HEATER_CARD_1_EVENT_MODE_OFF, &m->mode_clicks[HEATER_MODE_UI_OFF],
+                           HEATER_CARD_MUTED, m, UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF, &m->mode_clicks[HEATER_MODE_UI_OFF],
                            &m->mode_btns[HEATER_MODE_UI_OFF]);
     m->mode_divider_before[HEATER_MODE_UI_HEATING] =
         make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
     (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FIRE, &ui_font_home_assistant_icons_56, "HEATING",
-                           HEATER_CARD_ACCENT, m, UI_HEATER_CARD_1_EVENT_MODE_HEATING,
+                           HEATER_CARD_ACCENT, m, UI_LEGACY_HEATER_CARD_1_EVENT_MODE_HEATING,
                            &m->mode_clicks[HEATER_MODE_UI_HEATING], &m->mode_btns[HEATER_MODE_UI_HEATING]);
     m->mode_divider_before[HEATER_MODE_UI_COOLING] =
         make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
     (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_THERMOMETER_LOW,
                            &ui_font_home_assistant_icons_56, "COOLING", HEATER_CARD_MODE_COLOR_COOL, m,
-                           UI_HEATER_CARD_1_EVENT_MODE_COOLING, &m->mode_clicks[HEATER_MODE_UI_COOLING],
+                           UI_LEGACY_HEATER_CARD_1_EVENT_MODE_COOLING, &m->mode_clicks[HEATER_MODE_UI_COOLING],
                            &m->mode_btns[HEATER_MODE_UI_COOLING]);
     m->mode_divider_before[HEATER_MODE_UI_FAN] = make_vdivider(m->mode_layer, (lv_coord_t)(mode_circle_sz + 24));
     (void)make_mode_option(m->mode_layer, mode_circle_sz, UI_HA_ICON_FAN, &ui_font_home_assistant_icons_56, "FAN",
-                           HEATER_CARD_MODE_COLOR_FAN, m, UI_HEATER_CARD_1_EVENT_MODE_FAN,
+                           HEATER_CARD_MODE_COLOR_FAN, m, UI_LEGACY_HEATER_CARD_1_EVENT_MODE_FAN,
                            &m->mode_clicks[HEATER_MODE_UI_FAN], &m->mode_btns[HEATER_MODE_UI_FAN]);
     apply_mode_option_visibility(m);
 
@@ -790,7 +790,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     refresh_current(m);
     refresh_setpoint(m);
     refresh_status(m);
-    if (profile == UI_HEATER_CARD_PROFILE_BLANK) {
+    if (profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK) {
         lv_label_set_text(m->lbl_current, "—");
         lv_label_set_text(m->lbl_setpoint, "—");
     }
@@ -800,7 +800,7 @@ lv_obj_t *ui_heater_card_1_create(lv_obj_t *parent, lv_coord_t width, const char
     return card;
 }
 
-void ui_heater_card_1_set_current_temp(lv_obj_t *card, float temp_c)
+void ui_legacy_heater_card_1_set_current_temp(lv_obj_t *card, float temp_c)
 {
     heater_card_meta_t *m = heater_card_get_meta(card);
     if (m == NULL) {
@@ -810,7 +810,7 @@ void ui_heater_card_1_set_current_temp(lv_obj_t *card, float temp_c)
     refresh_current(m);
 }
 
-void ui_heater_card_1_set_setpoint(lv_obj_t *card, float setpoint_c)
+void ui_legacy_heater_card_1_set_setpoint(lv_obj_t *card, float setpoint_c)
 {
     heater_card_meta_t *m = heater_card_get_meta(card);
     if (m == NULL) {
@@ -820,7 +820,7 @@ void ui_heater_card_1_set_setpoint(lv_obj_t *card, float setpoint_c)
     refresh_setpoint(m);
 }
 
-void ui_heater_card_1_set_switch_state(lv_obj_t *card, bool heater_on, bool climate_control_on)
+void ui_legacy_heater_card_1_set_switch_state(lv_obj_t *card, bool heater_on, bool climate_control_on)
 {
     heater_card_meta_t *m = heater_card_get_meta(card);
     if (m == NULL) {
@@ -834,7 +834,7 @@ void ui_heater_card_1_set_switch_state(lv_obj_t *card, bool heater_on, bool clim
     }
 }
 
-void ui_heater_card_1_set_hvac_mode(lv_obj_t *card, int8_t hvac_mode)
+void ui_legacy_heater_card_1_set_hvac_mode(lv_obj_t *card, int8_t hvac_mode)
 {
     heater_card_meta_t *m = heater_card_get_meta(card);
     if (m == NULL) {

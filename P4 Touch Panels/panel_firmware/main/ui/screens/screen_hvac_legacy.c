@@ -4,7 +4,7 @@
 
 #include "bsp/display.h"
 #include "ha_mqtt.h"
-#include "ui/components/ui_heater_card_1.h"
+#include "ui/components/ui_legacy_heater_card_1.h"
 
 #define HVAC_LEGACY_HEATER_CARD_COUNT 5
 #define HVAC_LEGACY_CARD_GAP_PX 10
@@ -13,7 +13,7 @@
 
 typedef struct {
     const char *room_name;
-    ui_heater_card_1_profile_t profile;
+    ui_legacy_heater_card_1_profile_t profile;
     const char *btn_prefix;
     int8_t mqtt_zone;
 } hvac_legacy_card_def_t;
@@ -21,12 +21,12 @@ typedef struct {
 static lv_obj_t *s_heater_cards[HVAC_LEGACY_HEATER_CARD_COUNT];
 
 static const hvac_legacy_card_def_t s_card_defs[HVAC_LEGACY_HEATER_CARD_COUNT] = {
-    { "Ollie's Room", UI_HEATER_CARD_PROFILE_HEATER, NULL, -1 },
-    { "Our Bedroom", UI_HEATER_CARD_PROFILE_HEATER, "climate_bedroom_1", HA_MQTT_HVAC_ZONE_BEDROOM_1 },
-    { "Upstairs Bedroom", UI_HEATER_CARD_PROFILE_HEAT_COOL_FAN, "climate_upstairs_bedroom",
+    { "Ollie's Room", UI_LEGACY_HEATER_CARD_PROFILE_HEATER, NULL, -1 },
+    { "Our Bedroom", UI_LEGACY_HEATER_CARD_PROFILE_HEATER, "climate_bedroom_1", HA_MQTT_HVAC_ZONE_BEDROOM_1 },
+    { "Upstairs Bedroom", UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL_FAN, "climate_upstairs_bedroom",
       HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM },
-    { "Studio", UI_HEATER_CARD_PROFILE_HEAT_COOL, "climate_studio", HA_MQTT_HVAC_ZONE_STUDIO },
-    { "Server Rack", UI_HEATER_CARD_PROFILE_FAN, "climate_server_rack", HA_MQTT_HVAC_ZONE_SERVER_RACK },
+    { "Studio", UI_LEGACY_HEATER_CARD_PROFILE_HEAT_COOL, "climate_studio", HA_MQTT_HVAC_ZONE_STUDIO },
+    { "Server Rack", UI_LEGACY_HEATER_CARD_PROFILE_FAN, "climate_server_rack", HA_MQTT_HVAC_ZONE_SERVER_RACK },
 };
 
 static void hvac_legacy_apply_heater_card(lv_obj_t *card, float setpoint_c, float current_c, bool heater_on,
@@ -35,10 +35,10 @@ static void hvac_legacy_apply_heater_card(lv_obj_t *card, float setpoint_c, floa
     if (card == NULL) {
         return;
     }
-    ui_heater_card_1_set_switch_state(card, heater_on, climate_control_on);
-    ui_heater_card_1_set_hvac_mode(card, hvac_mode);
-    ui_heater_card_1_set_setpoint(card, setpoint_c);
-    ui_heater_card_1_set_current_temp(card, current_c);
+    ui_legacy_heater_card_1_set_switch_state(card, heater_on, climate_control_on);
+    ui_legacy_heater_card_1_set_hvac_mode(card, hvac_mode);
+    ui_legacy_heater_card_1_set_setpoint(card, setpoint_c);
+    ui_legacy_heater_card_1_set_current_temp(card, current_c);
 }
 
 static void hvac_legacy_climate_apply_card0(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
@@ -81,7 +81,7 @@ static void hvac_legacy_publish_action(const hvac_legacy_card_def_t *def, const 
     }
 }
 
-static void hvac_legacy_heater_on_ui_event(ui_heater_card_1_event_t event, void *user_data)
+static void hvac_legacy_heater_on_ui_event(ui_legacy_heater_card_1_event_t event, void *user_data)
 {
     const unsigned card_idx = (unsigned)(uintptr_t)user_data;
     if (card_idx >= HVAC_LEGACY_HEATER_CARD_COUNT) {
@@ -90,22 +90,22 @@ static void hvac_legacy_heater_on_ui_event(ui_heater_card_1_event_t event, void 
     const hvac_legacy_card_def_t *def = &s_card_defs[card_idx];
 
     switch (event) {
-    case UI_HEATER_CARD_1_EVENT_SETPOINT_DEC:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_SETPOINT_DEC:
         hvac_legacy_publish_action(def, "temp_dn");
         break;
-    case UI_HEATER_CARD_1_EVENT_SETPOINT_INC:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_SETPOINT_INC:
         hvac_legacy_publish_action(def, "temp_up");
         break;
-    case UI_HEATER_CARD_1_EVENT_MODE_OFF:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_MODE_OFF:
         hvac_legacy_publish_action(def, "mode_off");
         break;
-    case UI_HEATER_CARD_1_EVENT_MODE_HEATING:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_MODE_HEATING:
         hvac_legacy_publish_action(def, "mode_cc");
         break;
-    case UI_HEATER_CARD_1_EVENT_MODE_FAN:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_MODE_FAN:
         hvac_legacy_publish_action(def, "mode_fan");
         break;
-    case UI_HEATER_CARD_1_EVENT_MODE_COOLING:
+    case UI_LEGACY_HEATER_CARD_1_EVENT_MODE_COOLING:
         hvac_legacy_publish_action(def, "mode_cool");
         break;
     default:
@@ -150,9 +150,9 @@ lv_obj_t *screen_hvac_legacy_create(lv_display_t *disp)
 
     for (unsigned i = 0; i < HVAC_LEGACY_HEATER_CARD_COUNT; i++) {
         const hvac_legacy_card_def_t *def = &s_card_defs[i];
-        s_heater_cards[i] = ui_heater_card_1_create(
+        s_heater_cards[i] = ui_legacy_heater_card_1_create(
             scr, BSP_LCD_H_RES, def->room_name, def->profile, 21.0f, 22.0f, false, false,
-            def->profile == UI_HEATER_CARD_PROFILE_BLANK ? NULL : hvac_legacy_heater_on_ui_event, (void *)(uintptr_t)i,
+            def->profile == UI_LEGACY_HEATER_CARD_PROFILE_BLANK ? NULL : hvac_legacy_heater_on_ui_event, (void *)(uintptr_t)i,
             card_h, HVAC_LEGACY_CIRCLE_MARGIN_PX, HVAC_LEGACY_BUTTON_GAP_PX);
         if (s_heater_cards[i] != NULL) {
             lv_obj_set_width(s_heater_cards[i], BSP_LCD_H_RES);
@@ -162,13 +162,13 @@ lv_obj_t *screen_hvac_legacy_create(lv_display_t *disp)
     }
 
     ha_mqtt_add_ollie_climate_state_callback(hvac_legacy_climate_apply_card0, NULL);
-    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_BEDROOM_1, hvac_legacy_climate_apply_zone,
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_BEDROOM_1, hvac_legacy_climate_apply_zone,
                                            (void *)(uintptr_t)1);
-    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM, hvac_legacy_climate_apply_zone,
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM, hvac_legacy_climate_apply_zone,
                                           (void *)(uintptr_t)2);
-    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_legacy_climate_apply_zone,
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_legacy_climate_apply_zone,
                                            (void *)(uintptr_t)3);
-    ha_mqtt_set_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_SERVER_RACK, hvac_legacy_climate_apply_zone,
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_SERVER_RACK, hvac_legacy_climate_apply_zone,
                                            (void *)(uintptr_t)4);
 
     return scr;

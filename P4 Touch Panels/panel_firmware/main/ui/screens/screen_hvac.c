@@ -5,6 +5,7 @@
 #include "bsp/display.h"
 #include "ha_mqtt.h"
 #include "ui/components/ui_hvac_card_1.h"
+#include "ui/components/ui_hvac_climate_modal.h"
 #include "ui/components/ui_taskbar.h"
 
 #define HVAC_GRID_COLS 4u
@@ -15,20 +16,24 @@
 
 typedef struct {
     const char *room_name;
+    bool opens_modal;
+    ui_hvac_climate_profile_t profile;
+    /** NULL → Ollie primary `climate_*` buttons; otherwise e.g. `climate_bedroom_1`. */
+    const char *btn_prefix;
 } hvac_zone_def_t;
 
 static const hvac_zone_def_t s_zone_defs[HVAC_ZONE_COUNT] = {
-    { "Main Room" },
-    { "Lounge Room" },
-    { "Our Bedroom" },
-    { "Penny's Room" },
-    { "Ollie's Room" },
-    { "Spare Room" },
-    { "Bathroom" },
-    { "Laundry" },
-    { "Upstairs Bedroom" },
-    { "Study" },
-    { "Studio" },
+    { "Main Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Lounge Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Our Bedroom", true, UI_HVAC_CLIMATE_PROFILE_HEATER, "climate_bedroom_1" },
+    { "Penny's Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Ollie's Room", true, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Spare Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Bathroom", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Laundry", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Upstairs Bedroom", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN, "climate_upstairs_bedroom" },
+    { "Study", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Studio", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL, "climate_studio" },
 };
 
 static lv_obj_t *s_cards[HVAC_ZONE_COUNT];
@@ -43,11 +48,19 @@ static void hvac_apply_card(lv_obj_t *card, float setpoint_c, float current_c, i
     ui_hvac_card_1_set_mode(card, hvac_mode);
 }
 
+static void hvac_modal_sync_from_card(unsigned card_idx, float setpoint_c, int8_t hvac_mode)
+{
+    if (card_idx >= HVAC_ZONE_COUNT || s_cards[card_idx] == NULL) {
+        return;
+    }
+    ui_hvac_climate_modal_update_if_open(card_idx, setpoint_c, hvac_mode,
+                                         ui_hvac_card_1_has_setpoint(s_cards[card_idx]));
+}
+
 static void hvac_climate_apply_ollie(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
                                      int8_t hvac_mode, void *user_data)
 {
     (void)heater_on;
-    (void)climate_control_on;
     (void)user_data;
     /* Ollie is heater-only; prefer heat/off from control when mode is unknown. */
     int8_t mode = hvac_mode;
@@ -55,18 +68,24 @@ static void hvac_climate_apply_ollie(float setpoint_c, float current_c, bool hea
         mode = climate_control_on ? HA_MQTT_CLIMATE_HVAC_HEAT : HA_MQTT_CLIMATE_HVAC_OFF;
     }
     hvac_apply_card(s_cards[4], setpoint_c, current_c, mode);
+    hvac_modal_sync_from_card(4, setpoint_c, mode);
 }
 
 static void hvac_climate_apply_zone(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
                                     int8_t hvac_mode, void *user_data)
 {
     (void)heater_on;
-    (void)climate_control_on;
     const unsigned card_idx = (unsigned)(uintptr_t)user_data;
     if (card_idx >= HVAC_ZONE_COUNT) {
         return;
     }
-    hvac_apply_card(s_cards[card_idx], setpoint_c, current_c, hvac_mode);
+    int8_t mode = hvac_mode;
+    /* Heater zones may only publish bool-ish control; map like Ollie when unknown. */
+    if (mode == HA_MQTT_CLIMATE_HVAC_UNKNOWN && s_zone_defs[card_idx].profile == UI_HVAC_CLIMATE_PROFILE_HEATER) {
+        mode = climate_control_on ? HA_MQTT_CLIMATE_HVAC_HEAT : HA_MQTT_CLIMATE_HVAC_OFF;
+    }
+    hvac_apply_card(s_cards[card_idx], setpoint_c, current_c, mode);
+    hvac_modal_sync_from_card(card_idx, setpoint_c, mode);
 }
 
 static void hvac_room_temp_apply(float temp_c, void *user_data)
@@ -76,6 +95,34 @@ static void hvac_room_temp_apply(float temp_c, void *user_data)
         return;
     }
     ui_hvac_card_1_set_current_temp(s_cards[card_idx], temp_c);
+}
+
+static void hvac_card_clicked(lv_event_t *e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+    const unsigned card_idx = (unsigned)(uintptr_t)lv_event_get_user_data(e);
+    if (card_idx >= HVAC_ZONE_COUNT || !s_zone_defs[card_idx].opens_modal) {
+        return;
+    }
+    lv_obj_t *card = s_cards[card_idx];
+    if (card == NULL) {
+        return;
+    }
+    const hvac_zone_def_t *def = &s_zone_defs[card_idx];
+    const bool have_set = ui_hvac_card_1_has_setpoint(card);
+    const float setpoint = have_set ? ui_hvac_card_1_get_setpoint(card) : 21.0f;
+    ui_hvac_climate_modal_open(def->room_name, def->profile, def->btn_prefix, card_idx, setpoint,
+                               ui_hvac_card_1_get_mode(card), have_set);
+}
+
+static void hvac_screen_unloaded(lv_event_t *e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_SCREEN_UNLOADED) {
+        return;
+    }
+    ui_hvac_climate_modal_close();
 }
 
 lv_obj_t *screen_hvac_create(lv_display_t *disp)
@@ -107,6 +154,7 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     lv_obj_set_style_bg_color(scr, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(scr, hvac_screen_unloaded, LV_EVENT_SCREEN_UNLOADED, NULL);
 
     const lv_coord_t grid_h = (lv_coord_t)(BSP_LCD_V_RES - UI_TASKBAR_HEIGHT);
 
@@ -136,6 +184,9 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
         const uint8_t row = (uint8_t)(i / HVAC_GRID_COLS);
         const uint8_t col = (uint8_t)(i % HVAC_GRID_COLS);
         s_cards[i] = ui_hvac_card_1_create(grid, row, col, s_zone_defs[i].room_name);
+        if (s_cards[i] != NULL && s_zone_defs[i].opens_modal) {
+            ui_hvac_card_1_set_click_cb(s_cards[i], hvac_card_clicked, (void *)(uintptr_t)i);
+        }
     }
     /* Temp-only cards until climate entities exist. */
     if (s_cards[0] != NULL) {

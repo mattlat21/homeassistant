@@ -228,3 +228,30 @@ void ui_hvac_card_1_set_mode(lv_obj_t *card, int8_t hvac_mode)
     m->hvac_mode = hvac_mode;
     refresh_mode(m);
 }
+
+float ui_hvac_card_1_get_setpoint(const lv_obj_t *card)
+{
+    hvac_card_meta_t *m = hvac_card_get_meta(card);
+    return m != NULL ? m->setpoint_c : 0.0f;
+}
+
+int8_t ui_hvac_card_1_get_mode(const lv_obj_t *card)
+{
+    hvac_card_meta_t *m = hvac_card_get_meta(card);
+    return m != NULL ? m->hvac_mode : HA_MQTT_CLIMATE_HVAC_UNKNOWN;
+}
+
+bool ui_hvac_card_1_has_setpoint(const lv_obj_t *card)
+{
+    hvac_card_meta_t *m = hvac_card_get_meta(card);
+    return m != NULL && m->have_setpoint;
+}
+
+void ui_hvac_card_1_set_click_cb(lv_obj_t *card, lv_event_cb_t cb, void *user_data)
+{
+    if (card == NULL || cb == NULL) {
+        return;
+    }
+    lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card, cb, LV_EVENT_CLICKED, user_data);
+}

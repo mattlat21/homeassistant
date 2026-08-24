@@ -47,6 +47,7 @@ idf_component_register(
         "ui/components/ui_gauge_1.c"
         "ui/components/ui_legacy_heater_card_1.c"
         "ui/components/ui_hvac_card_1.c"
+        "ui/components/ui_hvac_climate_modal.c"
     INCLUDE_DIRS
         "."
     EMBED_FILES

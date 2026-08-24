@@ -1,0 +1,37 @@
+# Home Assistant: Main Room Faikin → retained MQTT (HA → panels). See README.
+#
+# Publishes esp_hmi/data/main_room/climate/* for the HVAC "Main Room" card.
+# Modes: off / heat / cool / fan_only / dry.
+
+alias: "ESP HMI - Data - Main Room Climate"
+description: ""
+variables:
+  climate_target: climate.fakin_main_mqtt_hvac
+triggers:
+  - trigger: state
+    entity_id:
+      - climate.fakin_main_mqtt_hvac
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/setpoint
+      payload: "{{ state_attr(climate_target, 'temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/current
+      payload: "{{ state_attr(climate_target, 'current_temperature') | float(0) }}"
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/heater_on
+      payload: >-
+        {{ 'true' if states(climate_target) not in ['off', 'unavailable', 'unknown']
+        else 'false' }}
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/control
+      payload: "{{ states(climate_target) }}"
+      retain: true
+mode: queued

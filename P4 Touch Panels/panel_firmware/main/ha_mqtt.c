@@ -940,11 +940,14 @@ static int8_t climate_hvac_mode_from_payload(const char *payload)
     if (strcasecmp(payload, "heat") == 0 || strcasecmp(payload, "auto") == 0) {
         return HA_MQTT_CLIMATE_HVAC_HEAT;
     }
-    if (strcasecmp(payload, "cool") == 0 || strcasecmp(payload, "dry") == 0) {
+    if (strcasecmp(payload, "cool") == 0) {
         return HA_MQTT_CLIMATE_HVAC_COOL;
     }
     if (strcasecmp(payload, "fan_only") == 0) {
         return HA_MQTT_CLIMATE_HVAC_FAN;
+    }
+    if (strcasecmp(payload, "dry") == 0) {
+        return HA_MQTT_CLIMATE_HVAC_DRY;
     }
     return HA_MQTT_CLIMATE_HVAC_UNKNOWN;
 }

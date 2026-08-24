@@ -23,7 +23,7 @@ typedef struct {
 } hvac_zone_def_t;
 
 static const hvac_zone_def_t s_zone_defs[HVAC_ZONE_COUNT] = {
-    { "Main Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Main Room", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN_DRY, "climate_main_room" },
     { "Lounge Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
     { "Our Bedroom", true, UI_HVAC_CLIMATE_PROFILE_HEATER, "climate_bedroom_1" },
     { "Penny's Room", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
@@ -32,7 +32,7 @@ static const hvac_zone_def_t s_zone_defs[HVAC_ZONE_COUNT] = {
     { "Bathroom", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
     { "Laundry", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
     { "Upstairs Bedroom", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN, "climate_upstairs_bedroom" },
-    { "Study", false, UI_HVAC_CLIMATE_PROFILE_HEATER, NULL },
+    { "Study", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN, "climate_study" },
     { "Studio", true, UI_HVAC_CLIMATE_PROFILE_HEAT_COOL, "climate_studio" },
 };
 
@@ -145,7 +145,9 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_STUDY, "esp_hmi/data/study/climate/setpoint",
                                 "esp_hmi/data/study/climate/current", "esp_hmi/data/study/climate/heater_on",
                                 "esp_hmi/data/study/climate/control");
-    ha_mqtt_configure_room_temp(HA_MQTT_ROOM_TEMP_MAIN, "esp_hmi/data/main_room/temperature");
+    ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_MAIN_ROOM, "esp_hmi/data/main_room/climate/setpoint",
+                                "esp_hmi/data/main_room/climate/current", "esp_hmi/data/main_room/climate/heater_on",
+                                "esp_hmi/data/main_room/climate/control");
     ha_mqtt_configure_room_temp(HA_MQTT_ROOM_TEMP_PENNY, "esp_hmi/data/penny_room/temperature");
 
     lv_obj_t *scr = lv_obj_create(NULL);
@@ -189,9 +191,6 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
         }
     }
     /* Temp-only cards until climate entities exist. */
-    if (s_cards[0] != NULL) {
-        ui_hvac_card_1_set_setpoint_visible(s_cards[0], false);
-    }
     if (s_cards[3] != NULL) {
         ui_hvac_card_1_set_setpoint_visible(s_cards[3], false);
     }
@@ -202,7 +201,7 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
                                            (void *)(uintptr_t)8);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_climate_apply_zone, (void *)(uintptr_t)10);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDY, hvac_climate_apply_zone, (void *)(uintptr_t)9);
-    ha_mqtt_add_room_temp_callback(HA_MQTT_ROOM_TEMP_MAIN, hvac_room_temp_apply, (void *)(uintptr_t)0);
+    ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_MAIN_ROOM, hvac_climate_apply_zone, (void *)(uintptr_t)0);
     ha_mqtt_add_room_temp_callback(HA_MQTT_ROOM_TEMP_PENNY, hvac_room_temp_apply, (void *)(uintptr_t)3);
 
     (void)ui_taskbar_attach_standard(scr);

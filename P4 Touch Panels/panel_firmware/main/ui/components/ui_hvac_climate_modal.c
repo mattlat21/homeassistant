@@ -12,8 +12,16 @@
 #define MODAL_BACKDROP_OPA ((lv_opa_t)(255 * 82 / 100))
 #define MODAL_PANEL_OPA ((lv_opa_t)(255 * 93 / 100))
 #define MODAL_ROW_BTN_OPA ((lv_opa_t)(255 * 88 / 100))
-#define MODAL_MODE_BTN_MIN_H 72
-#define MODAL_STEP_BTN_SIZE 72
+#define MODAL_PANEL_MARGIN 24
+#define MODAL_PANEL_MAX_W 920
+#define MODAL_PANEL_MIN_H_RATIO_PCT 72
+#define MODAL_MODE_BTN_MIN_H 180
+#define MODAL_MODE_ICON_FONT &lv_font_montserrat_48
+#define MODAL_MODE_TEXT_FONT &lv_font_montserrat_24
+#define MODAL_STEP_BTN_SIZE 132
+#define MODAL_STEP_FONT &lv_font_montserrat_48
+#define MODAL_SETPOINT_FONT &lv_font_montserrat_48
+#define MODAL_TITLE_FONT &lv_font_montserrat_32
 #define MODAL_TEMP_STEP 0.5f
 #define MODAL_TEMP_MIN 5.0f
 #define MODAL_TEMP_MAX 30.0f
@@ -21,13 +29,14 @@
 #define MODAL_MODE_HEAT lv_color_hex(0xF97316)
 #define MODAL_MODE_COOL lv_color_hex(0x3B82F6)
 #define MODAL_MODE_FAN lv_color_hex(0x22C55E)
+#define MODAL_MODE_DRY lv_color_hex(0x06B6D4)
 #define MODAL_MODE_OFF_MUTED lv_color_hex(0x8E8E93)
 
 /** Lives on `lv_layer_top()`, which is shared by all screens, so one instance is enough. */
 static lv_obj_t *s_modal;
 static lv_obj_t *s_lbl_setpoint;
 static lv_obj_t *s_setpoint_row;
-static lv_obj_t *s_mode_btns[4];
+static lv_obj_t *s_mode_btns[5];
 static const char *s_btn_prefix;
 static unsigned s_zone_token;
 static float s_setpoint_c;
@@ -60,6 +69,10 @@ static bool mode_option_visible(ui_hvac_climate_profile_t profile, int8_t mode)
     if (mode == HA_MQTT_CLIMATE_HVAC_OFF) {
         return true;
     }
+    if (profile == UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN_DRY) {
+        return mode == HA_MQTT_CLIMATE_HVAC_HEAT || mode == HA_MQTT_CLIMATE_HVAC_COOL ||
+               mode == HA_MQTT_CLIMATE_HVAC_FAN || mode == HA_MQTT_CLIMATE_HVAC_DRY;
+    }
     if (profile == UI_HVAC_CLIMATE_PROFILE_HEAT_COOL_FAN) {
         return mode == HA_MQTT_CLIMATE_HVAC_HEAT || mode == HA_MQTT_CLIMATE_HVAC_COOL ||
                mode == HA_MQTT_CLIMATE_HVAC_FAN;
@@ -72,7 +85,8 @@ static bool mode_option_visible(ui_hvac_climate_profile_t profile, int8_t mode)
 
 static bool setpoint_controls_visible(int8_t mode)
 {
-    return mode == HA_MQTT_CLIMATE_HVAC_HEAT || mode == HA_MQTT_CLIMATE_HVAC_COOL;
+    return mode == HA_MQTT_CLIMATE_HVAC_HEAT || mode == HA_MQTT_CLIMATE_HVAC_COOL ||
+           mode == HA_MQTT_CLIMATE_HVAC_DRY;
 }
 
 static lv_color_t accent_for_mode(int8_t mode)
@@ -84,6 +98,8 @@ static lv_color_t accent_for_mode(int8_t mode)
         return MODAL_MODE_COOL;
     case HA_MQTT_CLIMATE_HVAC_FAN:
         return MODAL_MODE_FAN;
+    case HA_MQTT_CLIMATE_HVAC_DRY:
+        return MODAL_MODE_DRY;
     default:
         return MODAL_MODE_OFF_MUTED;
     }
@@ -123,13 +139,14 @@ static void refresh_setpoint_row_visibility(void)
 
 static void refresh_mode_highlights(void)
 {
-    static const int8_t k_modes[4] = {
+    static const int8_t k_modes[5] = {
         HA_MQTT_CLIMATE_HVAC_OFF,
         HA_MQTT_CLIMATE_HVAC_HEAT,
         HA_MQTT_CLIMATE_HVAC_COOL,
         HA_MQTT_CLIMATE_HVAC_FAN,
+        HA_MQTT_CLIMATE_HVAC_DRY,
     };
-    for (unsigned i = 0; i < 4; i++) {
+    for (unsigned i = 0; i < 5; i++) {
         lv_obj_t *btn = s_mode_btns[i];
         if (btn == NULL) {
             continue;
@@ -223,6 +240,9 @@ static void mode_btn_clicked(lv_event_t *e)
     case HA_MQTT_CLIMATE_HVAC_FAN:
         publish_suffix("mode_fan");
         break;
+    case HA_MQTT_CLIMATE_HVAC_DRY:
+        publish_suffix("mode_dry");
+        break;
     default:
         return;
     }
@@ -270,26 +290,26 @@ static lv_obj_t *add_mode_btn(lv_obj_t *row, const char *icon_utf8, const lv_fon
     lv_obj_set_height(btn, LV_SIZE_CONTENT);
     lv_obj_set_style_min_height(btn, MODAL_MODE_BTN_MIN_H, LV_PART_MAIN);
     lv_obj_set_flex_grow(btn, 1);
-    lv_obj_set_style_pad_ver(btn, 12, LV_PART_MAIN);
-    lv_obj_set_style_pad_hor(btn, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(btn, 20, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(btn, 16, LV_PART_MAIN);
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(btn, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(btn, 12, LV_PART_MAIN);
     lv_obj_add_event_cb(btn, mode_btn_clicked, LV_EVENT_CLICKED, (void *)(intptr_t)mode);
 
     lv_obj_t *ic = lv_label_create(btn);
     lv_label_set_text(ic, icon_utf8);
-    lv_obj_set_style_text_font(ic, icon_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ic, icon_font != NULL ? icon_font : MODAL_MODE_ICON_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(ic, accent_for_mode(mode), LV_PART_MAIN);
 
     lv_obj_t *lab = lv_label_create(btn);
     lv_label_set_text(lab, title);
-    lv_obj_set_style_text_font(lab, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lab, MODAL_MODE_TEXT_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(lab, UI_BOX_1_LABEL_COLOR, LV_PART_MAIN);
 
-    if (slot < 4) {
+    if (slot < 5) {
         s_mode_btns[slot] = btn;
     }
     return btn;
@@ -310,7 +330,7 @@ static lv_obj_t *add_step_btn(lv_obj_t *row, const char *symbol, int dir)
 
     lv_obj_t *lab = lv_label_create(btn);
     lv_label_set_text(lab, symbol);
-    lv_obj_set_style_text_font(lab, &lv_font_montserrat_32, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lab, MODAL_STEP_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(lab, UI_BOX_1_LABEL_COLOR, LV_PART_MAIN);
     return btn;
 }
@@ -346,7 +366,8 @@ void ui_hvac_climate_modal_open(const char *room_name, ui_hvac_climate_profile_t
     lv_obj_remove_style_all(panel);
     ui_box_1_style_apply(panel);
     lv_obj_set_style_bg_opa(panel, MODAL_PANEL_OPA, LV_PART_MAIN);
-    lv_obj_set_width(panel, (lv_coord_t)LV_MIN(dw - 40, 520));
+    lv_obj_set_width(panel, (lv_coord_t)LV_MIN(dw - MODAL_PANEL_MARGIN, MODAL_PANEL_MAX_W));
+    lv_obj_set_style_min_height(panel, (lv_coord_t)((dh * MODAL_PANEL_MIN_H_RATIO_PCT) / 100), LV_PART_MAIN);
     lv_obj_set_height(panel, LV_SIZE_CONTENT);
     lv_obj_align(panel, LV_ALIGN_CENTER, 0, 0);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
@@ -355,14 +376,14 @@ void ui_hvac_climate_modal_open(const char *room_name, ui_hvac_climate_profile_t
     lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(panel, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_all(panel, 20, LV_PART_MAIN);
-    lv_obj_set_style_pad_row(panel, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(panel, 28, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(panel, 24, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(panel);
     lv_label_set_text(title, room_name != NULL ? room_name : "Climate");
     lv_label_set_long_mode(title, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(title, lv_pct(100));
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_style_text_font(title, MODAL_TITLE_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(title, UI_BOX_1_LABEL_COLOR, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
@@ -374,9 +395,9 @@ void ui_hvac_climate_modal_open(const char *room_name, ui_hvac_climate_profile_t
     lv_obj_set_layout(mode_row, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(mode_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(mode_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(mode_row, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(mode_row, 16, LV_PART_MAIN);
 
-    (void)add_mode_btn(mode_row, LV_SYMBOL_POWER, &lv_font_montserrat_32, "Off", HA_MQTT_CLIMATE_HVAC_OFF, 0);
+    (void)add_mode_btn(mode_row, LV_SYMBOL_POWER, MODAL_MODE_ICON_FONT, "Off", HA_MQTT_CLIMATE_HVAC_OFF, 0);
     if (mode_option_visible(profile, HA_MQTT_CLIMATE_HVAC_HEAT)) {
         (void)add_mode_btn(mode_row, UI_HA_ICON_FIRE, &ui_font_home_assistant_icons_56, "Heat",
                            HA_MQTT_CLIMATE_HVAC_HEAT, 1);
@@ -389,6 +410,10 @@ void ui_hvac_climate_modal_open(const char *room_name, ui_hvac_climate_profile_t
         (void)add_mode_btn(mode_row, UI_HA_ICON_FAN, &ui_font_home_assistant_icons_56, "Fan", HA_MQTT_CLIMATE_HVAC_FAN,
                            3);
     }
+    if (mode_option_visible(profile, HA_MQTT_CLIMATE_HVAC_DRY)) {
+        (void)add_mode_btn(mode_row, UI_HA_ICON_THERMOMETER, &ui_font_home_assistant_icons_56, "Dry",
+                           HA_MQTT_CLIMATE_HVAC_DRY, 4);
+    }
 
     s_setpoint_row = lv_obj_create(panel);
     lv_obj_remove_style_all(s_setpoint_row);
@@ -398,12 +423,12 @@ void ui_hvac_climate_modal_open(const char *room_name, ui_hvac_climate_profile_t
     lv_obj_set_layout(s_setpoint_row, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(s_setpoint_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(s_setpoint_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(s_setpoint_row, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(s_setpoint_row, 24, LV_PART_MAIN);
 
     (void)add_step_btn(s_setpoint_row, LV_SYMBOL_MINUS, -1);
 
     s_lbl_setpoint = lv_label_create(s_setpoint_row);
-    lv_obj_set_style_text_font(s_lbl_setpoint, &lv_font_montserrat_26, LV_PART_MAIN);
+    lv_obj_set_style_text_font(s_lbl_setpoint, MODAL_SETPOINT_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(s_lbl_setpoint, UI_BOX_1_LABEL_COLOR, LV_PART_MAIN);
     lv_obj_set_flex_grow(s_lbl_setpoint, 1);
     lv_obj_set_style_text_align(s_lbl_setpoint, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);

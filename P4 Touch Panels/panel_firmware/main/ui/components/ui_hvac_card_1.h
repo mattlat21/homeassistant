@@ -19,7 +19,7 @@ void ui_hvac_card_1_set_setpoint(lv_obj_t *card, float setpoint_c);
 /** When false, hides the Set line (temp-only cards). Default true. */
 void ui_hvac_card_1_set_setpoint_visible(lv_obj_t *card, bool visible);
 
-/** @param hvac_mode `HA_MQTT_CLIMATE_HVAC_*` (unknown/off/heat/cool/fan). */
+/** @param hvac_mode `HA_MQTT_CLIMATE_HVAC_*` (unknown/off/heat/cool/fan/dry). */
 void ui_hvac_card_1_set_mode(lv_obj_t *card, int8_t hvac_mode);
 
 float ui_hvac_card_1_get_setpoint(const lv_obj_t *card);

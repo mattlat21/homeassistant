@@ -16,6 +16,7 @@
 #define HVAC_CARD_MODE_HEAT lv_color_hex(0xF97316)
 #define HVAC_CARD_MODE_COOL lv_color_hex(0x3B82F6)
 #define HVAC_CARD_MODE_FAN lv_color_hex(0x22C55E)
+#define HVAC_CARD_MODE_DRY lv_color_hex(0x06B6D4)
 
 typedef struct {
     lv_obj_t *card;
@@ -94,6 +95,8 @@ static lv_color_t mode_bg_color(int8_t mode)
         return HVAC_CARD_MODE_COOL;
     case HA_MQTT_CLIMATE_HVAC_FAN:
         return HVAC_CARD_MODE_FAN;
+    case HA_MQTT_CLIMATE_HVAC_DRY:
+        return HVAC_CARD_MODE_DRY;
     default:
         return HVAC_CARD_BG;
     }

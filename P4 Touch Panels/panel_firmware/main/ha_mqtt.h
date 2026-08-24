@@ -63,6 +63,7 @@ bool ha_mqtt_publish_ollie_room_option(const char *option);
 #define HA_MQTT_CLIMATE_HVAC_HEAT 1
 #define HA_MQTT_CLIMATE_HVAC_COOL 2
 #define HA_MQTT_CLIMATE_HVAC_FAN 3
+#define HA_MQTT_CLIMATE_HVAC_DRY 4
 
 typedef void (*ha_mqtt_ollie_climate_apply_cb_t)(float setpoint_c, float current_c, bool heater_on, bool climate_control_on,
                                                  int8_t hvac_mode, void *user_data);
@@ -79,7 +80,8 @@ void ha_mqtt_add_ollie_climate_state_callback(ha_mqtt_ollie_climate_apply_cb_t c
 #define HA_MQTT_HVAC_ZONE_UPSTAIRS_BEDROOM 2
 #define HA_MQTT_HVAC_ZONE_STUDIO 3
 #define HA_MQTT_HVAC_ZONE_STUDY 4
-#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 5
+#define HA_MQTT_HVAC_ZONE_MAIN_ROOM 5
+#define HA_MQTT_HVAC_EXTRA_ZONE_MAX 6
 
 /**
  * Register retained climate topic quartet for an extra HVAC zone (bedroom1, server rack, …).

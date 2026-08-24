@@ -324,6 +324,139 @@ actions:
               hvac_mode: cool
       - conditions:
           - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              temperature: >
+                {{ (state_attr('climate.faikin_study_mqtt_hvac', 'temperature') | float(21) - 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.faikin_study_mqtt_hvac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              temperature: >
+                {{ (state_attr('climate.faikin_study_mqtt_hvac', 'temperature') | float(21) + 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.faikin_study_mqtt_hvac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_mode_off' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_mode_cool' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              hvac_mode: cool
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_study_mode_fan' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.faikin_study_mqtt_hvac
+            data:
+              hvac_mode: fan_only
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_temp_dn' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              temperature: >
+                {{ (state_attr('climate.fakin_main_mqtt_hvac', 'temperature') | float(21) - 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.fakin_main_mqtt_hvac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_temp_up' }}"
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              temperature: >
+                {{ (state_attr('climate.fakin_main_mqtt_hvac', 'temperature') | float(21) + 0.5) | round(1) }}
+              hvac_mode: >
+                {% set m = states('climate.fakin_main_mqtt_hvac') %}
+                {{ m if m not in ['off', 'unavailable', 'unknown'] else 'heat' }}
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_mode_off' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              hvac_mode: "off"
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_mode_cc' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              hvac_mode: heat
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_mode_cool' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              hvac_mode: cool
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_mode_fan' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              hvac_mode: fan_only
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.payload_json.button == 'climate_main_room_mode_dry' }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.fakin_main_mqtt_hvac
+            data:
+              hvac_mode: dry
+      - conditions:
+          - condition: template
             value_template: >-
               {{ trigger.payload_json.button in ['Normal', 'Rest Time', 'Sleep
               Time'] }}

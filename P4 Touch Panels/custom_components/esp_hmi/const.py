@@ -34,6 +34,7 @@ SCREEN_OPTIONS: tuple[str, ...] = (
     "about",
     "front_door",
     "hvac",
+    "hvac_legacy",
     "house_battery",
 )
 

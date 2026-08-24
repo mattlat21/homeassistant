@@ -14,6 +14,7 @@
 #include "ui/screens/screen_study.h"
 #include "ui/screens/screen_front_door.h"
 #include "ui/screens/screen_hvac.h"
+#include "ui/screens/screen_hvac_legacy.h"
 #include "ui/screens/screen_house_battery.h"
 #include "ui/screens/screen_penny.h"
 #include "ui/components/ui_gate_action.h"
@@ -37,6 +38,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_obj_t *scr_study = screen_study_create(disp);
     lv_obj_t *scr_front_door = screen_front_door_create(disp);
     lv_obj_t *scr_hvac = screen_hvac_create(disp);
+    lv_obj_t *scr_hvac_legacy = screen_hvac_legacy_create(disp);
     lv_obj_t *scr_house_battery = screen_house_battery_create(disp);
     lv_obj_t *scr_penny = screen_penny_create(disp);
 
@@ -49,6 +51,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_register_screen(APP_ABOUT, scr_about);
     nav_register_screen(APP_FRONT_DOOR, scr_front_door);
     nav_register_screen(APP_HVAC, scr_hvac);
+    nav_register_screen(APP_HVAC_LEGACY, scr_hvac_legacy);
     nav_register_screen(APP_HOUSE_BATTERY, scr_house_battery);
     nav_register_screen(APP_PENNY_ROOM, scr_penny);
 
@@ -61,6 +64,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_install_gesture_on_screen(scr_study);
     nav_install_gesture_on_screen(scr_front_door);
     nav_install_gesture_on_screen(scr_hvac);
+    nav_install_gesture_on_screen(scr_hvac_legacy);
     nav_install_gesture_on_screen(scr_house_battery);
     nav_install_gesture_on_screen(scr_penny);
 

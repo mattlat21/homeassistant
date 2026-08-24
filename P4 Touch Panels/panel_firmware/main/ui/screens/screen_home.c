@@ -13,7 +13,7 @@ static void launcher_cb(app_id_t app, void *user_ctx)
     nav_go_to(app);
 }
 
-/** Launcher: 4×4 cell grid; 10 apps in row-major order (first two rows full, third row two tiles). */
+/** Launcher: 4×4 cell grid; 11 apps in row-major order. */
 #define HOME_GRID_N 4u
 #define HOME_MIN_GAP_PX 8
 
@@ -57,6 +57,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         { UI_HA_ICON_GATE, "Front Gate", APP_FRONT_GATE, NULL },
         { UI_HA_ICON_DESK, "Study", APP_STUDY, NULL },
         { LV_SYMBOL_HOME, "Front Door", APP_FRONT_DOOR, &lv_font_montserrat_48 },
+        { UI_HA_ICON_THERMOMETER, "HVAC Legacy", APP_HVAC_LEGACY, NULL },
         { UI_HA_ICON_THERMOMETER, "HVAC", APP_HVAC, NULL },
         { LV_SYMBOL_BATTERY_FULL, "House Battery", APP_HOUSE_BATTERY, &lv_font_montserrat_48 },
         { UI_HA_ICON_LIGHTBULB, "PipBoy", APP_PIPBOY, NULL },

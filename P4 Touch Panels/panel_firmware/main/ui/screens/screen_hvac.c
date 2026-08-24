@@ -69,6 +69,15 @@ static void hvac_climate_apply_zone(float setpoint_c, float current_c, bool heat
     hvac_apply_card(s_cards[card_idx], setpoint_c, current_c, hvac_mode);
 }
 
+static void hvac_room_temp_apply(float temp_c, void *user_data)
+{
+    const unsigned card_idx = (unsigned)(uintptr_t)user_data;
+    if (card_idx >= HVAC_ZONE_COUNT || s_cards[card_idx] == NULL) {
+        return;
+    }
+    ui_hvac_card_1_set_current_temp(s_cards[card_idx], temp_c);
+}
+
 lv_obj_t *screen_hvac_create(lv_display_t *disp)
 {
     (void)disp;
@@ -89,6 +98,8 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
     ha_mqtt_configure_hvac_zone(HA_MQTT_HVAC_ZONE_STUDY, "esp_hmi/data/study/climate/setpoint",
                                 "esp_hmi/data/study/climate/current", "esp_hmi/data/study/climate/heater_on",
                                 "esp_hmi/data/study/climate/control");
+    ha_mqtt_configure_room_temp(HA_MQTT_ROOM_TEMP_MAIN, "esp_hmi/data/main_room/temperature");
+    ha_mqtt_configure_room_temp(HA_MQTT_ROOM_TEMP_PENNY, "esp_hmi/data/penny_room/temperature");
 
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_remove_style_all(scr);
@@ -126,6 +137,13 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
         const uint8_t col = (uint8_t)(i % HVAC_GRID_COLS);
         s_cards[i] = ui_hvac_card_1_create(grid, row, col, s_zone_defs[i].room_name);
     }
+    /* Temp-only cards until climate entities exist. */
+    if (s_cards[0] != NULL) {
+        ui_hvac_card_1_set_setpoint_visible(s_cards[0], false);
+    }
+    if (s_cards[3] != NULL) {
+        ui_hvac_card_1_set_setpoint_visible(s_cards[3], false);
+    }
 
     ha_mqtt_add_ollie_climate_state_callback(hvac_climate_apply_ollie, NULL);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_BEDROOM_1, hvac_climate_apply_zone, (void *)(uintptr_t)2);
@@ -133,6 +151,8 @@ lv_obj_t *screen_hvac_create(lv_display_t *disp)
                                            (void *)(uintptr_t)8);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDIO, hvac_climate_apply_zone, (void *)(uintptr_t)10);
     ha_mqtt_add_hvac_zone_climate_callback(HA_MQTT_HVAC_ZONE_STUDY, hvac_climate_apply_zone, (void *)(uintptr_t)9);
+    ha_mqtt_add_room_temp_callback(HA_MQTT_ROOM_TEMP_MAIN, hvac_room_temp_apply, (void *)(uintptr_t)0);
+    ha_mqtt_add_room_temp_callback(HA_MQTT_ROOM_TEMP_PENNY, hvac_room_temp_apply, (void *)(uintptr_t)3);
 
     (void)ui_taskbar_attach_standard(scr);
 

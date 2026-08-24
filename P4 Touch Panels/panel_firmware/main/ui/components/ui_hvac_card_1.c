@@ -213,6 +213,19 @@ void ui_hvac_card_1_set_setpoint(lv_obj_t *card, float setpoint_c)
     refresh_setpoint(m);
 }
 
+void ui_hvac_card_1_set_setpoint_visible(lv_obj_t *card, bool visible)
+{
+    hvac_card_meta_t *m = hvac_card_get_meta(card);
+    if (m == NULL || m->lbl_setpoint == NULL) {
+        return;
+    }
+    if (visible) {
+        lv_obj_clear_flag(m->lbl_setpoint, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(m->lbl_setpoint, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 void ui_hvac_card_1_set_mode(lv_obj_t *card, int8_t hvac_mode)
 {
     hvac_card_meta_t *m = hvac_card_get_meta(card);

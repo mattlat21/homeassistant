@@ -1,0 +1,15 @@
+# Home Assistant: Penny's Room temperature → retained MQTT (HA → panels).
+# HVAC "Penny's Room" card shows current temp only until a climate entity exists.
+
+alias: "ESP HMI - Data - Penny Room Temperature"
+description: Mirrors sensor.temp_penny_s_bedroom_temperature to MQTT for the HVAC Penny's Room card
+triggers:
+  - trigger: state
+    entity_id: sensor.temp_penny_s_bedroom_temperature
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/penny_room/temperature
+      payload: "{{ states('sensor.temp_penny_s_bedroom_temperature') | float(0) }}"
+      retain: true
+mode: single

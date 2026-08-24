@@ -143,3 +143,20 @@ typedef void (*ha_mqtt_house_battery_soc_cb_t)(float soc_percent, void *user_dat
 
 /** Register handler for House Battery SOC topic (safe to call before MQTT connects). */
 void ha_mqtt_set_house_battery_soc_callback(ha_mqtt_house_battery_soc_cb_t cb, void *user_data);
+
+/** Room temperature-only slots (current °C) until full climate zones exist. */
+#define HA_MQTT_ROOM_TEMP_MAIN 0
+#define HA_MQTT_ROOM_TEMP_PENNY 1
+#define HA_MQTT_ROOM_TEMP_MAX 2
+
+/** Called on the LVGL thread with retained room temperature °C. */
+typedef void (*ha_mqtt_room_temp_cb_t)(float temp_c, void *user_data);
+
+/**
+ * Register retained current-temperature topic for a room-temp slot.
+ * Safe before MQTT connect; subscribes on next connect.
+ */
+void ha_mqtt_configure_room_temp(uint8_t temp_id, const char *topic_current);
+
+/** Add LVGL-thread listener for a room-temp slot (does not remove existing listeners). */
+void ha_mqtt_add_room_temp_callback(uint8_t temp_id, ha_mqtt_room_temp_cb_t cb, void *user_data);

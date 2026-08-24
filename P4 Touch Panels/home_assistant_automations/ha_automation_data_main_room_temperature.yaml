@@ -1,0 +1,15 @@
+# Home Assistant: Main Room (Heater Unit) temperature → retained MQTT (HA → panels).
+# HVAC "Main Room" card shows current temp only until a climate entity exists.
+
+alias: "ESP HMI - Data - Main Room Temperature"
+description: Mirrors sensor.temp_heater_unit_temperature to MQTT for the HVAC Main Room card
+triggers:
+  - trigger: state
+    entity_id: sensor.temp_heater_unit_temperature
+actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/temperature
+      payload: "{{ states('sensor.temp_heater_unit_temperature') | float(0) }}"
+      retain: true
+mode: single

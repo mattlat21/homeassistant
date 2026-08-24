@@ -162,6 +162,19 @@ typedef struct {
 
 static light_slot_t s_lights[HA_MQTT_LIGHT_MAX];
 
+#define HA_MQTT_ROOM_TEMP_LISTENER_MAX 4
+typedef struct {
+    char topic_current[HA_MQTT_CLIMATE_TOPIC_MAX];
+    bool configured;
+    float cache_temp;
+    bool have_temp;
+    ha_mqtt_room_temp_cb_t cbs[HA_MQTT_ROOM_TEMP_LISTENER_MAX];
+    void *uds[HA_MQTT_ROOM_TEMP_LISTENER_MAX];
+    size_t listener_count;
+} room_temp_slot_t;
+
+static room_temp_slot_t s_room_temps[HA_MQTT_ROOM_TEMP_MAX];
+
 static ha_mqtt_front_gate_state_cb_t s_front_gate_state_cb;
 static void *s_front_gate_state_cb_ud;
 static ha_mqtt_study_heater_state_cb_t s_study_heater_state_cb;
@@ -190,6 +203,11 @@ typedef struct {
 typedef struct {
     float soc_percent;
 } house_battery_soc_async_msg_t;
+
+typedef struct {
+    uint8_t temp_id;
+    float temp_c;
+} room_temp_async_msg_t;
 
 typedef struct {
     uint8_t light_id;
@@ -750,6 +768,25 @@ static void subscribe_light_state_topics(void)
     }
 }
 
+static void subscribe_room_temp_topics(void)
+{
+    if (s_client == NULL) {
+        return;
+    }
+    for (size_t i = 0; i < HA_MQTT_ROOM_TEMP_MAX; i++) {
+        const room_temp_slot_t *slot = &s_room_temps[i];
+        if (!slot->configured || slot->topic_current[0] == '\0') {
+            continue;
+        }
+        int mid = esp_mqtt_client_subscribe(s_client, slot->topic_current, 1);
+        if (mid < 0) {
+            ESP_LOGE(TAG, "subscribe room temp failed: %s", slot->topic_current);
+        } else {
+            ESP_LOGI(TAG, "subscribed room temp: %s", slot->topic_current);
+        }
+    }
+}
+
 static void subscribe_front_gate_state_topic(void)
 {
     if (s_client == NULL || s_front_gate_state_topic[0] == '\0') {
@@ -1017,6 +1054,59 @@ static void house_battery_soc_async_fn(void *user_data)
         s_house_battery_soc_cb(m->soc_percent, s_house_battery_soc_cb_ud);
     }
     lv_free(m);
+}
+
+static void room_temp_async_fn(void *user_data)
+{
+    room_temp_async_msg_t *m = (room_temp_async_msg_t *)user_data;
+    if (m == NULL) {
+        return;
+    }
+    if (m->temp_id < HA_MQTT_ROOM_TEMP_MAX) {
+        room_temp_slot_t *slot = &s_room_temps[m->temp_id];
+        for (size_t i = 0; i < slot->listener_count; i++) {
+            if (slot->cbs[i] != NULL) {
+                slot->cbs[i](m->temp_c, slot->uds[i]);
+            }
+        }
+    }
+    lv_free(m);
+}
+
+static bool handle_room_temp_mqtt(uint8_t temp_id, const char *topic, const char *payload, int payload_len)
+{
+    if (temp_id >= HA_MQTT_ROOM_TEMP_MAX || payload_len <= 0 || payload_len >= HA_MQTT_SCALAR_PAYLOAD_MAX) {
+        return false;
+    }
+    room_temp_slot_t *slot = &s_room_temps[temp_id];
+    if (!slot->configured || strcmp(topic, slot->topic_current) != 0) {
+        return false;
+    }
+    char pbuf[HA_MQTT_SCALAR_PAYLOAD_MAX];
+    memcpy(pbuf, payload, (size_t)payload_len);
+    pbuf[payload_len] = '\0';
+    float v = 0.0f;
+    if (!parse_float_scalar(pbuf, &v)) {
+        ESP_LOGW(TAG, "room temp %u parse failed", (unsigned)temp_id);
+        return true;
+    }
+    slot->cache_temp = v;
+    slot->have_temp = true;
+    if (slot->listener_count == 0) {
+        return true;
+    }
+    room_temp_async_msg_t *msg = (room_temp_async_msg_t *)lv_malloc(sizeof(room_temp_async_msg_t));
+    if (msg == NULL) {
+        ESP_LOGE(TAG, "room temp async alloc failed");
+        return true;
+    }
+    msg->temp_id = temp_id;
+    msg->temp_c = v;
+    if (lv_async_call(room_temp_async_fn, msg) != LV_RESULT_OK) {
+        lv_free(msg);
+        ESP_LOGW(TAG, "lv_async_call(room_temp) failed");
+    }
+    return true;
 }
 
 static void light_state_async_fn(void *user_data)
@@ -1533,6 +1623,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_study_heater_state_topic();
         subscribe_house_battery_soc_topic();
         subscribe_light_state_topics();
+        subscribe_room_temp_topics();
         subscribe_set_default_screen_topic();
         subscribe_remote_screen_topics();
 #if CONFIG_ESP_HMI_OTA_ENABLE
@@ -1771,6 +1862,21 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 ESP_LOGW(TAG, "lv_async_call(house_battery_soc) failed");
             }
             break;
+        }
+        {
+            bool room_temp_handled = false;
+            for (uint8_t ti = 0; ti < HA_MQTT_ROOM_TEMP_MAX; ti++) {
+                if (ev->data_len <= 0 || ev->data_len >= HA_MQTT_SCALAR_PAYLOAD_MAX) {
+                    break;
+                }
+                if (handle_room_temp_mqtt(ti, tbuf, ev->data, ev->data_len)) {
+                    room_temp_handled = true;
+                    break;
+                }
+            }
+            if (room_temp_handled) {
+                break;
+            }
         }
         if (strcmp(tbuf, s_switch_screen_topic) == 0) {
             if (ev->data_len <= 0 || ev->data_len >= HA_MQTT_NAV_TEMP_JSON_MAX) {
@@ -2226,6 +2332,59 @@ void ha_mqtt_set_house_battery_soc_callback(ha_mqtt_house_battery_soc_cb_t cb, v
 {
     s_house_battery_soc_cb = cb;
     s_house_battery_soc_cb_ud = user_data;
+}
+
+void ha_mqtt_configure_room_temp(uint8_t temp_id, const char *topic_current)
+{
+    if (temp_id >= HA_MQTT_ROOM_TEMP_MAX) {
+        return;
+    }
+    room_temp_slot_t *slot = &s_room_temps[temp_id];
+    char next[HA_MQTT_CLIMATE_TOPIC_MAX] = {0};
+    if (topic_current != NULL) {
+        strncpy(next, topic_current, sizeof(next) - 1);
+    }
+    const bool topics_changed = !slot->configured || strcmp(slot->topic_current, next) != 0;
+    strncpy(slot->topic_current, next, sizeof(slot->topic_current));
+    slot->configured = slot->topic_current[0] != '\0';
+    if (topics_changed) {
+        slot->have_temp = false;
+    }
+    if (slot->configured && s_mqtt_connected && s_client != NULL) {
+        int mid = esp_mqtt_client_subscribe(s_client, slot->topic_current, 1);
+        if (mid < 0) {
+            ESP_LOGE(TAG, "subscribe room temp failed: %s", slot->topic_current);
+        } else {
+            ESP_LOGI(TAG, "subscribed room temp: %s", slot->topic_current);
+        }
+    }
+}
+
+void ha_mqtt_add_room_temp_callback(uint8_t temp_id, ha_mqtt_room_temp_cb_t cb, void *user_data)
+{
+    if (temp_id >= HA_MQTT_ROOM_TEMP_MAX || cb == NULL) {
+        return;
+    }
+    room_temp_slot_t *slot = &s_room_temps[temp_id];
+    for (size_t i = 0; i < slot->listener_count; i++) {
+        if (slot->cbs[i] == cb) {
+            slot->uds[i] = user_data;
+            if (slot->have_temp) {
+                cb(slot->cache_temp, user_data);
+            }
+            return;
+        }
+    }
+    if (slot->listener_count >= HA_MQTT_ROOM_TEMP_LISTENER_MAX) {
+        ESP_LOGW(TAG, "room temp %u listener table full", (unsigned)temp_id);
+        return;
+    }
+    slot->cbs[slot->listener_count] = cb;
+    slot->uds[slot->listener_count] = user_data;
+    slot->listener_count++;
+    if (slot->have_temp) {
+        cb(slot->cache_temp, user_data);
+    }
 }
 
 void ha_mqtt_configure_light(uint8_t light_id, const char *topic_state, const char *topic_brightness)

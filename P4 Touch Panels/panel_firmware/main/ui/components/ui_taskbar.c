@@ -152,7 +152,7 @@ lv_obj_t *ui_taskbar_attach_standard(lv_obj_t *parent)
         { UI_HA_ICON_THERMOMETER, NULL, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_HVAC },
         { LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_48, NULL, standard_taskbar_nav,
           (void *)(uintptr_t)APP_HOUSE_BATTERY },
-        { LV_SYMBOL_SETTINGS, &lv_font_montserrat_48, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_SETTINGS },
+        { UI_HA_ICON_BUG, NULL, NULL, standard_taskbar_nav, (void *)(uintptr_t)APP_DEBUG },
     };
     return ui_taskbar_create(parent, items, (uint8_t)(sizeof(items) / sizeof(items[0])));
 }

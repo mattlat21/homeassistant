@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "main.c"
         "app_prefs.c"
+        "sys_debug.c"
         "ota_update.c"
         "ha_mqtt.c"
         "reolink_preview.c"
@@ -23,6 +24,7 @@ idf_component_register(
         "ui/screens/screen_front_door.c"
         "ui/screens/screen_pipboy.c"
         "ui/screens/screen_settings.c"
+        "ui/screens/screen_debug.c"
         "ui/screens/screen_about.c"
         "ui/screens/screen_study.c"
         "ui/screens/screen_hvac.c"

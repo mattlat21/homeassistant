@@ -25,6 +25,7 @@
 #define UI_HA_ICON_GAUGE "\xF3\xB0\x8A\x9A"            /* mdi:gauge */
 #define UI_HA_ICON_GATE "\xF3\xB0\x8A\x99"             /* mdi:gate */
 #define UI_HA_ICON_DESK "\xF3\xB1\x88\xB9"             /* mdi:desk */
+#define UI_HA_ICON_BUG "\xF3\xB0\x83\xA4"              /* mdi:bug */
 
 #include "lvgl.h"
 

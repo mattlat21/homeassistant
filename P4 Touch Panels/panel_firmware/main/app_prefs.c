@@ -7,6 +7,7 @@
 
 #include "esp_mac.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_wifi.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -23,6 +24,7 @@ static const char *TAG = "app_prefs";
 #define PREFS_KEY_DISP_DIM_SEC "disp_dim_sec"
 #define PREFS_KEY_DISP_OFF_SEC "disp_off_sec"
 #define PREFS_KEY_DISP_FADE_SEC "disp_fade_sec"
+#define PREFS_KEY_BOOT_COUNT "boot_count"
 
 #define IDLE_TIMEOUT_SEC_MAX (86400u * 365u * 10u)
 #define DISPLAY_TIMEOUT_SEC_MAX (86400u)
@@ -38,6 +40,46 @@ static uint8_t s_cached_disp_dim_pct = CONFIG_ESP_HMI_DISPLAY_DIM_BRIGHTNESS;
 static uint32_t s_cached_disp_dim_sec = CONFIG_ESP_HMI_DISPLAY_DIM_TIMEOUT_S;
 static uint32_t s_cached_disp_off_sec = CONFIG_ESP_HMI_DISPLAY_OFF_TIMEOUT_S;
 static uint32_t s_cached_disp_fade_sec = CONFIG_ESP_HMI_DISPLAY_FADE_S;
+static uint32_t s_boot_count;
+static const char *s_restart_reason = "UNKNOWN";
+
+static const char *restart_reason_to_str(esp_reset_reason_t reason)
+{
+    switch (reason) {
+    case ESP_RST_POWERON:
+        return "POWERON";
+    case ESP_RST_EXT:
+        return "EXT";
+    case ESP_RST_SW:
+        return "SW";
+    case ESP_RST_PANIC:
+        return "PANIC";
+    case ESP_RST_INT_WDT:
+        return "INT_WDT";
+    case ESP_RST_TASK_WDT:
+        return "TASK_WDT";
+    case ESP_RST_WDT:
+        return "WDT";
+    case ESP_RST_DEEPSLEEP:
+        return "DEEPSLEEP";
+    case ESP_RST_BROWNOUT:
+        return "BROWNOUT";
+    case ESP_RST_SDIO:
+        return "SDIO";
+    case ESP_RST_USB:
+        return "USB";
+    case ESP_RST_JTAG:
+        return "JTAG";
+    case ESP_RST_EFUSE:
+        return "EFUSE";
+    case ESP_RST_PWR_GLITCH:
+        return "PWR_GLITCH";
+    case ESP_RST_CPU_LOCKUP:
+        return "CPU_LOCKUP";
+    default:
+        return "UNKNOWN";
+    }
+}
 
 static uint8_t clamp_brightness_pct(uint8_t pct)
 {
@@ -80,13 +122,35 @@ void app_prefs_init(void)
     }
     s_inited = true;
 
+    s_restart_reason = restart_reason_to_str(esp_reset_reason());
+
     nvs_handle_t h;
     esp_err_t err = nvs_open(PREFS_NS, NVS_READWRITE, &h);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "nvs_open(%s): %s", PREFS_NS, esp_err_to_name(err));
         s_have_cached = false;
+        s_boot_count = 1;
         return;
     }
+
+    uint32_t boot = 0;
+    err = nvs_get_u32(h, PREFS_KEY_BOOT_COUNT, &boot);
+    if (err != ESP_OK) {
+        boot = 0;
+    }
+    boot++;
+    err = nvs_set_u32(h, PREFS_KEY_BOOT_COUNT, boot);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "nvs_set boot_count: %s", esp_err_to_name(err));
+    } else {
+        err = nvs_commit(h);
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "nvs_commit boot_count: %s", esp_err_to_name(err));
+        }
+    }
+    s_boot_count = boot;
+    ESP_LOGI(TAG, "boot_count=%" PRIu32 " restart_reason=%s", s_boot_count, s_restart_reason);
+
     uint8_t v = (uint8_t)APP_HOME;
     err = nvs_get_u8(h, PREFS_KEY_DEF_APP, &v);
     if (err == ESP_OK && app_id_valid((app_id_t)v)) {
@@ -233,6 +297,10 @@ bool app_prefs_parse_app_slug(const char *slug, app_id_t *out)
         *out = APP_PENNY_ROOM;
         return true;
     }
+    if (strcasecmp(slug, "debug") == 0) {
+        *out = APP_DEBUG;
+        return true;
+    }
     return false;
 }
 
@@ -288,6 +356,9 @@ bool app_prefs_slug_for_app(app_id_t id, char *out, size_t out_sz)
     case APP_HVAC_LEGACY:
         slug = "hvac_legacy";
         break;
+    case APP_DEBUG:
+        slug = "debug";
+        break;
     default:
         return false;
     }
@@ -322,9 +393,21 @@ const char *app_prefs_display_name_for_app(app_id_t id)
         return "Ollie's Room";
     case APP_HVAC_LEGACY:
         return "HVAC Legacy";
+    case APP_DEBUG:
+        return "Debug";
     default:
         return "?";
     }
+}
+
+uint32_t app_prefs_get_boot_count(void)
+{
+    return s_boot_count;
+}
+
+const char *app_prefs_get_restart_reason_str(void)
+{
+    return s_restart_reason != NULL ? s_restart_reason : "UNKNOWN";
 }
 
 void app_prefs_format_sta_mac(char *out, size_t out_sz)

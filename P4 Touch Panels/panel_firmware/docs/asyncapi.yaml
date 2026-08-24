@@ -19,7 +19,11 @@ info:
     **Device parameters (panels → broker):** On each MQTT connect, device publishes retained JSON on `{nodeId}/status/parameters`
     (QoS 1) with firmware version, node/mac ids, chip info, HA device name from Kconfig, optional `wifi_ssid`,
     NVS-derived `default_screen`, `idle_timeout_screen`, `idle_timeout_seconds`, `normal_brightness`,
-    `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`, `brightness_fade_seconds`, etc.
+    `dim_brightness`, `dim_timeout_seconds`, `screen_off_timeout_seconds`, `brightness_fade_seconds`,
+    `boot_count`, `restart_reason`, etc.
+
+    **Memory telemetry (panels → broker):** Retained JSON on `{nodeId}/status/memory` (QoS 1) published on MQTT connect
+    and every 30 s while connected (`heap_free`, `heap_min_free`, `internal_*`, `spiram_*`, `dma_free` in bytes).
 
     **Idle timeout (broker → panels):** Device subscribes to `{nodeId}/cmd/set_idle_timeout` (QoS 1) with JSON
     `{"screen":"<slug>","seconds":<n>}`; `seconds` 0 disables. Persists to NVS and updates the LVGL idle timer.
@@ -134,6 +138,46 @@ channels:
               minimum: 0
               maximum: 60
               description: Seconds to fade between brightness levels; 0 means instant
+            boot_count:
+              type: integer
+              description: NVS-backed counter incremented once per power-on / reboot
+            restart_reason:
+              type: string
+              description: Short esp_reset_reason() string (e.g. POWERON, SW, TASK_WDT)
+
+  '{nodeId}/status/memory':
+    description: |
+      Heap / SPIRAM snapshot in bytes. Published on MQTT connect and every 30 s while connected.
+      QoS **1**, **retained**. Separate from `status/parameters` so preference automations are not re-fired.
+    parameters:
+      nodeId:
+        description: Lowercase hex MAC-based id, e.g. esp_hmi/device/aabbccddeeff
+        schema:
+          type: string
+          pattern: '^esp_hmi/device/[0-9a-f]{12}$'
+    publish:
+      operationId: publishDeviceMemory
+      summary: Device publishes retained memory JSON periodically
+      bindings:
+        mqtt:
+          qos: 1
+          retain: true
+      message:
+        name: DeviceMemoryJson
+        title: Heap and SPIRAM metrics
+        contentType: application/json
+        payload:
+          type: object
+          properties:
+            heap_free: { type: integer, description: esp_get_free_heap_size() }
+            heap_min_free: { type: integer, description: esp_get_minimum_free_heap_size() }
+            internal_free: { type: integer }
+            internal_total: { type: integer }
+            internal_largest: { type: integer }
+            spiram_free: { type: integer }
+            spiram_total: { type: integer }
+            spiram_largest: { type: integer }
+            dma_free: { type: integer }
 
   '{nodeId}/cmd/set_display_power':
     description: |

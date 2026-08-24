@@ -7,14 +7,23 @@ from datetime import datetime
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util import dt as dt_util
 
 from . import (
     EspHmiRuntime,
+    SIGNAL_MEMORY_UPDATE,
     SIGNAL_NEW_DEVICE,
     SIGNAL_OTA_PROGRESS_UPDATE,
     SIGNAL_PARAMETERS_UPDATE,
@@ -68,6 +77,131 @@ SENSOR_DESCRIPTIONS: tuple[EspHmiSensorDescription, ...] = (
         name="Chip revision",
         value_key="chip_revision",
     ),
+    EspHmiSensorDescription(
+        key="boot_count",
+        name="Boot count",
+        value_key="boot_count",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:restart",
+    ),
+    EspHmiSensorDescription(
+        key="restart_reason",
+        name="Restart reason",
+        value_key="restart_reason",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:information-outline",
+    ),
+)
+
+
+@dataclass(frozen=True, kw_only=True)
+class EspHmiMemorySensorDescription(SensorEntityDescription):
+    """Describes a memory diagnostic sensor from status/memory."""
+
+    value_key: str
+
+
+MEMORY_SENSOR_DESCRIPTIONS: tuple[EspHmiMemorySensorDescription, ...] = (
+    EspHmiMemorySensorDescription(
+        key="heap_free",
+        name="Heap free",
+        value_key="heap_free",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:memory",
+    ),
+    EspHmiMemorySensorDescription(
+        key="heap_min_free",
+        name="Heap min free",
+        value_key="heap_min_free",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:memory",
+    ),
+    EspHmiMemorySensorDescription(
+        key="internal_free",
+        name="Internal RAM free",
+        value_key="internal_free",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:chip",
+    ),
+    EspHmiMemorySensorDescription(
+        key="internal_total",
+        name="Internal RAM total",
+        value_key="internal_total",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:chip",
+    ),
+    EspHmiMemorySensorDescription(
+        key="internal_largest",
+        name="Internal RAM largest free",
+        value_key="internal_largest",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:chip",
+    ),
+    EspHmiMemorySensorDescription(
+        key="spiram_free",
+        name="SPIRAM free",
+        value_key="spiram_free",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEBIBYTES,
+        icon="mdi:memory",
+    ),
+    EspHmiMemorySensorDescription(
+        key="spiram_total",
+        name="SPIRAM total",
+        value_key="spiram_total",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEBIBYTES,
+        icon="mdi:memory",
+    ),
+    EspHmiMemorySensorDescription(
+        key="spiram_largest",
+        name="SPIRAM largest free",
+        value_key="spiram_largest",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEBIBYTES,
+        icon="mdi:memory",
+    ),
+    EspHmiMemorySensorDescription(
+        key="dma_free",
+        name="DMA free",
+        value_key="dma_free",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
+        icon="mdi:memory",
+    ),
 )
 
 
@@ -79,21 +213,36 @@ async def async_setup_entry(
     runtime: EspHmiRuntime = hass.data[DOMAIN][entry.entry_id][DATA_RUNTIME]
 
     entities: dict[tuple[str, str], EspHmiParameterSensor] = {}
+    memory_entities: dict[tuple[str, str], EspHmiMemorySensor] = {}
     current_screen_by_mac: dict[str, EspHmiCurrentScreenSensor] = {}
     ota_progress_by_mac: dict[str, EspHmiOtaProgressSensor] = {}
+    last_boot_by_mac: dict[str, EspHmiLastBootSensor] = {}
 
     @callback
     def _maybe_add_for_mac(mac: str) -> None:
         panel = runtime.panels.get(mac)
         if panel is None:
             return
-        new_entities: list[EspHmiParameterSensor | EspHmiCurrentScreenSensor] = []
+        new_entities: list[
+            EspHmiParameterSensor
+            | EspHmiCurrentScreenSensor
+            | EspHmiOtaProgressSensor
+            | EspHmiLastBootSensor
+            | EspHmiMemorySensor
+        ] = []
         for desc in SENSOR_DESCRIPTIONS:
             key = (mac, desc.key)
             if key in entities:
                 continue
             ent = EspHmiParameterSensor(entry.entry_id, mac, desc)
             entities[key] = ent
+            new_entities.append(ent)
+        for desc in MEMORY_SENSOR_DESCRIPTIONS:
+            key = (mac, desc.key)
+            if key in memory_entities:
+                continue
+            ent = EspHmiMemorySensor(entry.entry_id, mac, desc)
+            memory_entities[key] = ent
             new_entities.append(ent)
         if mac not in current_screen_by_mac:
             cs = EspHmiCurrentScreenSensor(entry.entry_id, mac)
@@ -103,6 +252,10 @@ async def async_setup_entry(
             ota = EspHmiOtaProgressSensor(entry.entry_id, mac)
             ota_progress_by_mac[mac] = ota
             new_entities.append(ota)
+        if mac not in last_boot_by_mac:
+            lb = EspHmiLastBootSensor(entry.entry_id, mac)
+            last_boot_by_mac[mac] = lb
+            new_entities.append(lb)
         if new_entities:
             async_add_entities(new_entities)
 
@@ -118,6 +271,18 @@ async def async_setup_entry(
             return
         for desc in SENSOR_DESCRIPTIONS:
             ent = entities.get((mac, desc.key))
+            if ent is not None:
+                ent.async_write_ha_state()
+        lb = last_boot_by_mac.get(mac)
+        if lb is not None:
+            lb.async_write_ha_state()
+
+    @callback
+    def _on_memory_update(entry_id: str, mac: str) -> None:
+        if entry_id != entry.entry_id:
+            return
+        for desc in MEMORY_SENSOR_DESCRIPTIONS:
+            ent = memory_entities.get((mac, desc.key))
             if ent is not None:
                 ent.async_write_ha_state()
 
@@ -146,6 +311,9 @@ async def async_setup_entry(
     )
     entry.async_on_unload(
         async_dispatcher_connect(hass, SIGNAL_PARAMETERS_UPDATE, _on_parameters_update)
+    )
+    entry.async_on_unload(
+        async_dispatcher_connect(hass, SIGNAL_MEMORY_UPDATE, _on_memory_update)
     )
     entry.async_on_unload(
         async_dispatcher_connect(hass, SIGNAL_STATUS_UPDATE, _on_status_update)
@@ -227,6 +395,76 @@ class EspHmiCurrentScreenSensor(SensorEntity):
         return panel.current_screen
 
 
+class EspHmiLastBootSensor(SensorEntity, RestoreEntity):
+    """Timestamp of last boot, set when parameters boot_count increases."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Last boot"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:clock-start"
+
+    def __init__(self, entry_id: str, mac: str) -> None:
+        self._entry_id = entry_id
+        self._mac = mac
+        self._attr_unique_id = f"{mac}_last_boot"
+
+    @property
+    def device_info(self):
+        return {"identifiers": {(DOMAIN, self._mac)}}
+
+    @property
+    def native_value(self) -> datetime | None:
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.panels.get(self._mac)
+        if panel is None:
+            return None
+        return panel.last_boot_at
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.panels.get(self._mac)
+        if panel is None or panel.last_boot_count is None:
+            return {}
+        return {"boot_count": panel.last_boot_count}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is None:
+            return
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.panels.get(self._mac)
+        if panel is None:
+            return
+
+        restored_count: int | None = None
+        raw_count = last.attributes.get("boot_count") if last.attributes else None
+        if isinstance(raw_count, (int, float)):
+            restored_count = int(raw_count)
+
+        parsed: datetime | None = None
+        if last.state not in (None, "unknown", "unavailable"):
+            parsed = dt_util.parse_datetime(last.state)
+            if parsed is not None and parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=dt_util.UTC)
+
+        # Retained MQTT may have already applied a newer boot_count before this entity restored.
+        if restored_count is not None:
+            if panel.last_boot_count is not None and panel.last_boot_count > restored_count:
+                panel.last_boot_at = dt_util.utcnow()
+            else:
+                if panel.last_boot_count is None:
+                    panel.last_boot_count = restored_count
+                if parsed is not None and panel.last_boot_at is None:
+                    panel.last_boot_at = parsed
+        elif parsed is not None and panel.last_boot_at is None:
+            panel.last_boot_at = parsed
+
+        self.async_write_ha_state()
+
+
 class EspHmiParameterSensor(SensorEntity):
     """A sensor backed by a field in status/parameters."""
 
@@ -267,3 +505,38 @@ class EspHmiParameterSensor(SensorEntity):
             "parameters_updated_at": updated.isoformat() if isinstance(updated, datetime) else None,
         }
 
+
+class EspHmiMemorySensor(SensorEntity):
+    """A diagnostic sensor backed by a field in status/memory."""
+
+    _attr_has_entity_name = True
+
+    entity_description: EspHmiMemorySensorDescription
+
+    def __init__(
+        self,
+        entry_id: str,
+        mac: str,
+        description: EspHmiMemorySensorDescription,
+    ) -> None:
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._mac = mac
+        self._attr_unique_id = f"{mac}_{description.key}"
+
+    @property
+    def device_info(self):
+        return {"identifiers": {(DOMAIN, self._mac)}}
+
+    @property
+    def native_value(self) -> int | None:
+        runtime: EspHmiRuntime = self.hass.data[DOMAIN][self._entry_id][DATA_RUNTIME]
+        panel = runtime.panels.get(self._mac)
+        if panel is None:
+            return None
+        val = panel.memory.get(self.entity_description.value_key)
+        if isinstance(val, bool):
+            return None
+        if isinstance(val, (int, float)):
+            return int(val)
+        return None

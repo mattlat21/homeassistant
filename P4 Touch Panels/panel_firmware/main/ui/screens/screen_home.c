@@ -13,7 +13,7 @@ static void launcher_cb(app_id_t app, void *user_ctx)
     nav_go_to(app);
 }
 
-/** Launcher: 4×4 cell grid; 11 apps in row-major order. */
+/** Launcher: 4×4 cell grid; apps in row-major order. */
 #define HOME_GRID_N 4u
 #define HOME_MIN_GAP_PX 8
 
@@ -74,6 +74,7 @@ lv_obj_t *screen_home_create(lv_display_t *disp)
         { UI_HA_ICON_LIGHTBULB, "PipBoy", APP_PIPBOY, NULL },
         { LV_SYMBOL_LIST, "About", APP_ABOUT, &lv_font_montserrat_48 },
         { LV_SYMBOL_SETTINGS, "Settings", APP_SETTINGS, &lv_font_montserrat_48 },
+        { UI_HA_ICON_BUG, "Debug", APP_DEBUG, NULL },
     };
 
     for (unsigned i = 0; i < (unsigned)(sizeof(tiles) / sizeof(tiles[0])); i++) {

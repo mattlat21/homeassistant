@@ -10,6 +10,7 @@
 #include "ui/screens/screen_front_gate.h"
 #include "ui/screens/screen_pipboy.h"
 #include "ui/screens/screen_settings.h"
+#include "ui/screens/screen_debug.h"
 #include "ui/screens/screen_about.h"
 #include "ui/screens/screen_study.h"
 #include "ui/screens/screen_front_door.h"
@@ -34,6 +35,7 @@ void ui_shell_init(lv_display_t *disp)
     lv_obj_t *scr_front_gate = screen_front_gate_create(disp);
     lv_obj_t *scr_pipboy = screen_pipboy_create(disp);
     lv_obj_t *scr_settings = screen_settings_create(disp);
+    lv_obj_t *scr_debug = screen_debug_create(disp);
     lv_obj_t *scr_about = screen_about_create(disp);
     lv_obj_t *scr_study = screen_study_create(disp);
     lv_obj_t *scr_front_door = screen_front_door_create(disp);
@@ -47,6 +49,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_register_screen(APP_FRONT_GATE, scr_front_gate);
     nav_register_screen(APP_PIPBOY, scr_pipboy);
     nav_register_screen(APP_SETTINGS, scr_settings);
+    nav_register_screen(APP_DEBUG, scr_debug);
     nav_register_screen(APP_STUDY, scr_study);
     nav_register_screen(APP_ABOUT, scr_about);
     nav_register_screen(APP_FRONT_DOOR, scr_front_door);
@@ -60,6 +63,7 @@ void ui_shell_init(lv_display_t *disp)
     nav_install_gesture_on_screen(scr_front_gate);
     nav_install_gesture_on_screen(scr_pipboy);
     nav_install_gesture_on_screen(scr_settings);
+    nav_install_gesture_on_screen(scr_debug);
     nav_install_gesture_on_screen(scr_about);
     nav_install_gesture_on_screen(scr_study);
     nav_install_gesture_on_screen(scr_front_door);

@@ -24,9 +24,11 @@
 #include "mqtt_client.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
+#include "esp_timer.h"
 
 #include "app_prefs.h"
 #include "ota_update.h"
+#include "sys_debug.h"
 #include "ui/nav.h"
 #include "ui/ui_idle_timeout.h"
 #include "ui/ui_display_power.h"
@@ -49,6 +51,9 @@ static char s_status_current_screen_topic[88];
 static char s_status_mqtt_connected_topic[88];
 /** OTA progress JSON (not retained): <s_node_id>/status/ota_progress */
 static char s_status_ota_progress_topic[88];
+/** Retained memory JSON: <s_node_id>/status/memory */
+static char s_status_memory_topic[88];
+static esp_timer_handle_t s_memory_publish_timer;
 /** JSON device identifier string (same as s_node_id) */
 static char s_device_identifier[40];
 static char s_mac_colon[18];
@@ -279,6 +284,7 @@ static void build_ids_from_mac(const uint8_t mac[6])
     snprintf(s_status_current_screen_topic, sizeof(s_status_current_screen_topic), "%s/status/current_screen", s_node_id);
     snprintf(s_status_mqtt_connected_topic, sizeof(s_status_mqtt_connected_topic), "%s/status/mqtt_connected", s_node_id);
     snprintf(s_status_ota_progress_topic, sizeof(s_status_ota_progress_topic), "%s/status/ota_progress", s_node_id);
+    snprintf(s_status_memory_topic, sizeof(s_status_memory_topic), "%s/status/memory", s_node_id);
     snprintf(s_mac_colon, sizeof(s_mac_colon), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3],
              mac[4], mac[5]);
 
@@ -1590,6 +1596,9 @@ static void publish_device_status_parameters(esp_mqtt_client_handle_t client)
     (void)cJSON_AddNumberToObject(j, "screen_off_timeout_seconds", (double)disp_off_sec);
     (void)cJSON_AddNumberToObject(j, "brightness_fade_seconds", (double)disp_fade_sec);
 
+    (void)cJSON_AddNumberToObject(j, "boot_count", (double)app_prefs_get_boot_count());
+    (void)cJSON_AddStringToObject(j, "restart_reason", app_prefs_get_restart_reason_str());
+
     char *printed = cJSON_PrintUnformatted(j);
     cJSON_Delete(j);
     if (printed == NULL) {
@@ -1604,6 +1613,82 @@ static void publish_device_status_parameters(esp_mqtt_client_handle_t client)
         ESP_LOGE(TAG, "status/parameters publish failed");
     } else {
         ESP_LOGI(TAG, "published status/parameters (retained): %s", s_status_parameters_topic);
+    }
+}
+
+static void publish_status_memory(esp_mqtt_client_handle_t client)
+{
+    if (client == NULL || s_status_memory_topic[0] == '\0') {
+        return;
+    }
+
+    sys_debug_snapshot_t snap;
+    sys_debug_get_snapshot(&snap);
+
+    cJSON *j = cJSON_CreateObject();
+    if (j == NULL) {
+        ESP_LOGW(TAG, "status/memory: cJSON_CreateObject failed");
+        return;
+    }
+
+    (void)cJSON_AddNumberToObject(j, "heap_free", (double)snap.heap_free);
+    (void)cJSON_AddNumberToObject(j, "heap_min_free", (double)snap.heap_min_free);
+    (void)cJSON_AddNumberToObject(j, "internal_free", (double)snap.internal_free);
+    (void)cJSON_AddNumberToObject(j, "internal_total", (double)snap.internal_total);
+    (void)cJSON_AddNumberToObject(j, "internal_largest", (double)snap.internal_largest);
+    (void)cJSON_AddNumberToObject(j, "spiram_free", (double)snap.spiram_free);
+    (void)cJSON_AddNumberToObject(j, "spiram_total", (double)snap.spiram_total);
+    (void)cJSON_AddNumberToObject(j, "spiram_largest", (double)snap.spiram_largest);
+    (void)cJSON_AddNumberToObject(j, "dma_free", (double)snap.dma_free);
+
+    char *printed = cJSON_PrintUnformatted(j);
+    cJSON_Delete(j);
+    if (printed == NULL) {
+        ESP_LOGW(TAG, "status/memory: cJSON_PrintUnformatted failed");
+        return;
+    }
+
+    int len = (int)strlen(printed);
+    int msg_id = esp_mqtt_client_publish(client, s_status_memory_topic, printed, len, 1, 1);
+    cJSON_free(printed);
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "status/memory publish failed");
+    }
+}
+
+static void memory_publish_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_mqtt_connected || s_client == NULL) {
+        return;
+    }
+    publish_status_memory(s_client);
+}
+
+static void memory_publish_timer_start(void)
+{
+    if (s_memory_publish_timer == NULL) {
+        const esp_timer_create_args_t args = {
+            .callback = &memory_publish_timer_cb,
+            .name = "mem_mqtt",
+        };
+        esp_err_t err = esp_timer_create(&args, &s_memory_publish_timer);
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "memory timer create: %s", esp_err_to_name(err));
+            return;
+        }
+    }
+    (void)esp_timer_stop(s_memory_publish_timer);
+    esp_err_t err = esp_timer_start_periodic(s_memory_publish_timer, 30 * 1000 * 1000ULL);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "memory timer start: %s", esp_err_to_name(err));
+    }
+}
+
+static void memory_publish_timer_stop(void)
+{
+    if (s_memory_publish_timer != NULL) {
+        (void)esp_timer_stop(s_memory_publish_timer);
     }
 }
 
@@ -1630,12 +1715,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         subscribe_ota_topic();
 #endif
         publish_device_status_parameters(s_client);
+        publish_status_memory(s_client);
+        memory_publish_timer_start();
         publish_mqtt_connected_on(s_client);
         ha_mqtt_publish_current_screen_state();
         ESP_LOGI(TAG, "status/button_press topic: %s", s_button_press_topic);
         ESP_LOGI(TAG, "status/parameters topic: %s", s_status_parameters_topic);
         ESP_LOGI(TAG, "status/current_screen topic: %s", s_status_current_screen_topic);
         ESP_LOGI(TAG, "status/mqtt_connected topic: %s", s_status_mqtt_connected_topic);
+        ESP_LOGI(TAG, "status/memory topic: %s", s_status_memory_topic);
         ESP_LOGI(TAG, "cmd/set_idle_timeout topic: %s", s_set_idle_timeout_topic);
         ESP_LOGI(TAG, "cmd/set_display_power topic: %s", s_set_display_power_topic);
         ESP_LOGI(TAG, "cmd/wake_display topic: %s", s_wake_display_topic);
@@ -1643,6 +1731,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "MQTT disconnected");
         s_mqtt_connected = false;
+        memory_publish_timer_stop();
         break;
     case MQTT_EVENT_DATA: {
         esp_mqtt_event_handle_t ev = (esp_mqtt_event_handle_t)event_data;

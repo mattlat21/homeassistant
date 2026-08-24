@@ -46,3 +46,9 @@ void app_prefs_get_display_power(uint8_t *normal_pct, uint8_t *dim_pct, uint32_t
 /** Persist display power settings; clamps values and enforces off_sec >= dim_sec when both non-zero. */
 bool app_prefs_set_display_power(uint8_t normal_pct, uint8_t dim_pct, uint32_t dim_sec, uint32_t off_sec,
                                  uint32_t fade_sec);
+
+/** NVS-backed boot counter; incremented once per `app_prefs_init()` (each power-on / reboot). */
+uint32_t app_prefs_get_boot_count(void);
+
+/** Short stable string for `esp_reset_reason()` captured at init (e.g. `POWERON`, `SW`, `TASK_WDT`). */
+const char *app_prefs_get_restart_reason_str(void);

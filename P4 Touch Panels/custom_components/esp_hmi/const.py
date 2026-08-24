@@ -30,6 +30,7 @@ SCREEN_OPTIONS: tuple[str, ...] = (
     "front_gate",
     "pipboy",
     "settings",
+    "debug",
     "study",
     "about",
     "front_door",

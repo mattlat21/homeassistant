@@ -3,17 +3,16 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "ui/ui_visual_tokens.h"
 #include "ui/components/ui_taskbar.h"
 
 #define HVAC_CARD_RADIUS UI_TASKBAR_DOCK_RADIUS
 #define HVAC_CARD_PAD 8
-#define HVAC_CARD_BORDER_W 5
 /** Current / set Y offsets from card vertical centre (negative = up). Fixed — not linked to each other at runtime. */
 #define HVAC_CARD_CURRENT_Y_OFF 13
 #define HVAC_CARD_SET_Y_OFF 58
-#define HVAC_CARD_MUTED lv_color_hex(0x8E8E93)
-#define HVAC_CARD_TEXT lv_color_white()
+/** Match legacy heater cards (`ui_legacy_heater_card_1`). */
+#define HVAC_CARD_BG lv_color_hex(0xF2F2F7)
+#define HVAC_CARD_TEXT lv_color_hex(0x1C1C1E)
 #define HVAC_CARD_MODE_HEAT lv_color_hex(0xF97316)
 #define HVAC_CARD_MODE_COOL lv_color_hex(0x3B82F6)
 #define HVAC_CARD_MODE_FAN lv_color_hex(0x22C55E)
@@ -86,7 +85,7 @@ static void refresh_setpoint(hvac_card_meta_t *m)
     lv_label_set_text(m->lbl_setpoint, b);
 }
 
-static lv_color_t mode_color(int8_t mode)
+static lv_color_t mode_bg_color(int8_t mode)
 {
     switch (mode) {
     case HA_MQTT_CLIMATE_HVAC_HEAT:
@@ -96,7 +95,7 @@ static lv_color_t mode_color(int8_t mode)
     case HA_MQTT_CLIMATE_HVAC_FAN:
         return HVAC_CARD_MODE_FAN;
     default:
-        return HVAC_CARD_MUTED;
+        return HVAC_CARD_BG;
     }
 }
 
@@ -105,22 +104,16 @@ static void refresh_mode(hvac_card_meta_t *m)
     if (m == NULL || m->card == NULL) {
         return;
     }
-    const lv_color_t col = mode_color(m->hvac_mode);
-    const bool inactive = (m->hvac_mode == HA_MQTT_CLIMATE_HVAC_OFF ||
-                           m->hvac_mode == HA_MQTT_CLIMATE_HVAC_UNKNOWN);
-    lv_obj_set_style_border_color(m->card, col, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(m->card, inactive ? LV_OPA_40 : LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(m->card, mode_bg_color(m->hvac_mode), LV_PART_MAIN);
 }
 
 static void apply_card_style(lv_obj_t *card)
 {
     lv_obj_remove_style_all(card);
-    lv_obj_set_style_bg_color(card, UI_BOX_1_BG_COLOR, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, UI_BOX_1_BG_OPA, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(card, HVAC_CARD_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(card, HVAC_CARD_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, HVAC_CARD_BORDER_W, LV_PART_MAIN);
-    lv_obj_set_style_border_color(card, HVAC_CARD_MUTED, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(card, LV_OPA_40, LV_PART_MAIN);
+    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(card, HVAC_CARD_PAD, LV_PART_MAIN);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
 }

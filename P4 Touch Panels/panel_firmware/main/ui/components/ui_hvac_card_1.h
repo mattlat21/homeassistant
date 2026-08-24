@@ -7,7 +7,7 @@
 
 /**
  * Compact read-only HVAC zone tile for the HVAC overview grid.
- * Shows room name, current/set temperatures, and HVAC mode as a coloured border.
+ * Shows room name, current/set temperatures, and HVAC mode as a full card background colour.
  */
 lv_obj_t *ui_hvac_card_1_create(lv_obj_t *parent, uint8_t row, uint8_t col, const char *room_name);
 

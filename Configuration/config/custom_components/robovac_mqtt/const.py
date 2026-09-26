@@ -9,17 +9,57 @@ DOMAIN: Final = "robovac_mqtt"
 VACS: Final = "vacs"
 DEVICES: Final = "devices"
 
+# Options keys
+CONF_MAP_MAX_PX: Final = "map_max_px"
+DEFAULT_MAP_MAX_PX: Final = 512
+
+CONF_ROBOT_STYLE: Final = "robot_style"
+DEFAULT_ROBOT_STYLE: Final = "googly"
+
+CONF_NOTIFY_DESKTOP: Final = "notify_desktop"
+DEFAULT_NOTIFY_DESKTOP: Final = True
+CONF_NOTIFY_MOBILE_SERVICE: Final = "notify_mobile_service"
+DEFAULT_NOTIFY_MOBILE_SERVICE: Final = ""
+
+# Config-entry options keys for the optional local-Tuya transport and
+# per-device overrides. Stored shape:
+#   options[CONF_LOCAL_DEVICES] = {
+#       device_id: {
+#           "host": "1.2.3.4",          # CONF_LOCAL_HOST
+#           "version": 3.3,             # CONF_LOCAL_VERSION
+#           "rooms": {1: "Lounge"},     # CONF_ROOM_NAMES (parsed from textarea)
+#       }
+#   }
+CONF_LOCAL_DEVICES: Final = "local_devices"
+CONF_LOCAL_HOST: Final = "host"
+CONF_LOCAL_VERSION: Final = "version"
+CONF_ROOM_NAMES: Final = "rooms"
+
 # Eufy API URLs
 EUFY_API_BASE_URL: Final = "https://api.eufylife.com"
 EUFY_HOME_API_BASE_URL: Final = "https://home-api.eufylife.com"
 EUFY_AIOT_API_BASE_URL: Final = "https://aiot-clean-api-pr.eufylife.com"
 
 EUFY_API_LOGIN: Final = f"{EUFY_HOME_API_BASE_URL}/v1/user/email/login"
+# v2 unified-app login (new "Eufy" app, eufy-app client credentials)
+EUFY_API_LOGIN_V2: Final = f"{EUFY_HOME_API_BASE_URL}/v1/user/v2/email/login"
 EUFY_API_USER_INFO: Final = f"{EUFY_API_BASE_URL}/v1/user/user_center_info"
 EUFY_API_DEVICE_LIST: Final = (
     f"{EUFY_AIOT_API_BASE_URL}/app/devicerelation/get_device_list"
 )
 EUFY_API_DEVICE_V2: Final = f"{EUFY_API_BASE_URL}/v1/device/v2"
+# Home-api device list fallback (unified Eufy app)
+EUFY_API_DEVICE_LIST_HOME: Final = f"{EUFY_HOME_API_BASE_URL}/v1/device/"
+
+# Tuya productId/productKey -> Eufy model code.
+# Tuya Cloud devices (legacy transport) report a productId that does NOT match
+# the Eufy v2 device id, so findModel() cannot match them against the v2 list.
+# This table maps a known Tuya productId to a model code. Add entries as new
+# productIds are confirmed from real devices; do NOT assume every localKey-
+# bearing device is an S1 Pro (see EufyLogin._resolve_tuya_model, issue #131).
+TUYA_PRODUCT_MODELS: Final[dict[str, str]] = {
+    # "<tuya_product_id>": "T2080A",   # S1 Pro — fill in from a confirmed device
+}
 EUFY_API_MQTT_INFO: Final = (
     f"{EUFY_AIOT_API_BASE_URL}/app/devicemanage/get_user_mqtt_info"
 )
@@ -70,6 +110,7 @@ EUFY_CLEAN_DEVICES = {
     "T2320": "Robovac X9 Pro",
     "T2351": "Robovac X10 Pro Omni",
     "T2080": "Robovac S1",
+    "T2080A": "Robovac S1 Pro",
 }
 
 EUFY_CLEAN_X_SERIES = ["T2262", "T2261", "T2266", "T2276", "T2320", "T2351"]
@@ -106,7 +147,7 @@ EUFY_CLEAN_C_SERIES = [
     "T2292",
 ]
 
-EUFY_CLEAN_S_SERIES = ["T2119", "T2080"]
+EUFY_CLEAN_S_SERIES = ["T2119", "T2080", "T2080A"]
 
 
 class TriggerSource(int, Enum):
@@ -519,6 +560,8 @@ DPS_MAP = {
     "MULTI_MAP_SW": "156",
     "MAP_STREAM": "166",
     "UNSETTING": "176",
+    "VOICE_LANGUAGE": "162",
+    "VOLUME": "161",
     "MAP_EDIT_REQUEST": "170",
     "MULTI_MAP_MANAGE": "172",
     "MAP_MANAGE": "169",
@@ -541,8 +584,6 @@ KNOWN_UNPROCESSED_DPS: frozenset[str] = frozenset(
         "150",  # Unknown, value: None
         "151",  # Unknown, value: True
         "159",  # Unknown, value: True
-        "161",  # Unknown, likely volume (value: 80)
-        "162",  # Unknown protobuf, timing config
         "171",  # Unknown, value: None
         "174",  # Unknown, value: None
         "175",  # Unknown, value: None
@@ -552,6 +593,103 @@ KNOWN_UNPROCESSED_DPS: frozenset[str] = frozenset(
 
 # DPS 179 key (no named entry in DPS_MAP — undocumented telemetry channel)
 DPS_ROBOT_TELEMETRY = "179"
+
+# DPS 162 voice/language catalog: set_id → (display_label, raw_b64_request)
+# raw_b64_request is the exact LanguageRequest proto payload captured from the
+# Eufy app's /req MQTT messages (firmware v22). If a firmware update changes
+# voice pack URLs the device will reject the MD5 check — re-capture then.
+VOICE_CATALOG: dict[int, tuple[str, str]] = {
+    1200: ("Chinese (Simplified)", "hAEKgQEIsAkSVGh0dHBzOi8vZDNwa2JnazAxb291aGwuY2xvdWRmcm9udC5uZXQvdm9pY2UvcHJvZC8xNzc0MjMwOTIxMjA1Nzc2X3poX2NuLTEyMDAtdjIyLnppcBogNjY3NmIyMzYxZWIzMWM0NTQyODhjYTc3YjZjNTg5ZjAgFijUgEc="),
+    1201: ("English (Female)", "iwEKiAEIsQkSW2h0dHBzOi8vZDNwa2JnazAxb291aGwuY2xvdWRmcm9udC5uZXQvdm9pY2UvcHJvZC8xNzc0MjMwOTk4MzUxODc3X2VuX3VzX2ZlbWFsZS0xMjAxLXYyMi56aXAaIGE2ZTY5OGUxZDRmNWQ2ZDExOWY1YTEwMTEzZTQ0NmVjIBYowvtX"),
+    1202: ("English (Male)", "iQEKhgEIsgkSWWh0dHBzOi8vZDNwa2JnazAxb291aGwuY2xvdWRmcm9udC5uZXQvdm9pY2UvcHJvZC8xNzc0MjMxMDQzODE2NDY1X2VuX3VzX21hbGUtMTIwMi12MjIuemlwGiBjNzcwNmRkN2U1NTFkZjUwNjQ4MjNlNWQ4MGVjN2IzMCAWKN67Vg=="),
+    1203: ("German", "gAEKfgizCRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzEwODQ0NzE4NTJfZGUtMTIwMy12MjIuemlwGiAyYmJjZWYzNzczNjJjOWFkNjY4MjY4YzI1MWM3NWI1NiAWKJa7bA=="),
+    1204: ("Japanese", "gAEKfgi0CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzExNTU5OTYyNDNfamEtMTIwNC12MjIuemlwGiBiNmVmOGUzM2ZjMTgwOGU1OWQyZDRjN2UxOWM3MTBhOSAWKP6IcA=="),
+    1205: ("Spanish", "gAEKfgi1CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzEyNDU4OTEyODJfZXMtMTIwNS12MjIuemlwGiAwNzM1ZTYzY2NhYjcwNTZlYjJlNDQ4ZGY2YzM5ZGRkMyAWKIbuZA=="),
+    1206: ("Italian", "gAEKfgi2CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzEyODY3ODQ3MTZfaXQtMTIwNi12MjIuemlwGiBhODgwNDBlNjZmNGRmNGU2N2RjNTk1MTNiZjVhMGNhYiAWKNaqVw=="),
+    1207: ("French", "gAEKfgi3CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzEzNTcyMjIwOTBfZnItMTIwNy12MjIuemlwGiAzNzNhZDEyODA1NGZkYmM5NzEwMWQwNTJmZjNjN2IyZCAWKI65XQ=="),
+    1208: ("Portuguese (Brazil)", "gAEKfgi4CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzEzOTk4NTMxNDFfcHQtMTIwOC12MjIuemlwGiBkYTI3ZjEyMGRlMTkyNjE5ZTc1YjdmODdhYzgwNmM3ZCAWKN6UaQ=="),
+    1209: ("Turkish", "gAEKfgi5CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzE0NDc2MTMyMDlfdHItMTIwOS12MjIuemlwGiAxOTE1ZDEzNmIwZTM1ODlmNDYzZjVhZjBmZWMyYmI1MSAWKP7kXQ=="),
+    1210: ("Russian", "gAEKfgi6CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzE0OTY0NDgzMTBfcnUtMTIxMC12MjIuemlwGiA5ODkyNWQ5MTFjYWVmNDQ4ZTg2ZmE3ZWYwMjZmMjJhNCAWKO7/ag=="),
+    1211: ("Arabic", "gAEKfgi7CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzE1NTUwMDE0NDhfYXItMTIxMS12MjIuemlwGiBmMTcyMTYwYTRmMmMzODFkMDJkYzY4OWJjMzZkNTdjNyAWKN6cbg=="),
+    1212: ("Korean", "gAEKfgi8CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzI2MjIyNDA5NjFfa28tMTIxMi12MjIuemlwGiBjZTQ0NDIzYTMzZjhjYzhkNzUxMGM0NGU1OWExODMzYSAWKJ7MZg=="),
+    1213: ("Dutch", "gAEKfgi9CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzI2NTEzMDg4NTVfbmwtMTIxMy12MjIuemlwGiBjODNiN2JmOWNkMmYzM2U3OTFkMzRkZmZiOWExMzc5MyAWKP6SYg=="),
+    1214: ("Polish", "gAEKfgi+CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzI2OTU1NDY3ODFfcGwtMTIxNC12MjIuemlwGiBhNTA0OWFhZjJmMmFiMTc4MWZlOGU3NjAxMTRiZDQ5NSAWKJbobA=="),
+    1215: ("Thai", "gAEKfgi/CRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzI4Mzc1MzMzNzNfdGgtMTIxNS12MjIuemlwGiAwZWMwZjIwZWQwMzNmOGM3YTRmMDMyOWJmYzY5Y2Q0OCAWKM6QVA=="),
+    1216: ("Vietnamese", "gAEKfgjACRJRaHR0cHM6Ly9kM3BrYmdrMDFvb3VobC5jbG91ZGZyb250Lm5ldC92b2ljZS9wcm9kLzE3NzQyMzI5MzYzMTU1NzZfdm4tMTIxNi12MjIuemlwGiBkY2I4YmIyZGM0YzJlNjk5ZDA5M2NhYzMzNzYwZDgxOSAWKL77VA=="),
+}
+
+
+# --- Scalar (Tuya-style) DPS protocol ---------------------------------------
+# Some Eufy models (verified: T2210 "G50") do NOT use the Anker length-prefixed
+# protobuf DPS blobs. Instead they expose state as plain integers / JSON on the
+# Tuya DPS numbers, and send NO protobuf WorkStatus. The protocol is detected at
+# runtime from value shapes (see api/cloud.py:checkApiType) — not from a model
+# list — so any cloud-only Tuya-schema device is handled generically.
+# This is a sibling of the Tuya-Cloud "legacy" path (jeppesens PR #110), but here
+# the transport is Anker MQTT and the values are ints (not strings).
+# See docs/g50_capture/FINDINGS.md for the reverse-engineering evidence and the
+# canonical Tuya DPS names (damacus/robovac).
+SCALAR_DPS = {
+    "STATE": "15",  # activity status (int Tuya STATUS)
+    "DETANGLE": "153",  # write 1 = start roller-brush detangle (read=0 in /res)
+    # DPS 5 is the work-mode command AND a reported sub-state. Captured from the
+    # app's /req: writing 5=1 starts an auto clean, 5=3 returns to the dock.
+    "WORK_MODE": "5",
+    "PAUSE": "122",  # write 1=pause, 2=resume (also a /res motion flag: 1=stationary)
+    "SUCTION": "102",  # Tuya FAN_SPEED: 0=Quiet 1=Standard 2=Turbo 3=Max
+    "FIND_ROBOT": "103",  # Tuya LOCATE: 0/1
+    "BATTERY": "104",  # Tuya BATTERY_LEVEL: 0-100 %
+    "DND": "107",  # Tuya DO_NOT_DISTURB: JSON {"en":bool,"start_t","end_t"}
+    "CLEAN_TIME": "109",  # cleaning time in SECONDS (verified: 300=5min, 780=13min)
+    "CLEAN_AREA": "110",  # cleaning area in m² (verified: 4=43ft², 3=32ft²)
+    "VOLUME": "111",  # voice volume 0-10 (=0-100% in 10% steps)
+    "BOOST_IQ": "118",  # Tuya BOOST_IQ: 0/1
+    "AUTO_RETURN": "135",  # "Auto-Return Cleaning" toggle: 0/1 (Tuya auto_return)
+    "CHILD_LOCK": "139",  # child lock: 0/1
+    "ACTIVITY_LOG": "142",  # activity-log upload toggle: 0/1
+    "SCHEDULE": "151",  # JSON {"l":[{e,t,r,s,f,id}]}
+    "CLEAN_PATTERN": "154",  # 1=Arranged 2=Random (int, NOT protobuf here)
+    "ACCESSORIES": "150",  # JSON usage counters
+    # Error code: canonical Tuya ERROR_CODE is 106; the G50 capture also showed a
+    # scalar on 177. We read both (non-zero wins) since which carries a live fault
+    # is unconfirmed.
+    "ERROR_CODE": "106",
+    "ERROR_CODE_ALT": "177",
+}
+
+# DPS 15 (scalar state int) -> activity string (same vocabulary the novel parser
+# produces, so the vacuum/binary_sensor entities consume it unchanged).
+SCALAR_STATE_NAMES = {
+    0: "idle",
+    1: "idle",
+    2: "cleaning",
+    4: "returning",
+    5: "docked",  # on dock, actively charging
+    6: "docked",  # on dock, charge complete (battery full)
+    7: "paused",
+}
+
+# Scalar suction reuses the first four EUFY_CLEAN_NOVEL_CLEAN_SPEED entries
+# (Quiet/Standard/Turbo/Max); BoostIQ is a separate switch (DPS 118), not a 5th speed.
+SCALAR_SUCTION_LEVELS = [s.value for s in EUFY_CLEAN_NOVEL_CLEAN_SPEED[:4]]
+
+# DPS 154 (scalar clean path pattern)
+SCALAR_CLEAN_PATTERN_NAMES = {1: "Arranged", 2: "Random"}
+
+# Scalar movement command values (DPS 5 work-mode), captured from the app /req.
+SCALAR_WORK_MODE_START = 1  # {"5": 1} -> start auto clean
+SCALAR_WORK_MODE_GO_HOME = 3  # {"5": 3} -> return to dock
+
+# Scalar accessory max life in HOURS. DPS 150 reports usage counters in MINUTES;
+# % remaining = 1 - used_min / (max_h * 60). Calibrated against the G50 app's
+# reported remaining-hours/percentages (see docs/g50_capture/FINDINGS.md). These
+# differ from the X-series ACCESSORY_MAX_LIFE values below.
+SCALAR_ACCESSORY_MAX_LIFE = {
+    "filter_usage": 200,
+    "main_brush_usage": 360,  # rolling brush
+    "side_brush_usage": 250,
+    "sensor_usage": 35,
+}
 
 
 ACCESSORY_MAX_LIFE = {
@@ -590,3 +728,77 @@ EUFY_CLEAN_APP_TRIGGER_MODES = {
 }
 
 DRY_DURATION_MAP = {"SHORT": "2h", "MEDIUM": "3h", "LONG": "4h"}
+
+# ---------------------------------------------------------------------------
+# Legacy (Tuya Cloud) device support
+# ---------------------------------------------------------------------------
+
+# Legacy DPS keys used by older Tuya-based devices (G-series, C-series, S-series)
+LEGACY_DPS_MAP = {
+    "PLAY_PAUSE": "2",
+    "DIRECTION": "3",
+    "WORK_MODE": "5",
+    "WORK_STATUS": "15",
+    "GO_HOME": "101",
+    "CLEAN_SPEED": "102",
+    "FIND_ROBOT": "103",
+    "BATTERY_LEVEL": "104",
+    "ERROR_CODE": "106",
+}
+
+# Reverse lookup: DPS number string -> key name
+LEGACY_DPS_MAP_BY_VALUE = {v: k for k, v in LEGACY_DPS_MAP.items()}
+
+# Legacy work status string -> activity mapping
+LEGACY_WORK_STATUS_MAP = {
+    "Running": "cleaning",
+    "Cleaning": "cleaning",
+    "cleaning": "cleaning",
+    "Spot": "cleaning",
+    "spot": "cleaning",
+    "Charging": "docked",
+    "charging": "docked",
+    "standby": "idle",
+    "Standby": "idle",
+    "Sleeping": "idle",
+    "sleeping": "idle",
+    "Sleep": "idle",
+    "sleep": "idle",
+    "Recharge": "returning",
+    "recharge": "returning",
+    "Completed": "docked",
+    "completed": "docked",
+    "Fault": "error",
+    "fault": "error",
+    "Go Home": "returning",
+    "Go_Home": "returning",
+    "go_home": "returning",
+}
+
+# Legacy fan speed strings (sent/received as plain strings)
+LEGACY_CLEAN_SPEEDS = ["No_suction", "Standard", "Quiet", "Turbo", "Boost_IQ", "Max"]
+
+# Legacy work mode string -> display name
+LEGACY_WORK_MODES = {
+    "auto": "Auto",
+    "Nosweep": "No Sweep",
+    "SmallRoom": "Small Room",
+    "room": "Room",
+    "zone": "Zone",
+    "Edge": "Edge",
+    "Spot": "Spot",
+}
+
+# Tuya Cloud API credentials (from upstream martijnpoppen/eufy-clean)
+# Public Tuya app credentials embedded in the upstream Eufy Clean JS SDK
+# (martijnpoppen/eufy-clean). These are NOT user secrets — they are static
+# app-level keys shared by all Eufy/Tuya integrations.
+TUYA_CLIENT_ID = "yx5v9uc3ef9wg3v9atje"
+TUYA_SECRET = "s8x78u7xwymasd9kqa7a73pjhxqsedaj"
+TUYA_SECRET2 = "cepev5pfnhua4dkqkdpmnrdxx378mpjr"
+TUYA_CERT_SIGN = "A"
+TUYA_API_ET_VERSION = "0.0.1"
+TUYA_REGIONS = {
+    "EU": "https://a1.tuyaeu.com/api.json",
+    "US": "https://a1.tuyaus.com/api.json",
+}

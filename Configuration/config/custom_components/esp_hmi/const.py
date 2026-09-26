@@ -26,18 +26,17 @@ DISPLAY_BRIGHTNESS_MAX = 100
 SCREEN_OPTIONS: tuple[str, ...] = (
     "home",
     "ollie_room",
-    "dashboard",
+    "ollie_room_legacy",
     "front_gate",
     "pipboy",
     "settings",
+    "debug",
     "study",
     "about",
     "front_door",
-    "kitchen",
-    "studio",
     "hvac",
+    "hvac_legacy",
     "house_battery",
-    "penny_room",
 )
 
 # Service names
@@ -53,7 +52,7 @@ SERVICE_REBOOT = "reboot"
 OTA_CMD_SUFFIX = "cmd/ota_update"
 
 # Published firmware builds (add new versions when binaries are staged/uploaded)
-FIRMWARE_VERSION_OPTIONS: tuple[str, ...] = ("1.1.2", "1.1.3", "1.1.4")
+FIRMWARE_VERSION_OPTIONS: tuple[str, ...] = ("1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7")
 
 # OTA image URL: {base}/v{version}/esp_hmi.bin
 FIRMWARE_OTA_URL_BASE = "http://latimer.net/ha/fware/esphmi"

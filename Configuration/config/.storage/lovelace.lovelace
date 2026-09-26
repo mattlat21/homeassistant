@@ -75,6 +75,118 @@
               "cards": [
                 {
                   "type": "markdown",
+                  "content": "<h1><center>Front Yard</center></h1>",
+                  "grid_options": {
+                    "columns": "full"
+                  },
+                  "text_only": true
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Open",
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "type": "markdown",
+                  "content": "# Gate is Closed",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "grid_options": {
+                    "columns": "full",
+                    "rows": "auto"
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_close_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "name": "Close Gate",
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
+                      "state": "on"
+                    }
+                  ]
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "button.front_gate_controller_open_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "toggle"
+                  },
+                  "visibility": [
+                    {
+                      "condition": "state",
+                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
+                      "state": "on"
+                    }
+                  ],
+                  "name": "Open Gate"
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "entity": "input_button.activate_gate",
+                  "show_state": false,
+                  "grid_options": {
+                    "columns": 6,
+                    "rows": 2
+                  },
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "button.press",
+                    "target": {
+                      "entity_id": "button.front_gate_controller_activate_gate"
+                    },
+                    "data": {}
+                  },
+                  "name": "Toggle Gate",
+                  "icon": "mdi:gate-alert"
+                }
+              ],
+              "column_span": 1,
+              "background": {
+                "opacity": 50
+              }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "markdown",
                   "content": "<h1><center>Bedroom</center></h1>",
                   "grid_options": {
                     "columns": "full"
@@ -118,14 +230,16 @@
                   "show_icon": true,
                   "type": "button",
                   "entity": "switch.matt_s_electric_blanket",
-                  "icon": "mdi:radiator"
+                  "icon": "mdi:radiator",
+                  "name": "Matt's Blanket"
                 },
                 {
                   "show_name": true,
                   "show_icon": true,
                   "type": "button",
                   "entity": "switch.cathy_s_electric_blanket",
-                  "icon": "mdi:radiator"
+                  "icon": "mdi:radiator",
+                  "name": "Cathy's Blanket"
                 },
                 {
                   "show_name": true,
@@ -313,118 +427,6 @@
                   "state": "on"
                 }
               ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "<h1><center>Front Yard</center></h1>",
-                  "grid_options": {
-                    "columns": "full"
-                  },
-                  "text_only": true
-                },
-                {
-                  "type": "markdown",
-                  "content": "# Gate is Open",
-                  "grid_options": {
-                    "columns": "full",
-                    "rows": "auto"
-                  },
-                  "visibility": [
-                    {
-                      "condition": "state",
-                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
-                      "state": "on"
-                    }
-                  ]
-                },
-                {
-                  "type": "markdown",
-                  "content": "# Gate is Closed",
-                  "visibility": [
-                    {
-                      "condition": "state",
-                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
-                      "state": "on"
-                    }
-                  ],
-                  "grid_options": {
-                    "columns": "full",
-                    "rows": "auto"
-                  }
-                },
-                {
-                  "show_name": true,
-                  "show_icon": true,
-                  "type": "button",
-                  "entity": "button.front_gate_controller_close_gate",
-                  "show_state": false,
-                  "grid_options": {
-                    "columns": 6,
-                    "rows": 2
-                  },
-                  "tap_action": {
-                    "action": "toggle"
-                  },
-                  "name": "Close Gate",
-                  "visibility": [
-                    {
-                      "condition": "state",
-                      "entity": "binary_sensor.front_gate_controller_gate_is_open",
-                      "state": "on"
-                    }
-                  ]
-                },
-                {
-                  "show_name": true,
-                  "show_icon": true,
-                  "type": "button",
-                  "entity": "button.front_gate_controller_open_gate",
-                  "show_state": false,
-                  "grid_options": {
-                    "columns": 6,
-                    "rows": 2
-                  },
-                  "tap_action": {
-                    "action": "toggle"
-                  },
-                  "visibility": [
-                    {
-                      "condition": "state",
-                      "entity": "binary_sensor.front_gate_controller_gate_is_closed",
-                      "state": "on"
-                    }
-                  ],
-                  "name": "Open Gate"
-                },
-                {
-                  "show_name": true,
-                  "show_icon": true,
-                  "type": "button",
-                  "entity": "input_button.activate_gate",
-                  "show_state": false,
-                  "grid_options": {
-                    "columns": 6,
-                    "rows": 2
-                  },
-                  "tap_action": {
-                    "action": "perform-action",
-                    "perform_action": "button.press",
-                    "target": {
-                      "entity_id": "button.front_gate_controller_activate_gate"
-                    },
-                    "data": {}
-                  },
-                  "name": "Toggle Gate",
-                  "icon": "mdi:gate-alert"
-                }
-              ],
-              "column_span": 1,
-              "background": {
-                "opacity": 50
-              }
             },
             {
               "type": "grid",
@@ -750,6 +752,35 @@
               "background": {
                 "opacity": 50
               }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "Party Mode",
+                  "icon": "mdi:party-popper",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.start_party_mode",
+                    "target": {}
+                  }
+                },
+                {
+                  "show_name": true,
+                  "show_icon": true,
+                  "type": "button",
+                  "name": "Stop Party Mode",
+                  "icon": "mdi:balloon",
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.start_party_mode_duplicate",
+                    "target": {}
+                  }
+                }
+              ]
             },
             {
               "type": "grid",
@@ -3569,18 +3600,70 @@
                       "name": "Cathy's Bedtime"
                     }
                   ],
-                  "show_header_toggle": false
+                  "show_header_toggle": false,
+                  "grid_options": {
+                    "columns": "full"
+                  }
                 },
                 {
                   "type": "custom:mushroom-number-card",
                   "entity": "input_number.electric_blanket_prewarm_duration",
                   "name": "Electric Blanket Duration"
+                },
+                {
+                  "type": "tile",
+                  "entity": "timer.matt_s_heater_countdown_timer"
+                },
+                {
+                  "type": "tile",
+                  "entity": "input_number.matt_s_heater_duration",
+                  "features": [
+                    {
+                      "type": "numeric-input"
+                    }
+                  ]
                 }
               ],
-              "column_span": 1,
+              "column_span": 2,
               "background": {
                 "opacity": 50
               }
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "New section"
+                },
+                {
+                  "type": "tile",
+                  "entity": "light.lounge_room_lights",
+                  "features": [
+                    {
+                      "type": "light-color-favorites"
+                    }
+                  ]
+                },
+                {
+                  "type": "tile",
+                  "entity": "light.front_door_lights",
+                  "features": [
+                    {
+                      "type": "light-color-favorites"
+                    }
+                  ]
+                },
+                {
+                  "type": "tile",
+                  "entity": "light.kitchen_island_lights",
+                  "features": [
+                    {
+                      "type": "light-color-favorites"
+                    }
+                  ]
+                }
+              ]
             }
           ],
           "cards": [],

@@ -121,18 +121,27 @@ class RadarZoneSensor(CoordinatorEntity, BinarySensorEntity):
                 continue
             tx, ty = 0.0, 0.0
             if isinstance(t, dict):
-                tx = float(t.get('x', 0))
-                ty = float(t.get('y', 0))
+                x_val = t.get('x')
+                y_val = t.get('y')
+                tx = float(x_val) if x_val is not None else 0.0
+                ty = float(y_val) if y_val is not None else 0.0
             elif isinstance(t, (list, tuple)) and len(t) >= 2:
-                tx = float(t[0])
-                ty = float(t[1])
+                tx = float(t[0]) if t[0] is not None else 0.0
+                ty = float(t[1]) if t[1] is not None else 0.0
             else:
                 continue
             if self._is_point_in_polygon(tx, ty, zone_points):
                 is_triggered = True
                 break
         now = time.time()
-        delay_sec = float(self.config.get('delay', 0))
+        delay_val = self.config.get('delay', 0)
+        if delay_val is None or str(delay_val).lower() in ("none", "unknown", "unavailable", ""):
+            delay_sec = 0.0
+        else:
+            try:
+                delay_sec = float(delay_val)
+            except (ValueError, TypeError):
+                delay_sec = 0.0
         if is_triggered:
             self._last_triggered = now
             should_be_on = True

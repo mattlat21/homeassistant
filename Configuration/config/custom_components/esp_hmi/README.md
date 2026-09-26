@@ -7,12 +7,15 @@ It is designed around the MQTT contract documented in the repo root [`README.md`
 - Panel publishes retained identity/parameters on: `esp_hmi/device/<mac>/status/parameters`
 - Panel publishes button presses on: `esp_hmi/device/<mac>/status/button_press`
 - Panel publishes retained live UI + link state on: `esp_hmi/device/<mac>/status/current_screen`, `.../status/mqtt_connected`
+- Panel publishes retained memory metrics on: `esp_hmi/device/<mac>/status/memory` (every 30 s while online)
 - Home Assistant can command the panel via `esp_hmi/device/<mac>/cmd/...`
 
 ## What you get (MVP)
 
 - A **device** per panel (identified by MAC)
 - **Sensors** from `status/parameters` (firmware version, SSID, **MAC address** `AA:BB:…`, **MAC (hex)** `aabbccddeeff`, default screen as read-only, chip info, etc.) plus **Current screen** (from `status/current_screen`)
+- **Diagnostic sensors** **Boot count**, **Restart reason**, and **Last boot** (timestamp set when `boot_count` increases)
+- **Diagnostic memory sensors** from `status/memory` (heap free/min, internal RAM free/total/largest, SPIRAM free/total/largest, DMA free)
 - **Binary sensor** **MQTT connected** (from retained `status/mqtt_connected`; matches firmware MQTT discovery / LWT)
 - **Select** entities: **Default screen**, **Idle timeout screen**, **Go to screen** (immediate `cmd/switch_screen` JSON — current UI only; does not change NVS default)
 - **Number** entities: **Idle timeout seconds** (0 = disabled; publishes `cmd/set_idle_timeout` with the current idle screen slug); **Normal brightness**, **Dim brightness**, **Dim timeout seconds**, **Screen off timeout seconds**, **Brightness fade seconds** (partial JSON to `cmd/set_display_power`)

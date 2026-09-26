@@ -102,6 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN].setdefault("capabilities_cache", {})
     hass.data[DOMAIN].setdefault("pending_auth", {})
     hass.data[DOMAIN].setdefault("live_data", {})
+    hass.data[DOMAIN].setdefault("notified_basic", set())
     www_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "www"))
     if not os.path.isdir(www_dir):
         www_dir = hass.config.path("custom_components", DOMAIN, "www")
@@ -165,7 +166,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         if y_min > y_max: y_min, y_max = y_max, y_min
                         y_min = max(0, y_min)
                         y_max = max(0, y_max)
-                        res.append([int(x_min), int(y_min), int(x_max), int(y_max)])
+                        dly = 0
+                        if "delay" in zones[i]:
+                            try:
+                                dly = int(float(zones[i]["delay"]))
+                            except:
+                                pass
+                        res.append([int(x_min), int(y_min), int(x_max), int(y_max), dly])
                 return res
             payload_dict = {
                 "detect": extract_rects(r_conf.get("hw_detect_zones", [])),
@@ -239,6 +246,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_remove_radar(call: ServiceCall):
         radar_name = call.data["radar_name"]
         await coordinator.async_remove_radar(radar_name)
+        if radar_name in hass.data[DOMAIN].setdefault("notified_basic", set()):
+            hass.data[DOMAIN]["notified_basic"].discard(radar_name)
+            hass.async_create_task(
+                hass.services.async_call("persistent_notification", "dismiss", 
+                    {"notification_id": f"rmm_auth_basic_{radar_name}"})
+            )
         await processor.update(force=True)
     async def handle_update_radar_zone(call: ServiceCall):
         radar_name = call.data.get("radar_name")
@@ -411,10 +424,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                     coordinator.data["radars"][r_name]["auth_passed"] = False
                 if not secret_str:
                     msg_text = get_t(hass, "basic_mode", r_name)
-                    hass.async_create_task(
-                        hass.services.async_call("persistent_notification", "create", 
-                            {"message": msg_text, "title": get_t(hass, "basic_mode_title"), "notification_id": f"rmm_auth_basic_{r_name}_{int(time.time())}"})
-                    )
+                    notified_set = hass.data[DOMAIN].setdefault("notified_basic", set())
+                    if r_name not in notified_set:
+                        hass.async_create_task(
+                            hass.services.async_call("persistent_notification", "create", 
+                                {"message": msg_text, "title": get_t(hass, "basic_mode_title"), "notification_id": f"rmm_auth_basic_{r_name}"})
+                        )
+                        notified_set.add(r_name)
                     if is_manual_add:
                         hass.bus.async_fire("rmm_auth_result", {"success": True, "message": msg_text})
                     hass.data[DOMAIN]["pending_auth"].pop(r_name, None)
@@ -432,6 +448,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 if hmac.compare_digest(expected_sig, signature):
                     success_msg = get_t(hass, "auth_success", r_name)
                     _LOGGER.info(f"RMM: {success_msg}")
+                    if r_name in hass.data[DOMAIN].setdefault("notified_basic", set()):
+                        hass.data[DOMAIN]["notified_basic"].discard(r_name)
+                        hass.async_create_task(
+                            hass.services.async_call("persistent_notification", "dismiss", 
+                                {"notification_id": f"rmm_auth_basic_{r_name}"})
+                        )
                     if is_manual_add:
                         hass.bus.async_fire("rmm_auth_result", {"success": True, "message": success_msg})
                     real_caps = pending.get("real_caps", {})

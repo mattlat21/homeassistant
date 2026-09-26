@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import logging
 from typing import Any, cast
 
@@ -11,15 +13,26 @@ from ..const import (
     EUFY_CLEAN_NOVEL_CLEAN_SPEED,
     MOP_CORNER_MAP,
     MOP_LEVEL_MAP,
+    SCALAR_CLEAN_PATTERN_NAMES,
+    SCALAR_DPS,
+    SCALAR_WORK_MODE_GO_HOME,
+    SCALAR_WORK_MODE_START,
+    VOICE_CATALOG,
 )
 from ..proto.cloud.clean_param_pb2 import CleanParam, CleanParamRequest, Fan
+from ..proto.cloud.common_pb2 import Point, Quadrangle
 from ..proto.cloud.consumable_pb2 import ConsumableRequest
-from ..proto.cloud.control_pb2 import ModeCtrlRequest, SelectRoomsClean
+from ..proto.cloud.control_pb2 import (
+    ModeCtrlRequest,
+    SelectRoomsClean,
+    SelectZonesClean,
+)
 from ..proto.cloud.map_edit_pb2 import MapEditRequest
+from ..proto.cloud.multi_maps_pb2 import MultiMapsManageRequest
 from ..proto.cloud.station_pb2 import StationRequest
 from ..proto.cloud.undisturbed_pb2 import UndisturbedRequest
 from ..proto.cloud.unisetting_pb2 import UnisettingRequest
-from ..utils import encode, encode_message
+from ..utils import encode, encode_message, encode_varint
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,15 +43,14 @@ def _normalize_clean_mode(clean_mode: str) -> str:
 
 
 def build_set_cleaning_mode_command(clean_mode: str) -> dict[str, str]:
-    """Build command to set global cleaning mode."""
+    """Build command to set cleaning mode for both auto and room/area cleans."""
     clean_type_val = CLEAN_TYPE_MAP.get(_normalize_clean_mode(clean_mode))
     if clean_type_val is None:
         _LOGGER.warning("Invalid clean_mode '%s' ignored", clean_mode)
         return {}
 
-    req = CleanParamRequest(
-        clean_param=CleanParam(clean_type={"value": clean_type_val}),
-    )
+    param = CleanParam(clean_type={"value": clean_type_val})
+    req = CleanParamRequest(clean_param=param, area_clean_param=param)
     value = encode_message(req)
     return {DPS_MAP["CLEANING_PARAMETERS"]: value}
 
@@ -65,7 +77,7 @@ def _build_manual_cmd(cmd_name: str, active: bool = True) -> dict[str, str]:
     return {DPS_MAP["GO_HOME"]: value}
 
 
-def build_set_clean_speed_command(clean_speed: str) -> dict[str, str]:
+def build_set_clean_speed_command(clean_speed: str) -> dict[str, int]:
     """Build command to set fan speed."""
     try:
         speed_lower = clean_speed.lower()
@@ -73,7 +85,7 @@ def build_set_clean_speed_command(clean_speed: str) -> dict[str, str]:
 
         if speed_lower in variants:
             idx = variants.index(speed_lower)
-            return {DPS_MAP["CLEAN_SPEED"]: str(idx) if isinstance(idx, int) else idx}
+            return {DPS_MAP["CLEAN_SPEED"]: idx}
 
     except ValueError:
         pass
@@ -82,28 +94,26 @@ def build_set_clean_speed_command(clean_speed: str) -> dict[str, str]:
 
 
 def build_set_water_level_command(water_level: str) -> dict[str, str]:
-    """Build command to set global mop water level."""
+    """Build command to set mop water level for both auto and room/area cleans."""
     level_val = MOP_LEVEL_MAP.get(water_level.lower())
     if level_val is None:
         _LOGGER.warning("Invalid water_level '%s' ignored", water_level)
         return {}
-    req = CleanParamRequest(
-        clean_param=CleanParam(mop_mode={"level": level_val}),
-    )
+    param = CleanParam(mop_mode={"level": level_val})
+    req = CleanParamRequest(clean_param=param, area_clean_param=param)
     value = encode_message(req)
     return {DPS_MAP["CLEANING_PARAMETERS"]: value}
 
 
 def build_set_cleaning_intensity_command(cleaning_intensity: str) -> dict[str, str]:
-    """Build command to set global cleaning intensity."""
+    """Build command to set cleaning intensity for both auto and room/area cleans."""
     extent_val = CLEAN_EXTENT_MAP.get(cleaning_intensity.lower())
     if extent_val is None:
         _LOGGER.warning("Invalid cleaning_intensity '%s' ignored", cleaning_intensity)
         return {}
 
-    req = CleanParamRequest(
-        clean_param=CleanParam(clean_extent={"value": extent_val}),
-    )
+    param = CleanParam(clean_extent={"value": extent_val})
+    req = CleanParamRequest(clean_param=param, area_clean_param=param)
     value = encode_message(req)
     return {DPS_MAP["CLEANING_PARAMETERS"]: value}
 
@@ -146,6 +156,84 @@ def build_room_clean_command(
         )
     )
     return {DPS_MAP["PLAY_PAUSE"]: value}
+
+
+def build_zone_clean_command(
+    zones_cm: list[list[tuple[int, int]]],
+    map_id: int = 3,
+    clean_times: int = 1,
+) -> dict[str, str]:
+    """Build command to clean one or more free-form zones (select-zones clean).
+
+    *zones_cm* is a list of quadrilaterals; each quad is a list of four
+    ``(x, y)`` corner points in centimetres (the device's world frame, where
+    1 unit = 1 cm = metres * 100), ordered around the rectangle.  Callers
+    convert from screen/normalized coordinates before reaching this builder
+    (see ``EufyCleanCoordinator.normalized_rects_to_quads_cm``).
+
+    Dispatch is identical to ``build_room_clean_command`` — a ``ModeCtrlRequest``
+    with method ``START_SELECT_ZONES_CLEAN`` carried on DPS 152.
+    """
+    proto_zones: list[SelectZonesClean.Zone] = []
+    for quad in zones_cm:
+        if len(quad) != 4:
+            _LOGGER.warning(
+                "Zone needs exactly 4 corner points, got %d — skipped", len(quad)
+            )
+            continue
+        pts = [Point(x=int(round(px)), y=int(round(py))) for px, py in quad]
+        proto_zones.append(
+            SelectZonesClean.Zone(
+                quadrangle=Quadrangle(p0=pts[0], p1=pts[1], p2=pts[2], p3=pts[3]),
+                clean_times=max(1, int(clean_times)),
+            )
+        )
+
+    if not proto_zones:
+        return {}
+
+    value = encode_message(
+        ModeCtrlRequest(
+            method=cast(
+                ModeCtrlRequest.Method, int(EUFY_CLEAN_CONTROL.START_SELECT_ZONES_CLEAN)
+            ),
+            select_zones_clean=SelectZonesClean(
+                zones=proto_zones,
+                map_id=int(map_id),
+            ),
+        )
+    )
+    return {DPS_MAP["PLAY_PAUSE"]: value}
+
+
+def build_map_load_command(cloud_mapid: int, seq: int = 1) -> dict[str, str]:
+    """Build a command to switch the active map to a saved multi-map by id.
+
+    Sends ``MultiMapsManageRequest{method=MAP_LOAD, common.cloud_mapid=<id>}`` on
+    the multi-map-manage DP (172). *cloud_mapid* is the saved map's id as reported
+    by the device (the ``map_id`` carried in incoming MAP_DATA); *seq* is an
+    arbitrary request sequence number the device echoes back in its ack.
+
+    NOTE — the robot pose does NOT switch automatically. Loading a map switches
+    the active map and its room list right away, but the robot's pose / coordinate
+    frame stays on the previous map until the vacuum RE-LOCALIZES, which only
+    happens once it MOVES. To ground the new map immediately after a switch, run a
+    small movement — a single-room clean (``room_clean`` / ``clean_segments``) is
+    the most reliable, since it targets a stable room id. Prefer starting it from a
+    script or the room LIST in the card; avoid coordinate-based targeting
+    (tap-a-room-on-the-map or zone drawing) until the frame re-grounds — the
+    transform is stale right after a switch. Once the robot moves, the reported
+    position snaps onto the loaded map.
+    """
+    if int(cloud_mapid) <= 0:
+        _LOGGER.warning("map_load ignored: cloud_mapid must be a positive map id")
+        return {}
+    req = MultiMapsManageRequest(
+        method=MultiMapsManageRequest.MAP_LOAD,
+        seq=int(seq),
+        common=MultiMapsManageRequest.Common(cloud_mapid=int(cloud_mapid)),
+    )
+    return {DPS_MAP["MULTI_MAP_MANAGE"]: encode_message(req)}
 
 
 def build_set_room_custom_command(
@@ -290,6 +378,152 @@ def build_find_robot_command(active: bool) -> dict[str, Any]:
     return {DPS_MAP["FIND_ROBOT"]: active}
 
 
+# --- scalar command builders (e.g. T2210/G50) ----------------------
+# These DPS are scalar-protocol-only plain-int writes (no protobuf), so they are
+# model-agnostic. Verified live against a real G50 (see docs/g50_capture/FINDINGS.md).
+
+
+def build_set_boost_iq_command(active: bool) -> dict[str, Any]:
+    """scalar-protocol: toggle BoostIQ auto carpet boost (DPS 118)."""
+    return {SCALAR_DPS["BOOST_IQ"]: int(bool(active))}
+
+
+def build_set_cleaning_pattern_command(pattern: str) -> dict[str, Any]:
+    """scalar-protocol: set clean path pattern Arranged(1)/Random(2) (DPS 154)."""
+    reverse = {name: value for value, name in SCALAR_CLEAN_PATTERN_NAMES.items()}
+    return {SCALAR_DPS["CLEAN_PATTERN"]: reverse.get(pattern, 1)}
+
+
+def build_set_volume_command(volume_pct: int) -> dict[str, Any]:
+    """scalar-protocol: set voice volume (DPS 111, 0-10 = 0-100% in 10% steps)."""
+    step = max(0, min(10, round(volume_pct / 10)))
+    return {SCALAR_DPS["VOLUME"]: step}
+
+
+def build_set_volume_novel_command(volume_pct: int) -> dict[str, Any]:
+    """novel-protocol: set voice volume (DPS 161, plain int 0-100)."""
+    return {DPS_MAP["VOLUME"]: max(0, min(100, volume_pct))}
+
+
+def build_set_voice_command(set_id: int) -> dict[str, Any]:
+    """novel-protocol: set voice language (DPS 162, raw LanguageRequest payload)."""
+    entry = VOICE_CATALOG.get(set_id)
+    if not entry:
+        _LOGGER.warning("Unknown voice set_id %d — command ignored", set_id)
+        return {}
+    return {DPS_MAP["VOICE_LANGUAGE"]: entry[1]}
+
+
+def build_set_auto_return_command(active: bool) -> dict[str, Any]:
+    """scalar-protocol: toggle "Auto-Return Cleaning" (DPS 135)."""
+    return {SCALAR_DPS["AUTO_RETURN"]: int(bool(active))}
+
+
+def build_set_activity_log_command(active: bool) -> dict[str, Any]:
+    """scalar-protocol: toggle activity-log upload (DPS 142)."""
+    return {SCALAR_DPS["ACTIVITY_LOG"]: int(bool(active))}
+
+
+def build_scalar_reset_accessory_command(accessory_key: str) -> dict[str, Any]:
+    """scalar-protocol: reset an accessory's life counter to 0 (DPS 150 JSON).
+
+    accessory_key is the DPS 150 field, e.g. "sensors", "dust_filter",
+    "side_brush", "roller_brush". Captured from the app's /req.
+    """
+    if not accessory_key:
+        return {}
+    return {SCALAR_DPS["ACCESSORIES"]: json.dumps({accessory_key: 0})}
+
+
+def build_scalar_suction_command(fan_speed: str) -> dict[str, Any]:
+    """scalar-protocol: set suction by name (DPS 102, 0=Quiet..3=Max)."""
+    levels = [s.value for s in EUFY_CLEAN_NOVEL_CLEAN_SPEED[:4]]
+    if fan_speed not in levels:
+        return {}
+    return {SCALAR_DPS["SUCTION"]: levels.index(fan_speed)}
+
+
+def build_scalar_child_lock_command(active: bool) -> dict[str, Any]:
+    """scalar-protocol: toggle child lock (DPS 139)."""
+    return {SCALAR_DPS["CHILD_LOCK"]: int(bool(active))}
+
+
+def build_scalar_find_robot_command(active: bool) -> dict[str, Any]:
+    """scalar-protocol: find-robot start/stop (DPS 103)."""
+    return {SCALAR_DPS["FIND_ROBOT"]: int(bool(active))}
+
+
+def build_scalar_undisturbed_command(
+    active: bool, begin_hour: int, begin_minute: int, end_hour: int, end_minute: int
+) -> dict[str, Any]:
+    """scalar-protocol: set DND (DPS 107 JSON {en, start_t:"HHMM", end_t:"HHMM"})."""
+    payload = {
+        "en": bool(active),
+        "start_t": f"{begin_hour:02d}{begin_minute:02d}",
+        "end_t": f"{end_hour:02d}{end_minute:02d}",
+    }
+    return {SCALAR_DPS["DND"]: json.dumps(payload)}
+
+
+def _encode_proto_ldelim(field_num: int, data: bytes) -> bytes:
+    """Encode a protobuf length-delimited field."""
+    tag = (field_num << 3) | 2
+    return encode_varint(tag) + encode_varint(len(data)) + data
+
+
+def _encode_proto_varint_field(field_num: int, value: int) -> bytes:
+    """Encode a protobuf varint field, omitting zero (proto3 default)."""
+    if value == 0:
+        return b""
+    return encode_varint((field_num << 3) | 0) + encode_varint(value)
+
+
+_OFF_PEAK_REQUEST_FIELD_NUM = 22  # Field 22 in UnisettingRequest = OffPeakCharging (field 23 in Response)
+
+
+def _build_off_peak_sub_bytes(
+    enabled: bool, begin_hour: int, begin_minute: int, end_hour: int, end_minute: int
+) -> bytes:
+    """Build the OffPeakCharging sub-message bytes for DPS 176 field 22."""
+    enable_inner = _encode_proto_varint_field(1, 1 if enabled else 0)
+    begin_inner = (
+        _encode_proto_varint_field(1, begin_hour)
+        + _encode_proto_varint_field(2, begin_minute)
+    )
+    end_inner = (
+        _encode_proto_varint_field(1, end_hour)
+        + _encode_proto_varint_field(2, end_minute)
+    )
+    return (
+        _encode_proto_ldelim(1, enable_inner)
+        + _encode_proto_ldelim(2, begin_inner)
+        + _encode_proto_ldelim(3, end_inner)
+    )
+
+
+def build_set_off_peak_charging_command(
+    enabled: bool,
+    begin_hour: int,
+    begin_minute: int,
+    end_hour: int,
+    end_minute: int,
+) -> dict[str, str]:
+    """Build command to set off-peak charging schedule (DPS 176 field 23).
+
+    Sends only field 23 — the off-peak charging sub-message.  Including any
+    other UnisettingRequest field (e.g. children_lock) risks overwriting device
+    state with stale coordinator values, so we keep this minimal.
+    """
+    off_peak_bytes = _encode_proto_ldelim(
+        _OFF_PEAK_REQUEST_FIELD_NUM,
+        _build_off_peak_sub_bytes(enabled, begin_hour, begin_minute, end_hour, end_minute),
+    )
+    prefixed = encode_varint(len(off_peak_bytes)) + off_peak_bytes
+    value = base64.b64encode(prefixed).decode()
+    _LOGGER.debug("Off-peak command DPS 176 field 22: %s", value)
+    return {DPS_MAP["UNSETTING"]: value}
+
+
 def build_set_child_lock_command(active: bool) -> dict[str, str]:
     """Build command to toggle the child lock setting."""
     value = encode(UnisettingRequest, {"children_lock": {"value": active}})
@@ -317,9 +551,51 @@ def build_set_undisturbed_command(
     return {DPS_MAP["UNDISTURBED"]: value}
 
 
-def build_command(command: str, **kwargs: Any) -> dict[str, Any]:
-    """Unified command builder."""
+def build_command(
+    command: str, api_type: str = "novel", **kwargs: Any
+) -> dict[str, Any]:
+    """Unified command builder.
+
+    *api_type* ("novel" | "scalar") lets shared commands branch to scalar
+    (Tuya-style int/JSON) writes for scalar-protocol devices (e.g. T2210/G50).
+    Callers that omit it get the default novel (protobuf) behaviour.
+    """
     cmd = command.lower()
+    is_scalar = api_type == "scalar"
+
+    if is_scalar:
+        # Movement, captured verbatim from the app's /req (see FINDINGS.md):
+        #   start/clean -> {"5": 1};  go home -> {"5": 3};
+        #   pause -> {"122": 1};  resume -> {"122": 0}.
+        # (DPS 2/101 — the Tuya-canonical movement DPs — are ACKed but ignored by
+        # the G50 firmware; the app drives DPS 5 + 122 instead.)
+        if cmd == "start_auto":
+            return {SCALAR_DPS["WORK_MODE"]: SCALAR_WORK_MODE_START}
+        if cmd in ("play", "resume"):
+            return {SCALAR_DPS["PAUSE"]: 2}
+        if cmd in ("pause", "stop"):
+            return {SCALAR_DPS["PAUSE"]: 1}
+        if cmd in ("return_to_base", "go_home"):
+            return {SCALAR_DPS["WORK_MODE"]: SCALAR_WORK_MODE_GO_HOME}
+        if cmd == "clean_spot":
+            _LOGGER.warning("Spot clean is not yet mapped for scalar devices.")
+            return {}
+        if cmd == "set_fan_speed":
+            return build_scalar_suction_command(kwargs.get("fan_speed", ""))
+        if cmd == "set_child_lock":
+            return build_scalar_child_lock_command(bool(kwargs.get("active", True)))
+        if cmd in ("locate", "find_robot"):
+            return build_scalar_find_robot_command(bool(kwargs.get("active", True)))
+        if cmd == "set_do_not_disturb":
+            return build_scalar_undisturbed_command(
+                bool(kwargs.get("active", True)),
+                int(kwargs.get("begin_hour", 22)),
+                int(kwargs.get("begin_minute", 0)),
+                int(kwargs.get("end_hour", 8)),
+                int(kwargs.get("end_minute", 0)),
+            )
+        if cmd == "reset_accessory":
+            return build_scalar_reset_accessory_command(kwargs.get("scalar_key", ""))
 
     # Mode Control
     if cmd == "start_auto":
@@ -366,6 +642,17 @@ def build_command(command: str, **kwargs: Any) -> dict[str, Any]:
             kwargs.get("map_id", 3),
             kwargs.get("mode", "GENERAL"),
         )
+    if cmd == "zone_clean":
+        return build_zone_clean_command(
+            kwargs.get("zones_cm", []),
+            kwargs.get("map_id", 3),
+            int(kwargs.get("clean_times", 1)),
+        )
+    if cmd == "map_load":
+        return build_map_load_command(
+            int(kwargs.get("cloud_mapid", 0)),
+            int(kwargs.get("seq", 1)),
+        )
     if cmd == "set_room_custom":
         return build_set_room_custom_command(
             kwargs.get("room_config", []),
@@ -391,5 +678,31 @@ def build_command(command: str, **kwargs: Any) -> dict[str, Any]:
             int(kwargs.get("end_hour", 8)),
             int(kwargs.get("end_minute", 0)),
         )
+    if cmd == "set_off_peak_charging":
+        return build_set_off_peak_charging_command(
+            bool(kwargs.get("active", True)),
+            int(kwargs.get("begin_hour", 21)),
+            int(kwargs.get("begin_minute", 0)),
+            int(kwargs.get("end_hour", 7)),
+            int(kwargs.get("end_minute", 0)),
+        )
+
+    # scalar commands
+    if cmd == "set_boost_iq":
+        return build_set_boost_iq_command(bool(kwargs.get("active", True)))
+    if cmd == "set_cleaning_pattern":
+        return build_set_cleaning_pattern_command(kwargs.get("pattern", ""))
+    if cmd == "set_volume":
+        if is_scalar:
+            return build_set_volume_command(int(kwargs.get("volume", 0)))
+        return build_set_volume_novel_command(int(kwargs.get("volume", 0)))
+    if cmd == "set_voice":
+        return build_set_voice_command(int(kwargs.get("set_id", 1201)))
+    if cmd == "set_auto_return":
+        return build_set_auto_return_command(bool(kwargs.get("active", True)))
+    if cmd == "set_activity_log":
+        return build_set_activity_log_command(bool(kwargs.get("active", True)))
+    if cmd == "detangle_brush":
+        return {SCALAR_DPS["DETANGLE"]: 1}
 
     return {}

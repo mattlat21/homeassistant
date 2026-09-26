@@ -1015,6 +1015,164 @@
           hvac_mode: cool
     - conditions:
       - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          temperature: '{{ (state_attr(''climate.faikin_study_mqtt_hvac'', ''temperature'')
+            | float(21) - 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.faikin_study_mqtt_hvac'') %} {{
+            m if m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          temperature: '{{ (state_attr(''climate.faikin_study_mqtt_hvac'', ''temperature'')
+            | float(21) + 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.faikin_study_mqtt_hvac'') %} {{
+            m if m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_mode_off''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_mode_cc''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_mode_cool''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_study_mode_fan''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.faikin_study_mqtt_hvac
+        data:
+          hvac_mode: fan_only
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_temp_dn''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          temperature: '{{ (state_attr(''climate.fakin_main_mqtt_hvac'', ''temperature'')
+            | float(21) - 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.fakin_main_mqtt_hvac'') %} {{ m
+            if m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_temp_up''
+          }}'
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          temperature: '{{ (state_attr(''climate.fakin_main_mqtt_hvac'', ''temperature'')
+            | float(21) + 0.5) | round(1) }}
+
+            '
+          hvac_mode: '{% set m = states(''climate.fakin_main_mqtt_hvac'') %} {{ m
+            if m not in [''off'', ''unavailable'', ''unknown''] else ''heat'' }}
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_mode_off''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          hvac_mode: 'off'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_mode_cc''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_mode_cool''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_mode_fan''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          hvac_mode: fan_only
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.button == ''climate_main_room_mode_dry''
+          }}'
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.fakin_main_mqtt_hvac
+        data:
+          hvac_mode: dry
+    - conditions:
+      - condition: template
         value_template: '{{ trigger.payload_json.button in [''Normal'', ''Rest Time'',
           ''Sleep Time''] }}'
       sequence:
@@ -1049,13 +1207,25 @@
       - condition: template
         value_template: '{{ trigger.payload_json.button == ''study_heater'' }}'
       sequence:
-      - action: switch.toggle
-        target:
-          entity_id: switch.tasmota_2
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ states(study_heater_entity) == ''off'' }}'
+          sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: '{{ study_heater_entity }}'
+            data:
+              hvac_mode: heat
+        default:
+        - action: climate.turn_off
+          target:
+            entity_id: '{{ study_heater_entity }}'
   variables:
     climate_target_entity: climate.bedroom_3_heater_bedroom_3_climate_control
     heater_switch_entity: switch.bedroom_3_heater
     room_state_select_entity: input_select.ollie_room_desired_state
+    study_heater_entity: climate.faikin_study_mqtt_hvac
   mode: parallel
 - id: '1775445866615'
   alias: ESP HMI - Data - Bedroom 3 Climate
@@ -1126,16 +1296,20 @@
   mode: single
 - id: '1777978180574'
   alias: ESP HMI - Data - Study Heater
-  description: Mirrors switch.tasmota_2 state to MQTT for the ESP HMI Study screen
+  description: Mirrors climate.faikin_study_mqtt_hvac state to MQTT for the ESP HMI
+    Study screen
   triggers:
   - trigger: state
-    entity_id: switch.tasmota_2
+    entity_id: climate.faikin_study_mqtt_hvac
   actions:
   - action: mqtt.publish
     data:
       topic: esp_hmi/data/study/heater_on
-      payload: '{{ states(''switch.tasmota_2'') }}'
+      payload: '{{ ''true'' if states(study_heater_entity) not in [''off'', ''unavailable'',
+        ''unknown''] else ''false'' }}'
       retain: true
+  variables:
+    study_heater_entity: climate.faikin_study_mqtt_hvac
   mode: single
 - id: '1778467744541'
   alias: Penny Awake Button
@@ -1480,11 +1654,10 @@
   description: Turn on Matt's electric blanket before bedtime
   triggers:
   - trigger: template
-    value_template: >
-      {% set bedtime = today_at(states('input_datetime.matt_s_bedtime')) %}
-      {% set mins = states('input_number.electric_blanket_prewarm_duration') | int(0) %}
-      {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,
-        microsecond=0) }}
+    value_template: "{% set bedtime = today_at(states('input_datetime.matt_s_bedtime'))
+      %} {% set mins = states('input_number.electric_blanket_prewarm_duration') |
+      int(0) %} {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,\n
+      \ microsecond=0) }}\n"
   conditions: []
   actions:
   - action: switch.turn_on
@@ -1498,11 +1671,10 @@
   description: Turn on Cathy's electric blanket before bedtime
   triggers:
   - trigger: template
-    value_template: >
-      {% set bedtime = today_at(states('input_datetime.cathy_s_bedtime')) %}
-      {% set mins = states('input_number.electric_blanket_prewarm_duration') | int(0) %}
-      {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,
-        microsecond=0) }}
+    value_template: "{% set bedtime = today_at(states('input_datetime.cathy_s_bedtime'))
+      %} {% set mins = states('input_number.electric_blanket_prewarm_duration') |
+      int(0) %} {{ now().replace(second=0, microsecond=0) == (bedtime - timedelta(minutes=mins)).replace(second=0,\n
+      \ microsecond=0) }}\n"
   conditions: []
   actions:
   - action: switch.turn_on
@@ -1538,4 +1710,300 @@
     data: {}
     target:
       entity_id: switch.cathy_s_electric_blanket
+  mode: single
+- id: '1786798760618'
+  alias: ESP HMI - Light Set
+  description: Applies Front Door screen light power/brightness commands from the
+    ESP HMI panels
+  triggers:
+  - trigger: mqtt
+    topic: esp_hmi/device/+/status/light_set
+  conditions:
+  - condition: template
+    value_template: '{{ target_entity != '''' }}'
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.power | default('''') == ''on'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: '{{ target_entity }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.power | default('''') == ''off''
+          }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: '{{ target_entity }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.brightness is defined and (trigger.payload_json.brightness
+          | int(0)) > 0 }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: '{{ target_entity }}'
+        data:
+          brightness_pct: '{{ trigger.payload_json.brightness | int(0) }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.brightness is defined }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: '{{ target_entity }}'
+  variables:
+    panel_lights:
+      outside: light.front_door_lights
+      lounge: light.lounge_room_lights
+      hallway: light.entrance_hallway_lights
+    target_entity: '{{ panel_lights.get(trigger.payload_json.light, '''') }}'
+  mode: parallel
+  max: 12
+- id: '1786798850116'
+  alias: ESP HMI - Data - Front Door Lights
+  description: Mirrors the Outside, Lounge and Hallway lights to MQTT for the ESP
+    HMI Front Door screen
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.front_door_lights
+    - light.lounge_room_lights
+    - light.entrance_hallway_lights
+  - trigger: homeassistant
+    event: start
+  actions:
+  - repeat:
+      for_each: '{{ panel_lights | dictsort }}'
+      sequence:
+      - variables:
+          slug: '{{ repeat.item[0] }}'
+          entity: '{{ repeat.item[1] }}'
+      - action: mqtt.publish
+        data:
+          topic: esp_hmi/data/{{ slug }}/light/state
+          payload: '{{ ''true'' if states(entity) == ''on'' else ''false'' }}'
+          retain: true
+      - action: mqtt.publish
+        data:
+          topic: esp_hmi/data/{{ slug }}/light/brightness
+          payload: '{{ ((state_attr(entity, ''brightness'') | float(0)) / 255 * 100)
+            | round(0) | int }}'
+          retain: true
+  variables:
+    panel_lights:
+      outside: light.front_door_lights
+      lounge: light.lounge_room_lights
+      hallway: light.entrance_hallway_lights
+  mode: queued
+  max: 10
+- id: '1786887521541'
+  alias: Show Front Door HMI
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.entrance_hallway_sensor
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: button.press
+    metadata: {}
+    target:
+      entity_id:
+      - button.front_door_full_brightness
+    data: {}
+  mode: single
+- id: '1787543972521'
+  alias: ESP HMI - Data - Study Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.faikin_study_mqtt_hvac
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/current
+      payload: '{{ state_attr(climate_target, ''current_temperature'') | float(0)
+        }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/heater_on
+      payload: '{{ ''true'' if states(climate_target) not in [''off'', ''unavailable'',
+        ''unknown''] else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/study/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.faikin_study_mqtt_hvac
+  mode: queued
+- id: '1787544651227'
+  alias: ESP HMI - Data - Main Room Temperature
+  description: Mirrors sensor.temp_heater_unit_temperature to MQTT for the HVAC Main
+    Room card
+  triggers:
+  - trigger: state
+    entity_id: sensor.temp_heater_unit_temperature
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/temperature
+      payload: '{{ states(''sensor.temp_heater_unit_temperature'') | float(0) }}'
+      retain: true
+  mode: single
+- id: '1787544663961'
+  alias: ESP HMI - Data - Penny Room Temperature
+  description: Mirrors sensor.temp_penny_s_bedroom_temperature to MQTT for the HVAC
+    Penny's Room card
+  triggers:
+  - trigger: state
+    entity_id: sensor.temp_penny_s_bedroom_temperature
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/penny_room/temperature
+      payload: '{{ states(''sensor.temp_penny_s_bedroom_temperature'') | float(0)
+        }}'
+      retain: true
+  mode: single
+- id: '1787561335709'
+  alias: ESP HMI - Data - Main Room Climate
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - climate.fakin_main_mqtt_hvac
+    - sensor.fakin_main_inlet
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/setpoint
+      payload: '{{ state_attr(climate_target, ''temperature'') | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/current
+      payload: '{{ states(current_temp_sensor) | float(0) }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/heater_on
+      payload: '{{ ''true'' if states(climate_target) not in [''off'', ''unavailable'',
+        ''unknown''] else ''false'' }}'
+      retain: true
+  - action: mqtt.publish
+    data:
+      topic: esp_hmi/data/main_room/climate/control
+      payload: '{{ states(climate_target) }}'
+      retain: true
+  variables:
+    climate_target: climate.fakin_main_mqtt_hvac
+    current_temp_sensor: sensor.fakin_main_inlet
+  mode: queued
+- id: '1787747313185'
+  alias: Start Matt's Heater on timer
+  description: ''
+  triggers:
+  - device_id: 8e6b27a024773a0425bdef4cc6580572
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_on
+    trigger: device
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    target:
+      device_id: 332d96f064282147d0cf4d84d6864a83
+    data: {}
+  - action: timer.start
+    metadata: {}
+    target:
+      entity_id: timer.matt_s_heater_countdown_timer
+    data:
+      duration: '{{ timedelta(minutes=states(''input_number.matt_s_heater_duration'')
+        | int) }}
+
+        '
+  mode: single
+- id: '1787747647402'
+  alias: Turn off Matt's Heater
+  description: ''
+  triggers:
+  - device_id: 8e6b27a024773a0425bdef4cc6580572
+    domain: zha
+    type: remote_button_short_press
+    subtype: turn_off
+    trigger: device
+  - trigger: timer.finished
+    target:
+      entity_id: timer.matt_s_heater_countdown_timer
+    options:
+      for: 00:00:00
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    target:
+      device_id: 332d96f064282147d0cf4d84d6864a83
+    data: {}
+  mode: single
+- id: '1789563358252'
+  alias: Turn off Matt's Electric Blanket
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.matt_s_electric_blanket
+    from:
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    target:
+      entity_id: switch.matt_s_electric_blanket
+    data: {}
+  mode: single
+- id: '1789563399912'
+  alias: Turn off Cathy's electric blanket
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.cathy_s_electric_blanket
+    from:
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - switch.cathy_s_electric_blanket
+    data: {}
   mode: single

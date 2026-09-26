@@ -1,0 +1,15 @@
+{
+  "_board_id_user_set_migrated": true,
+  "ceiling-alarm-1.yaml": {
+    "mac_address": "E8:9F:6D:1F:BA:E4"
+  },
+  "_dashboard_identity": {
+    "dashboard_id": "C1JevhTIsEP8tSwgNxjX1UIVNBrKe5gI"
+  },
+  "front-gate-controller.yaml": {
+    "mac_address": "E8:9F:6D:20:E2:30"
+  },
+  "esphome-web-20efd4.yaml": {
+    "mac_address": "E8:9F:6D:20:EF:D4"
+  }
+}

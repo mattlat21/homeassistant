@@ -185,3 +185,66 @@ septic_filter_cleaned_today:
     data:
       datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
   description: ''
+start_party_mode:
+  sequence:
+  - action: select.select_option
+    metadata: {}
+    target:
+      entity_id:
+      - select.kitchen_wled_kitchen_island_1_preset
+      - select.kitchen_wled_kitchen_island_2_preset
+      - select.wled_kitchen_island_3_preset_2
+    data:
+      option: Party Mode
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.lounge_room_lights
+    data:
+      transition: 15
+      rgb_color:
+      - 239
+      - 0
+      - 255
+  - action: switch.turn_on
+    metadata: {}
+    target:
+      entity_id:
+      - switch.fountain
+      - switch.driveway_lights_1
+      - switch.driveway_lights_2
+      - switch.tasmota_4
+      - switch.tasmota_8
+    data: {}
+  alias: Start Party Mode
+  description: ''
+start_party_mode_duplicate:
+  sequence:
+  - action: select.select_option
+    metadata: {}
+    target:
+      entity_id:
+      - select.kitchen_wled_kitchen_island_1_preset
+      - select.kitchen_wled_kitchen_island_2_preset
+      - select.wled_kitchen_island_3_preset_2
+    data:
+      option: Warm White
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.lounge_room_lights
+    data:
+      transition: 15
+      color_temp_kelvin: 3869
+  - action: switch.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - switch.fountain
+      - switch.driveway_lights_1
+      - switch.driveway_lights_2
+      - switch.tasmota_4
+      - switch.tasmota_8
+    data: {}
+  alias: Stop Party Mode
+  description: ''

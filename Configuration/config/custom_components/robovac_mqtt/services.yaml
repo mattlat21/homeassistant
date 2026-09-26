@@ -1,0 +1,107 @@
+room_at_point:
+  name: Room at point
+  description: >-
+    Resolve which mapped room sits under a normalized point on the rendered map
+    image. Returns { room_id, room_name } — room_id 0 means no room there. Used by
+    the bundled Eufy Clean card for tap-a-room-on-the-map selection.
+  target:
+    entity:
+      domain: vacuum
+      integration: robovac_mqtt
+  fields:
+    x:
+      name: X
+      description: Horizontal position as a fraction (0-1) of the rendered map image, from the left edge.
+      required: true
+      example: 0.42
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: any
+          mode: box
+    y:
+      name: Y
+      description: Vertical position as a fraction (0-1) of the rendered map image, from the top edge.
+      required: true
+      example: 0.61
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: any
+          mode: box
+
+map_load:
+  name: Load map
+  description: >-
+    Switch the active map to another saved multi-map by its cloud map id (novel /
+    protobuf devices only; scalar and legacy models have no multi-map). The map and
+    its room list switch over immediately. For most uses the "Switch Map" select
+    entity is easier — it lists the maps the robot has visited and calls this
+    service for you; this raw service is for scripts/automations that know the id.
+
+    NOTE: the robot pose does NOT switch automatically. After loading a map the
+    robot's position / coordinate frame stays on the previous map until the vacuum
+    RE-LOCALIZES, which only happens once it MOVES. To ground the new map right away,
+    follow this with a small movement — the most reliable is a single-room clean
+    (vacuum only, quiet, one pass), started from a script/automation or by picking a
+    room from the list in the Eufy Clean card. Avoid selecting the room by tapping it
+    on the map right after a switch: the coordinate frame hasn't re-grounded yet, so
+    map taps (and zone drawing) can resolve to the wrong spot. Once the robot moves
+    and re-localizes, the reported position snaps onto the loaded map.
+  target:
+    entity:
+      domain: vacuum
+      integration: robovac_mqtt
+  fields:
+    cloud_mapid:
+      name: Cloud map id
+      description: >-
+        The saved map's id, as reported by the device. The easiest way to find it:
+        the "Switch Map" select entity lists each visited map as "Map (ID: <id>)"
+        (with the friendly name once seen) — flip each map once in the Eufy app so
+        the robot reports it, then read the ids there.
+      required: true
+      example: 7
+      selector:
+        number:
+          min: 1
+          mode: box
+    seq:
+      name: Sequence
+      description: Optional request sequence number the device echoes back in its acknowledgement. Leave as the default unless you need to correlate the ack.
+      required: false
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0
+          mode: box
+
+forget_map:
+  name: Forget map
+  description: >-
+    Remove a saved map from the "Switch Map" list. The list is learn-as-seen — the
+    integration remembers every map the robot has reported and never drops one, because
+    the device gives no authoritative list of its current maps to reconcile against. So
+    a map deleted in the app, or wiped by a factory reset, keeps showing in the selector
+    forever. Use this to prune it. Local only: nothing is sent to the robot, and the
+    map on the device is untouched. The ACTIVE map cannot be forgotten (it would
+    immediately re-appear); forgetting an id that isn't in the list does nothing.
+  target:
+    entity:
+      domain: vacuum
+      integration: robovac_mqtt
+  fields:
+    cloud_mapid:
+      name: Cloud map id
+      description: >-
+        The id of the saved map to forget, as shown in the "Switch Map" select entity
+        ("Map (ID: <id>)").
+      required: true
+      example: 7
+      selector:
+        number:
+          min: 1
+          mode: box

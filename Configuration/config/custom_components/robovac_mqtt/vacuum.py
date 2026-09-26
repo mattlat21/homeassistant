@@ -4,13 +4,21 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import voluptuous as vol
 from homeassistant.components.vacuum import (
     StateVacuumEntity,
     VacuumActivity,
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceResponse,
+    SupportsResponse,
+    callback,
+)
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.issue_registry import (
@@ -21,7 +29,12 @@ from homeassistant.helpers.issue_registry import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.commands import build_command
-from .const import DOMAIN, EUFY_CLEAN_NOVEL_CLEAN_SPEED
+from .const import (
+    DOMAIN,
+    EUFY_CLEAN_NOVEL_CLEAN_SPEED,
+    LEGACY_CLEAN_SPEEDS,
+    SCALAR_SUCTION_LEVELS,
+)
 from .coordinator import EufyCleanCoordinator
 
 if TYPE_CHECKING:
@@ -112,6 +125,9 @@ _ACTIVITY_MAP: dict[str, VacuumActivity] = {
 }
 
 
+PARALLEL_UPDATES = 1
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -127,6 +143,41 @@ async def async_setup_entry(
         entities.append(RoboVacMQTTEntity(coordinator, config_entry))
 
     async_add_entities(entities)
+
+    # Response service used by the bundled card to resolve a tapped map point to a
+    # room id (tap-a-room-on-the-map selection). Registered once per platform setup;
+    # async_register_entity_service de-dupes across config entries.
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        "room_at_point",
+        {
+            vol.Required("x"): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+            vol.Required("y"): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+        },
+        "async_room_at_point",
+        supports_response=SupportsResponse.ONLY,
+    )
+    # Switch the active map to another saved multi-map by its cloud map id
+    # (novel/protobuf devices only). See async_map_load / build_map_load_command
+    # for the pose-re-localization caveat.
+    platform.async_register_entity_service(
+        "map_load",
+        {
+            vol.Required("cloud_mapid"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            vol.Optional("seq", default=1): vol.All(vol.Coerce(int), vol.Range(min=0)),
+        },
+        "async_map_load",
+    )
+    # Prune a saved map from the learn-as-seen Switch Map list (a map deleted on the
+    # device or left over after a factory reset). Local-only; the active map can't be
+    # forgotten. See async_forget_map.
+    platform.async_register_entity_service(
+        "forget_map",
+        {
+            vol.Required("cloud_mapid"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        },
+        "async_forget_map",
+    )
 
 
 class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEntity):
@@ -145,9 +196,16 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
 
         self._attr_device_info = coordinator.device_info
 
-        self._attr_fan_speed_list: list[str] = [
-            speed.value for speed in EUFY_CLEAN_NOVEL_CLEAN_SPEED
-        ]
+        # Scalar (G50) suction is Quiet/Standard/Turbo/Max; BoostIQ is a separate
+        # switch (DPS 118), not a 5th fan speed.
+        if coordinator.api_type == "scalar":
+            self._attr_fan_speed_list: list[str] = list(SCALAR_SUCTION_LEVELS)
+        elif coordinator.api_type == "legacy":
+            self._attr_fan_speed_list = list(LEGACY_CLEAN_SPEEDS)
+        else:
+            self._attr_fan_speed_list = [
+                speed.value for speed in EUFY_CLEAN_NOVEL_CLEAN_SPEED
+            ]
         # Initialize last seen segments if this is the first time and segments are available
         if config_entry:
             self._initialize_last_seen_segments()
@@ -165,7 +223,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
 
     def _initialize_last_seen_segments(self) -> None:
         """Initialize last seen segments if not already stored and segments are available."""
-        if self.last_seen_segments is None:
+        if self.stored_last_seen_segments is None:
             current_segments = self._get_room_segments()
             if current_segments:
                 self._store_last_seen_segments(current_segments)
@@ -265,7 +323,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         if mode != "GENERAL":
             command_kwargs["mode"] = mode
 
-        command = build_command("room_clean", **command_kwargs)
+        command = self.coordinator.build_device_command("room_clean", **command_kwargs)
         self.coordinator.set_active_cleaning_targets(room_ids=room_ids)
         await self.coordinator.async_send_command(command)
 
@@ -276,7 +334,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         **kwargs: Any,
     ) -> None:
         """Send room customization parameters."""
-        command = build_command(
+        command = self.coordinator.build_device_command(
             "set_room_custom",
             room_config=room_config,
             map_id=map_id,
@@ -362,6 +420,42 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         # 1. Start Clean with GENERAL Mode
         await self._async_send_room_clean(room_ids, map_id)
 
+    async def _async_handle_zone_clean(self, params: dict[str, Any]) -> None:
+        """Handle a zone_clean command.
+
+        ``params['zones']`` is a list of normalized rectangles ``(x0, y0, x1, y1)``
+        in fractions (0-1) of the rendered map image.  They are converted to
+        world-cm quadrilaterals against the current map and dispatched as a
+        select-zones clean (mirrors ``_async_handle_room_clean``).
+        """
+        rects = params.get("zones") or params.get("rects")
+        if not rects or not isinstance(rects, list):
+            _LOGGER.warning("zone_clean called without a 'zones' list of rectangles")
+            return
+
+        quads_cm = self.coordinator.normalized_rects_to_quads_cm(rects)
+        if not quads_cm:
+            _LOGGER.warning(
+                "zone_clean: no map available yet (run a clean once so the map "
+                "populates) or all rectangles were invalid — nothing sent"
+            )
+            return
+
+        map_id = params.get("map_id") or self.coordinator.data.map_id or 1
+        clean_times = int(params.get("clean_times", 1))
+
+        command = self.coordinator.build_device_command(
+            "zone_clean",
+            zones_cm=quads_cm,
+            map_id=map_id,
+            clean_times=clean_times,
+        )
+        if not command:
+            return
+
+        self.coordinator.set_active_cleaning_targets(zone_count=len(quads_cm))
+        await self.coordinator.async_send_command(command)
+
     async def async_clean_segments(self, segment_ids: list[str], **kwargs: Any) -> None:
         """Clean specific segments with current custom parameters."""
         room_ids = [
@@ -375,11 +469,67 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         params = {"room_ids": room_ids}
         await self._async_handle_room_clean(params)
 
+    async def async_room_at_point(self, x: float, y: float) -> ServiceResponse:
+        """Resolve which room sits under a normalized (0-1) point on the rendered map.
+
+        Backs the bundled card's tap-a-room-on-the-map selection. ``x``/``y`` are
+        fractions of the rendered map image (top-left origin). Returns
+        ``{"room_id": int, "room_name": str}``; ``room_id`` 0 means "no room there".
+        """
+        room_id, room_name = self.coordinator.room_id_at_normalized(x, y)
+        return {"room_id": room_id, "room_name": room_name or ""}
+
+    async def async_map_load(self, cloud_mapid: int, seq: int = 1) -> None:
+        """Switch the active map to a saved multi-map by its cloud map id.
+
+        Loads the target map and its room list immediately. The robot re-localizes
+        onto the new map only when it next MOVES — see the ``map_load`` service
+        docs for the workaround: a single-room clean (via a script or the card's
+        room list) is the most reliable way to ground the pose; avoid map-tap or
+        zone targeting until the frame re-grounds. Multi-map switching is a novel
+        (protobuf) feature; scalar/legacy devices have no multi-map.
+        """
+        if self.coordinator.api_type != "novel":
+            raise HomeAssistantError(
+                "Switching maps is only supported on novel (protobuf) devices, "
+                f"not api_type={self.coordinator.api_type}"
+            )
+        command = self.coordinator.build_device_command(
+            "map_load", cloud_mapid=int(cloud_mapid), seq=int(seq)
+        )
+        if not command:
+            raise HomeAssistantError(
+                "Failed to build map_load command "
+                "(unsupported device or invalid map id)"
+            )
+        await self.coordinator.async_send_command(command)
+
+    async def async_forget_map(self, cloud_mapid: int) -> None:
+        """Remove a saved map from the Switch Map list (``last_seen_maps``).
+
+        For maps that no longer exist on the device — deleted in the app or wiped by a
+        factory reset — which otherwise linger in the selector forever (the list is
+        learn-as-seen; the device exposes no authoritative map list to reconcile
+        against). Local only: nothing is sent to the robot. The ACTIVE map can't be
+        forgotten (it would immediately re-seed); forgetting an unknown id is a no-op.
+        """
+        cloud_mapid = int(cloud_mapid)
+        if cloud_mapid == self.coordinator.data.map_id:
+            raise HomeAssistantError(
+                f"Cannot forget map {cloud_mapid} — it is the active map."
+            )
+        await self.coordinator.async_forget_map(cloud_mapid)
+
     @property
     def supported_features(self) -> VacuumEntityFeature:
         """Return the features supported by the vacuum."""
         supported_features = _BASE_SUPPORTED_FEATURES
-        if _CLEAN_AREA_FEATURE is not None:
+        if self.coordinator.api_type == "scalar":
+            # Vacuum-only Tuya device (e.g. G50): no maps/areas and no spot clean.
+            # Drop CLEAN_SPOT (unsupported) and never advertise CLEAN_AREA, so the
+            # UI doesn't offer "cleaning by area" (there are no rooms to map).
+            return supported_features & ~VacuumEntityFeature.CLEAN_SPOT
+        if _CLEAN_AREA_FEATURE is not None and self.coordinator.api_type != "legacy":
             supported_features |= _CLEAN_AREA_FEATURE
         return supported_features
 
@@ -419,31 +569,43 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
 
     async def async_return_to_base(self, **kwargs: Any) -> None:
         """Set the vacuum cleaner to return to the dock."""
-        await self.coordinator.async_send_command(build_command("return_to_base"))
+        await self.coordinator.async_send_command(
+            self.coordinator.build_device_command("return_to_base")
+        )
 
     async def async_start(self, **kwargs: Any) -> None:
         """Start or resume the cleaning task."""
         if self.activity == VacuumActivity.PAUSED:
-            await self.coordinator.async_send_command(build_command("play"))
+            await self.coordinator.async_send_command(
+                self.coordinator.build_device_command("play")
+            )
         else:
-            await self.coordinator.async_send_command(build_command("start_auto"))
+            await self.coordinator.async_send_command(
+                self.coordinator.build_device_command("start_auto")
+            )
 
     async def async_pause(self, **kwargs: Any) -> None:
         """Pause the cleaning task."""
-        await self.coordinator.async_send_command(build_command("pause"))
+        await self.coordinator.async_send_command(
+            self.coordinator.build_device_command("pause")
+        )
 
     async def async_stop(self, **kwargs: Any) -> None:
         """Stop the cleaning task."""
-        await self.coordinator.async_send_command(build_command("stop"))
+        await self.coordinator.async_send_command(
+            self.coordinator.build_device_command("stop")
+        )
 
     async def async_clean_spot(self, **kwargs: Any) -> None:
         """Perform a spot clean-up."""
-        await self.coordinator.async_send_command(build_command("clean_spot"))
+        await self.coordinator.async_send_command(
+            self.coordinator.build_device_command("clean_spot")
+        )
 
     async def async_locate(self, **kwargs: Any) -> None:
         """Locate the vacuum cleaner."""
         await self.coordinator.async_send_command(
-            build_command("find_robot", active=True)
+            self.coordinator.build_device_command("find_robot", active=True)
         )
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
@@ -452,7 +614,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
             raise ValueError(f"Fan speed {fan_speed} not supported")
 
         await self.coordinator.async_send_command(
-            build_command("set_fan_speed", fan_speed=fan_speed)
+            self.coordinator.build_device_command("set_fan_speed", fan_speed=fan_speed)
         )
 
     async def async_get_segments(self) -> list[Segment]:
@@ -460,7 +622,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         return self._get_room_segments()
 
     @property
-    def last_seen_segments(self) -> list[Segment] | None:
+    def stored_last_seen_segments(self) -> list[Segment] | None:
         """Return segments as seen by the user, when last mapping the areas."""
         stored_segments = self.coordinator.last_seen_segments
         if stored_segments is None:
@@ -502,13 +664,19 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
                     None,
                 )
                 await self.coordinator.async_send_command(
-                    build_command("scene_clean", scene_id=scene_id)
+                    self.coordinator.build_device_command(
+                        "scene_clean", scene_id=scene_id
+                    )
                 )
                 self.coordinator.set_active_scene(scene_id, scene_name)
             return
 
         if command == "room_clean" and isinstance(params, dict):
             await self._async_handle_room_clean(params)
+            return
+
+        if command == "zone_clean" and isinstance(params, dict):
+            await self._async_handle_zone_clean(params)
             return
 
         # Handle Apple Home app_segment_clean command
@@ -529,8 +697,20 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
         if isinstance(params, dict):
             command_kwargs.update(params)
         command_kwargs.update(kwargs)
-
-        command_dict = build_command(command, **command_kwargs)
+        # Route raw service commands through the device's DPS protocol too, so
+        # e.g. vacuum.send_command "pause" emits a scalar write on scalar
+        # (Tuya) devices. build_device_command applies the coordinator's
+        # detected api_type itself; an explicit api_type in params overrides it
+        # — but ONLY for novel/scalar devices. A legacy (Tuya Cloud plain-value)
+        # device can't speak protobuf, so it always uses build_device_command
+        # (build_legacy_command) regardless of any api_type override.
+        if "api_type" in command_kwargs and self.coordinator.api_type != "legacy":
+            command_dict = build_command(command, **command_kwargs)
+        else:
+            command_kwargs.pop("api_type", None)
+            command_dict = self.coordinator.build_device_command(
+                command, **command_kwargs
+            )
         if command_dict:
             await self.coordinator.async_send_command(command_dict)
             return
@@ -548,7 +728,7 @@ class RoboVacMQTTEntity(CoordinatorEntity[EufyCleanCoordinator], StateVacuumEnti
             # Cannot create issues without config entry
             return
         current_segments = self._get_room_segments()
-        last_seen = self.last_seen_segments
+        last_seen = self.stored_last_seen_segments
 
         if last_seen is None:
             # No previous mapping stored — silently record the baseline so future

@@ -6,6 +6,14 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify
 from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
+def _safe_float(val):
+    """Safely convert a value to float, returning 0.0 for None/invalid values."""
+    if val is None or str(val).lower() in ("none", "unknown", "unavailable", ""):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     if discovery_info is None: return
     if DOMAIN not in hass.data or "coordinator" not in hass.data[DOMAIN]: return
@@ -104,11 +112,13 @@ class RadarZoneCountSensor(CoordinatorEntity, SensorEntity):
                 continue
             tx, ty = 0.0, 0.0
             if isinstance(t, dict):
-                tx = float(t.get('x', 0))
-                ty = float(t.get('y', 0))
+                x_val = t.get('x')
+                y_val = t.get('y')
+                tx = float(x_val) if x_val is not None else 0.0
+                ty = float(y_val) if y_val is not None else 0.0
             elif isinstance(t, (list, tuple)) and len(t) >= 2:
-                tx = float(t[0])
-                ty = float(t[1])
+                tx = float(t[0]) if t[0] is not None else 0.0
+                ty = float(t[1]) if t[1] is not None else 0.0
             else:
                 continue
             if self._is_point_in_polygon(tx, ty, self._points):
@@ -133,10 +143,10 @@ class RadarZoneCountSensor(CoordinatorEntity, SensorEntity):
             try:
                 p_i = poly[i]
                 p_j = poly[j]
-                xi = float(p_i[0]) if isinstance(p_i, (list, tuple)) else float(p_i.get('x', 0))
-                yi = float(p_i[1]) if isinstance(p_i, (list, tuple)) else float(p_i.get('y', 0))
-                xj = float(p_j[0]) if isinstance(p_j, (list, tuple)) else float(p_j.get('x', 0))
-                yj = float(p_j[1]) if isinstance(p_j, (list, tuple)) else float(p_j.get('y', 0))
+                xi = _safe_float(p_i[0]) if isinstance(p_i, (list, tuple)) else _safe_float(p_i.get('x', 0))
+                yi = _safe_float(p_i[1]) if isinstance(p_i, (list, tuple)) else _safe_float(p_i.get('y', 0))
+                xj = _safe_float(p_j[0]) if isinstance(p_j, (list, tuple)) else _safe_float(p_j.get('x', 0))
+                yj = _safe_float(p_j[1]) if isinstance(p_j, (list, tuple)) else _safe_float(p_j.get('y', 0))
                 intersect = ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
                 if intersect: inside = not inside
                 j = i

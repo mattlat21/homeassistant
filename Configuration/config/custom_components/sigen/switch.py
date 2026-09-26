@@ -24,6 +24,7 @@ from .const import (
 )
 from .coordinator import SigenergyDataUpdateCoordinator # Import coordinator
 from .sigen_entity import SigenergyEntity # Import the new base class
+from .modbusregisterdefinitions import DCChargerRunningState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,19 @@ class SigenergySwitchEntityDescription(SwitchEntityDescription):
     turn_off_fn: Callable[[SigenergyDataUpdateCoordinator, Optional[Any]], Coroutine[Any, Any, None]] = lambda coordinator, identifier: asyncio.sleep(0) # Placeholder async lambda
     available_fn: Callable[[Dict[str, Any], Optional[Any]], bool] = lambda data, _: True
     entity_registry_enabled_default: bool = True
+
+
+def _deprecated_ac_charger_switch_available(data: Dict[str, Any], identifier: Optional[Any]) -> bool:
+    """Preserve legacy switch availability when charger state is missing."""
+    return data.get("ac_chargers", {}).get(identifier, {}).get("ac_charger_system_state") not in (0, 1)
+
+
+def _deprecated_dc_charger_switch_available(data: Dict[str, Any], identifier: Optional[Any]) -> bool:
+    """Preserve legacy switch availability when charger state is missing."""
+    return data.get("dc_chargers", {}).get(identifier, {}).get("dc_charger_running_state") not in (
+        DCChargerRunningState.IDLE,
+        DCChargerRunningState.UNAVAILABLE,
+    )
 
 
 PLANT_SWITCHES: list[SigenergySwitchEntityDescription] = [
@@ -72,6 +86,24 @@ PLANT_SWITCHES: list[SigenergySwitchEntityDescription] = [
         turn_off_fn=lambda coordinator, _: coordinator.async_write_parameter("plant", None, "plant_independent_phase_power_control_enable", 0),
         entity_registry_enabled_default=False,
     ),
+    SigenergySwitchEntityDescription(
+        key="plant_ess_preheating_enable",
+        name="ESS Preheating Enable",
+        icon="mdi:radiator",
+        is_on_fn=lambda data, _: data.get("plant", {}).get("plant_ess_preheating_enable") == 1,
+        turn_on_fn=lambda coordinator, _: coordinator.async_write_parameter("plant", None, "plant_ess_preheating_enable", 1),
+        turn_off_fn=lambda coordinator, _: coordinator.async_write_parameter("plant", None, "plant_ess_preheating_enable", 0),
+        entity_registry_enabled_default=False,
+    ),
+    SigenergySwitchEntityDescription(
+        key="plant_ess_preheating_advance_enable",
+        name="ESS Preheating Advance Enable",
+        icon="mdi:clock-fast",
+        is_on_fn=lambda data, _: data.get("plant", {}).get("plant_ess_preheating_advance_enable") == 1,
+        turn_on_fn=lambda coordinator, _: coordinator.async_write_parameter("plant", None, "plant_ess_preheating_advance_enable", 1),
+        turn_off_fn=lambda coordinator, _: coordinator.async_write_parameter("plant", None, "plant_ess_preheating_advance_enable", 0),
+        entity_registry_enabled_default=False,
+    ),
 ]
 
 INVERTER_SWITCHES: list[SigenergySwitchEntityDescription] = [
@@ -90,26 +122,34 @@ INVERTER_SWITCHES: list[SigenergySwitchEntityDescription] = [
 AC_CHARGER_SWITCHES: list[SigenergySwitchEntityDescription] = [
     SigenergySwitchEntityDescription(
         key="ac_charger_start_stop",
-        name="AC Charger Power",
+        name="AC Charger Power (Deprecated)",
         icon="mdi:ev-station",
         # identifier here will be ac_charger_name
-        is_on_fn=lambda data, identifier: data.get("ac_chargers", {}).get(identifier, {}).get("ac_charger_system_state") in (3,4,5),
+        is_on_fn=lambda data, identifier: data.get("ac_chargers", {}).get(identifier, {}).get("ac_charger_system_state") in (2,3,4,5),
         # Check if EV is connected (State != 0 (Init) and != 1 (A1_A2))
-        available_fn=lambda data, identifier: data.get("ac_chargers", {}).get(identifier, {}).get("ac_charger_system_state") not in (0, 1),
+        available_fn=_deprecated_ac_charger_switch_available,
         turn_on_fn=lambda coordinator, identifier: coordinator.async_write_parameter("ac_charger", identifier, "ac_charger_start_stop", 0),
         turn_off_fn=lambda coordinator, identifier: coordinator.async_write_parameter("ac_charger", identifier, "ac_charger_start_stop", 1),
+        entity_registry_enabled_default=False,
     ),
 ]
 
 DC_CHARGER_SWITCHES: list[SigenergySwitchEntityDescription] = [
     SigenergySwitchEntityDescription(
         key="dc_charging",
-        name="DC Charging",
+        name="DC Charging (Deprecated)",
         icon="mdi:ev-station",
-        # CHANGED: is_on_fn now checks != 0 to reflect both charging (positive) and discharging (negative) states
-        is_on_fn=lambda data, identifier: (data.get("dc_chargers", {}).get(identifier, {}).get("dc_charger_output_power", 0) or 0) != 0,
+        # is_on reflects the reported running state (CHARGING or DISCHARGING), not
+        # instantaneous output power. During a genuine session the output power
+        # momentarily reads exactly 0.0 kW at taper/handshake/cycle boundaries, which
+        # made an `output_power != 0` test flap the switch off/on every poll (and, via
+        # plug-in negotiation, a brief on/off on every connect). running_state is the
+        # stable signal and still covers both charging and discharging (like the AC charger).
+        is_on_fn=lambda data, identifier: data.get("dc_chargers", {}).get(identifier, {}).get("dc_charger_running_state") in (DCChargerRunningState.CHARGING, DCChargerRunningState.DISCHARGING),
+        available_fn=_deprecated_dc_charger_switch_available,
         turn_on_fn=lambda coordinator, identifier: coordinator.async_write_parameter("dc_charger", identifier, "dc_charger_start_stop", 0),
         turn_off_fn=lambda coordinator, identifier: coordinator.async_write_parameter("dc_charger", identifier, "dc_charger_start_stop", 1),
+        entity_registry_enabled_default=False,
     ),
 ]
 
@@ -226,7 +266,6 @@ class SigenergySwitch(SigenergyEntity, SwitchEntity):
             raise HomeAssistantError(f"Cannot turn on {self.entity_id}: Coordinator data is unavailable")
         identifier = self._device_name
         await self.entity_description.turn_on_fn(self.coordinator, identifier)
-        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
@@ -234,4 +273,3 @@ class SigenergySwitch(SigenergyEntity, SwitchEntity):
             raise HomeAssistantError(f"Cannot turn off {self.entity_id}: Coordinator data is unavailable")
         identifier = self._device_name
         await self.entity_description.turn_off_fn(self.coordinator, identifier)
-        await self.coordinator.async_request_refresh()

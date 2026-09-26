@@ -1,4 +1,5 @@
 import logging
+import traceback
 from homeassistant.helpers.storage import Store
 from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class RadarCoordinator:
             try:
                 callback()
             except Exception as e:
-                _LOGGER.error(f"RMM: Error in update listener: {e}")
+                _LOGGER.error(f"RMM: Error in update listener: {e}\n{traceback.format_exc()}")
     async def async_load(self):
         try:
             raw_data = await self._store.async_load()
@@ -95,7 +96,7 @@ class RadarCoordinator:
             await self.async_save()
     async def async_update_zone(self, radar_name, zone_type, points, map_group="default"):
         if radar_name and radar_name in self.data["radars"]:
-            if zone_type in ["monitor_zones"]:
+            if zone_type in ["monitor_zones", "hw_detect_zones", "hw_block_zones", "hw_stay_zones"]:
                 self.data["radars"][radar_name][zone_type] = points
                 await self.async_save()
                 return

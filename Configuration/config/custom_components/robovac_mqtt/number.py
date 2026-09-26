@@ -3,20 +3,25 @@ from __future__ import annotations
 import copy
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api.commands import build_command
 from .const import DOMAIN
 from .coordinator import EufyCleanCoordinator
+from .entity import API_TYPE_NOVEL, filter_supported_entities
 
 _LOGGER = logging.getLogger(__name__)
+
+
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
@@ -33,21 +38,31 @@ async def async_setup_entry(
     for coordinator in coordinators:
         _LOGGER.debug("Adding number entities for %s", coordinator.device_name)
 
-        # Wash Frequency Value
-        entities.append(
-            DockNumberEntity(
+        # Dock number entities require protobuf DPS (novel/scalar); legacy
+        # (Tuya Cloud plain-value) devices have no station support.
+        if coordinator.api_type == "legacy":
+            continue
+
+        entities.extend(
+            filter_supported_entities(
                 coordinator,
-                "wash_frequency_value",
-                "Wash Frequency Value (Time)",
-                15,
-                25,
-                1,  # step
-                lambda cfg: cfg.get("wash", {})
-                .get("wash_freq", {})
-                .get("time_or_area", {})
-                .get("value", 15),
-                _set_wash_freq_value,
-                icon="mdi:clock-time-four-outline",
+                [
+                    DockNumberEntity(
+                        coordinator,
+                        "wash_frequency_value",
+                        "Wash Frequency Value (Time)",
+                        15,
+                        25,
+                        1,  # step
+                        lambda cfg: cfg.get("wash", {})
+                        .get("wash_freq", {})
+                        .get("time_or_area", {})
+                        .get("value", 15),
+                        _set_wash_freq_value,
+                        icon="mdi:clock-time-four-outline",
+                    ),
+                    VolumeNumberEntity(coordinator),
+                ],
             )
         )
 
@@ -68,7 +83,13 @@ def _set_wash_freq_value(cfg: dict[str, Any], val: float) -> None:
 
 
 class DockNumberEntity(CoordinatorEntity[EufyCleanCoordinator], NumberEntity):
-    """Number entity for Dock settings."""
+    """Number entity for Dock settings.
+
+    Station/mop features; scalar (Tuya) vacuum-only devices like the G50 have
+    no station.
+    """
+
+    supported_api_types = (API_TYPE_NOVEL,)
 
     def __init__(
         self,
@@ -118,8 +139,47 @@ class DockNumberEntity(CoordinatorEntity[EufyCleanCoordinator], NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        if not self.coordinator.data.dock_auto_cfg:
+            raise HomeAssistantError("Dock configuration not yet received from device")
         cfg = copy.deepcopy(self.coordinator.data.dock_auto_cfg)
         self._setter(cfg, value)
 
-        command = build_command("set_auto_cfg", cfg=cfg)
+        command = self.coordinator.build_device_command("set_auto_cfg", cfg=cfg)
         await self.coordinator.async_send_command(command)
+
+
+class VolumeNumberEntity(CoordinatorEntity[EufyCleanCoordinator], NumberEntity):
+    """Voice volume control (novel: DPS 161 0-100; scalar: DPS 111 0-10 *10)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Voice Volume"
+    _attr_icon = "mdi:volume-high"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 10
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: EufyCleanCoordinator) -> None:
+        """Initialize the volume number entity."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.device_id}_volume"
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def available(self) -> bool:
+        return super().available and "volume" in self.coordinator.data.received_fields
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current volume percentage."""
+        return self.coordinator.data.volume
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the volume (percentage, rounded to nearest 10%)."""
+        pct = max(0, min(100, round(value / 10) * 10))
+        command = self.coordinator.build_device_command("set_volume", volume=pct)
+        await self.coordinator.async_send_command(command)
+        self.coordinator.async_set_updated_data(
+            replace(self.coordinator.data, volume=pct)
+        )

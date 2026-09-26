@@ -10,6 +10,20 @@ from google.protobuf.message import Message
 T = TypeVar("T", bound=Message)
 
 
+def is_protobuf_dps_value(value: Any) -> bool:
+    """Heuristic: does a DPS value look like an Anker base64 protobuf blob?
+
+    Anker "novel" DPS arrive as non-numeric base64 strings (e.g. "CgYI..."). The
+    Tuya "scalar" protocol reuses the same DPS *numbers* with plain ints, numeric
+    strings, or JSON objects. Used to tell the two protocols apart.
+    """
+    return (
+        isinstance(value, str)
+        and not value.lstrip("-").isdigit()
+        and not value.startswith("{")
+    )
+
+
 def decode(to_type: type[T], b64_data: str, has_length: bool = True) -> T:
     data = b64decode(b64_data)
 
@@ -33,6 +47,20 @@ def encode(
 ) -> str:
     m = message(**data)
     return encode_message(m, has_length)
+
+
+def decode_varint(data: bytes, pos: int) -> tuple[int, int]:
+    """Decode a protobuf varint starting at *pos*. Returns (value, new_pos)."""
+    value = 0
+    shift = 0
+    while pos < len(data):
+        b = data[pos]
+        value |= (b & 0x7F) << shift
+        pos += 1
+        if not b & 0x80:
+            return value, pos
+        shift += 7
+    return value, pos
 
 
 def encode_varint(n: int) -> bytes:

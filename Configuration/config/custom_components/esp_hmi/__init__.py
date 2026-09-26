@@ -52,6 +52,7 @@ SIGNAL_NEW_DEVICE = f"{DOMAIN}_new_device"
 SIGNAL_PARAMETERS_UPDATE = f"{DOMAIN}_parameters_update"
 SIGNAL_STATUS_UPDATE = f"{DOMAIN}_status_update"
 SIGNAL_OTA_PROGRESS_UPDATE = f"{DOMAIN}_ota_progress_update"
+SIGNAL_MEMORY_UPDATE = f"{DOMAIN}_memory_update"
 
 
 def _now_utc() -> datetime:
@@ -101,6 +102,12 @@ class PanelState:
     ota_progress_percent: int | None = None
     ota_progress_version: str | None = None
     ota_progress_error: str | None = None
+    #: Last seen `boot_count` from parameters (for Last boot timestamp).
+    last_boot_count: int | None = None
+    last_boot_at: datetime | None = None
+    #: From retained `status/memory` JSON (bytes).
+    memory: dict[str, Any] = field(default_factory=dict)
+    memory_updated_at: datetime | None = None
 
 
 @dataclass
@@ -172,6 +179,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         panel = runtime.get_or_create_panel(mac)
         panel.parameters = payload
         panel.parameters_updated_at = _now_utc()
+
+        boot_raw = payload.get("boot_count")
+        if isinstance(boot_raw, (int, float)):
+            boot_count = int(boot_raw)
+            if panel.last_boot_count is None:
+                # First observation this HA session (or after restore of count below).
+                panel.last_boot_count = boot_count
+            elif boot_count > panel.last_boot_count:
+                panel.last_boot_at = _now_utc()
+                panel.last_boot_count = boot_count
+
         _ensure_device(mac, payload)
 
         # Inform platforms: create entities if needed, then update.
@@ -222,6 +240,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         panel.ota_progress_error = str(err) if isinstance(err, str) and err else None
 
         async_dispatcher_send(hass, SIGNAL_OTA_PROGRESS_UPDATE, entry.entry_id, mac)
+
+    async def _handle_memory(msg: mqtt.ReceiveMessage) -> None:
+        mac = _mac_from_topic(topic_prefix, msg.topic)
+        if not mac:
+            return
+        try:
+            payload = json.loads(msg.payload)
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug("Invalid memory JSON for %s", msg.topic)
+            return
+        if not isinstance(payload, dict):
+            return
+
+        panel = runtime.get_or_create_panel(mac)
+        panel.memory = payload
+        panel.memory_updated_at = _now_utc()
+        async_dispatcher_send(hass, SIGNAL_NEW_DEVICE, entry.entry_id, mac)
+        async_dispatcher_send(hass, SIGNAL_MEMORY_UPDATE, entry.entry_id, mac)
 
     async def _handle_mqtt_connected(msg: mqtt.ReceiveMessage) -> None:
         mac = _mac_from_topic(topic_prefix, msg.topic)
@@ -345,6 +381,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_WAKE_DISPLAY, _svc_wake_display)
     hass.services.async_register(DOMAIN, SERVICE_REBOOT, _svc_reboot)
 
+    # Platforms first so Last boot can restore boot_count before retained MQTT arrives.
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     # Subscribe to the two main firmware topics (see README.md).
     runtime.unsubscribers.append(
         await mqtt.async_subscribe(
@@ -386,8 +425,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             qos=1,
         )
     )
+    runtime.unsubscribers.append(
+        await mqtt.async_subscribe(
+            hass,
+            f"{topic_prefix}/device/+/status/memory",
+            _handle_memory,
+            qos=1,
+        )
+    )
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
